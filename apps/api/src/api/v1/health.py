@@ -1,11 +1,13 @@
 import time
-from typing import Any
+from typing import Annotated, Any
+
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-from apps.api.src.core.config import Settings, get_settings
-from apps.api.src.db.session import get_db
+
+from src.core.config import Settings, get_settings
+from src.db.session import get_db
 
 router = APIRouter(prefix="/health", tags=["Health & Diagnostics"])
 
@@ -21,8 +23,8 @@ class HealthResponse(BaseModel):
 
 @router.get("", response_model=HealthResponse, status_code=status.HTTP_200_OK)
 async def check_health(
-    db: AsyncSession = Depends(get_db),
-    settings: Settings = Depends(get_settings),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> HealthResponse:
     """Production health check verifying database connectivity, pgvector, and latency."""
     start_time = time.perf_counter()

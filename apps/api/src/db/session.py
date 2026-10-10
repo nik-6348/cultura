@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 from typing import Any
+
 from pgvector.asyncpg import register_vector
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -7,7 +8,8 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from apps.api.src.core.config import get_settings
+
+from src.core.config import get_settings
 
 settings = get_settings()
 

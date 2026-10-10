@@ -1,5 +1,6 @@
 from functools import lru_cache
 from typing import Literal
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -19,8 +20,8 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     # Database (PostgreSQL 16 + pgvector)
-    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/cultura"
-    database_sync_url: str = "postgresql://postgres:postgres@localhost:5432/cultura"
+    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5434/cultura"
+    database_sync_url: str = "postgresql://postgres:postgres@localhost:5434/cultura"
     db_pool_size: int = 20
     db_max_overflow: int = 10
     db_pool_timeout: int = 30
@@ -46,12 +47,14 @@ class Settings(BaseSettings):
 
     # Primary LLM Provider
     llm_provider: str = "openai"
+    llm_base_url: str | None = None
     llm_api_key: str = ""
     llm_model: str = "gpt-4o"
     llm_temperature: float = 0.2
 
     # Embeddings (pgvector semantic memory)
     embedding_provider: str = "openai"
+    embedding_model_key: str | None = None
     embedding_model: str = "text-embedding-3-small"
     embedding_dimension: int = 1536
 
