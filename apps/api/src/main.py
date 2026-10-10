@@ -1,13 +1,15 @@
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-import logging
+
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from apps.api.src.api.router import api_router
-from apps.api.src.core.config import get_settings
-from apps.api.src.core.logging import setup_logging
-from apps.api.src.db.session import engine
+
+from src.api.router import api_router
+from src.core.config import get_settings
+from src.core.logging import setup_logging
+from src.db.session import engine
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +18,12 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Production lifespan manager for startup and graceful shutdown."""
     setup_logging()
-    settings = get_settings()
-    logger.info("Starting %s v%s in %s mode", settings.app_name, settings.app_version, settings.environment)
+    logger.info(
+        "Starting %s v%s in %s mode",
+        settings.app_name,
+        settings.app_version,
+        settings.environment,
+    )
     yield
     logger.info("Shutting down %s, disposing database connection pool", settings.app_name)
     await engine.dispose()
@@ -50,7 +56,12 @@ app.include_router(api_router)
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Production RFC 7807 global exception handler."""
-    logger.exception("Unhandled server exception on %s %s: %s", request.method, request.url.path, exc)
+    logger.exception(
+        "Unhandled server exception on %s %s: %s",
+        request.method,
+        request.url.path,
+        exc,
+    )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
