@@ -14,6 +14,15 @@ class AnalysisRunCreate(BaseModel):
     )
 
 
+class SimulationCreate(BaseModel):
+    """Payload to trigger a counterfactual what-if simulation from a baseline run."""
+
+    changes: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Modified parameters e.g. {'price_positioning': 'luxury'}",
+    )
+
+
 class RunStepRead(BaseModel):
     """Audit trail record for a single node execution in the agent DAG."""
 

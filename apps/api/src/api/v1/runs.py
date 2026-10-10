@@ -1,7 +1,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.security import get_current_user, verify_workspace_access
@@ -9,11 +9,50 @@ from src.db.models.user import User
 from src.db.session import get_db
 from src.schemas.decision import DecisionRead
 from src.schemas.evidence import EvidenceRead
-from src.schemas.run import AnalysisRunCreate, AnalysisRunRead, RunStepRead
+from src.schemas.run import AnalysisRunCreate, AnalysisRunRead, RunStepRead, SimulationCreate
 from src.services.analysis_run_service import AnalysisRunService
 from src.services.project_service import ProjectService
 
 router = APIRouter(tags=["Analysis Runs"])
+
+
+@router.get(
+    "/projects/{project_id}/runs",
+    response_model=list[AnalysisRunRead],
+    summary="List all analysis runs for a project",
+)
+async def list_project_runs(
+    project_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[AnalysisRunRead]:
+    """List all historical analysis runs executed for a project."""
+    project = await ProjectService.get_project(db, project_id)
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Project {project_id} not found",
+        )
+    await verify_workspace_access(project.workspace_id, current_user, db)
+    runs = await AnalysisRunService.list_project_runs(db, project_id)
+    return [AnalysisRunRead.model_validate(r) for r in runs]
+
+
+@router.get(
+    "/runs",
+    response_model=list[AnalysisRunRead],
+    summary="List recent analysis runs for a workspace",
+)
+async def list_workspace_runs(
+    workspace_id: Annotated[uuid.UUID, Query(description="Filter runs by workspace ID")],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> list[AnalysisRunRead]:
+    """List recent analysis runs across an entire workspace for executive review."""
+    await verify_workspace_access(workspace_id, current_user, db)
+    runs = await AnalysisRunService.list_workspace_runs(db, workspace_id, limit=limit)
+    return [AnalysisRunRead.model_validate(r) for r in runs]
 
 
 @router.post(
@@ -46,6 +85,40 @@ async def create_analysis_run(
         override_markets=payload.override_markets,
     )
     return AnalysisRunRead.model_validate(run)
+
+
+@router.post(
+    "/runs/{run_id}/simulations",
+    response_model=AnalysisRunRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Execute a counterfactual what-if simulation from a baseline run",
+)
+async def create_run_simulation(
+    run_id: uuid.UUID,
+    payload: SimulationCreate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> AnalysisRunRead:
+    """
+    Triggers a counterfactual simulation run linked to the parent baseline run.
+    Applies modified parameters and calculates parameter sensitivity & deltas.
+    """
+    parent_run = await AnalysisRunService.get_run_by_id(db, run_id)
+    if not parent_run:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Parent analysis run {run_id} not found",
+        )
+
+    await verify_workspace_access(parent_run.workspace_id, current_user, db)
+
+    sim_run = await AnalysisRunService.create_and_execute_simulation(
+        db=db,
+        parent_run_id=run_id,
+        user_id=current_user.id,
+        changes=payload.changes,
+    )
+    return AnalysisRunRead.model_validate(sim_run)
 
 
 @router.get(
