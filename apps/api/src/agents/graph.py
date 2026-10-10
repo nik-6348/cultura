@@ -8,6 +8,7 @@ from src.agents.nodes import (
     brand_analyst_node,
     evidence_normalizer_node,
     final_review_guard_node,
+    jev_decision_gate_node,
     market_analyst_node,
     qloo_researcher_node,
     scorer_node,
@@ -23,7 +24,8 @@ def create_analysis_graph(checkpointer: Any = None) -> Any:
 
     Flow:
     START -> supervisor -> brand_analyst -> market_analyst -> audience_analyst ->
-    qloo_researcher -> evidence_normalizer -> scorer -> strategy -> final_review_guard -> END
+    qloo_researcher -> evidence_normalizer -> scorer -> jev_decision_gate ->
+    strategy -> final_review_guard -> END
     """
     workflow = StateGraph(AnalysisState)
 
@@ -35,6 +37,7 @@ def create_analysis_graph(checkpointer: Any = None) -> Any:
     workflow.add_node("qloo_researcher", qloo_researcher_node)
     workflow.add_node("evidence_normalizer", evidence_normalizer_node)
     workflow.add_node("scorer", scorer_node)
+    workflow.add_node("jev_decision_gate", jev_decision_gate_node)
     workflow.add_node("strategy", strategy_node)
     workflow.add_node("final_review_guard", final_review_guard_node)
 
@@ -46,7 +49,8 @@ def create_analysis_graph(checkpointer: Any = None) -> Any:
     workflow.add_edge("audience_analyst", "qloo_researcher")
     workflow.add_edge("qloo_researcher", "evidence_normalizer")
     workflow.add_edge("evidence_normalizer", "scorer")
-    workflow.add_edge("scorer", "strategy")
+    workflow.add_edge("scorer", "jev_decision_gate")
+    workflow.add_edge("jev_decision_gate", "strategy")
     workflow.add_edge("strategy", "final_review_guard")
     workflow.add_edge("final_review_guard", END)
 

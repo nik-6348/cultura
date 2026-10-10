@@ -1,3 +1,4 @@
+from src.schemas.decision import DecisionRead
 from src.schemas.evidence import EvidenceBase, EvidenceCreate, EvidenceRead
 from src.schemas.project import (
     ProjectCreate,
@@ -36,6 +37,7 @@ __all__ = [
     "EvidenceBase",
     "EvidenceCreate",
     "EvidenceRead",
+    "DecisionRead",
     "AnalysisRunCreate",
     "AnalysisRunRead",
     "AnalysisRunDetailedRead",
