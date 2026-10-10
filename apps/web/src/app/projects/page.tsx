@@ -12,6 +12,7 @@ import {
 import { api } from "@/lib/api";
 import { Project } from "@/lib/types";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { formatDate } from "@/lib/utils";
 
 export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
@@ -50,10 +51,10 @@ export default function ProjectsPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Projects</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Projects</h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Strategic market entry portfolios and cultural affinity configurations.
           </p>
         </div>
@@ -76,16 +77,16 @@ export default function ProjectsPage() {
             placeholder="Search projects by name or objective..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-2xs"
+            className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-2 pl-9 pr-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-2xs"
           />
         </div>
-        <span className="text-xs text-slate-500 font-medium">
+        <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
           {filteredProjects.length} {filteredProjects.length === 1 ? "project" : "projects"}
         </span>
       </div>
 
       {error && (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+        <div className="rounded-lg border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 p-4 text-sm text-rose-800 dark:text-rose-300">
           <p className="font-semibold">Error loading projects</p>
           <p className="mt-1 text-xs">{error}</p>
         </div>
@@ -109,41 +110,37 @@ export default function ProjectsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProjects.map((project) => {
             const markets = project.candidate_markets || [];
-            const dateStr = new Date(project.created_at).toLocaleDateString(undefined, {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            });
+            const dateStr = formatDate(project.created_at);
 
             return (
               <div
                 key={project.id}
-                className="flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-6 shadow-xs hover:border-slate-300 hover:shadow-sm transition-all"
+                className="flex flex-col justify-between rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-sm transition-all"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
-                    <h2 className="font-semibold text-base text-slate-900 leading-snug line-clamp-1">
+                    <h2 className="font-semibold text-base text-slate-900 dark:text-white leading-snug line-clamp-1">
                       {project.name}
                     </h2>
-                    <span className="shrink-0 text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                    <span className="shrink-0 text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                       {project.status}
                     </span>
                   </div>
 
-                  <p className="mt-2 text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
                     {project.objective || "Comprehensive multi-agent cultural compatibility and market launch analysis."}
                   </p>
 
                   {/* Candidate Markets List */}
-                  <div className="mt-4 pt-4 border-t border-slate-100">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
                       Candidate Markets ({markets.length})
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {markets.map((m) => (
                         <span
                           key={m.id || m.name}
-                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700"
+                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
                         >
                           <Globe2 className="w-3 h-3 mr-1 text-slate-400" />
                           {m.name}
@@ -154,7 +151,7 @@ export default function ProjectsPage() {
                 </div>
 
                 {/* Card Footer with actions */}
-                <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                   <div className="flex items-center space-x-1.5">
                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
                     <span>{dateStr}</span>
@@ -163,7 +160,7 @@ export default function ProjectsPage() {
                   <div className="flex items-center space-x-2">
                     <Link
                       href={`/projects/${project.id}`}
-                      className="inline-flex items-center space-x-1 font-semibold text-indigo-600 hover:text-indigo-800"
+                      className="inline-flex items-center space-x-1 font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
                     >
                       <span>Overview</span>
                       <ArrowRight className="w-3.5 h-3.5" />

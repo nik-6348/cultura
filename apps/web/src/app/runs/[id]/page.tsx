@@ -29,7 +29,7 @@ import {
   RunStep,
 } from "@/lib/types";
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 export default function RunIntelligencePage() {
   const params = useParams();
@@ -180,69 +180,69 @@ export default function RunIntelligencePage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* Top Breadcrumb & Metadata */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div className="space-y-1">
-          <div className="flex items-center space-x-2 text-xs text-slate-500">
-            <Link href="/projects" className="hover:text-slate-800 flex items-center space-x-1">
+          <div className="flex items-center space-x-2 text-xs text-slate-500 dark:text-slate-400">
+            <Link href="/projects" className="hover:text-slate-800 dark:hover:text-slate-200 flex items-center space-x-1">
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Projects</span>
             </Link>
             <span>/</span>
-            <Link href={`/projects/${run.project_id}`} className="hover:text-slate-800">
+            <Link href={`/projects/${run.project_id}`} className="hover:text-slate-800 dark:hover:text-slate-200">
               {brandName}
             </Link>
             <span>/</span>
-            <span className="text-slate-800 font-mono">Run {run.id.slice(0, 8)}</span>
+            <span className="text-slate-800 dark:text-slate-200 font-mono">Run {run.id.slice(0, 8)}</span>
           </div>
 
           <div className="flex items-center space-x-3 mt-1">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
               {brandName} — Market Entry Intelligence
             </h1>
             <span
               className={cn(
                 "text-xs font-bold uppercase px-2.5 py-0.5 rounded-full border",
                 run.status === "completed"
-                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                  : "bg-amber-50 text-amber-800 border-amber-200"
+                  ? "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
+                  : "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
               )}
             >
               {run.status}
             </span>
             {run.parent_run_id && (
-              <span className="text-xs font-semibold uppercase px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
+              <span className="text-xs font-semibold uppercase px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800">
                 Simulation Child
               </span>
             )}
           </div>
         </div>
 
-        <div className="flex items-center space-x-3 self-start sm:self-auto text-xs text-slate-500">
+        <div className="flex items-center space-x-3 self-start sm:self-auto text-xs text-slate-500 dark:text-slate-400">
           <div className="flex items-center space-x-1">
             <Clock className="w-3.5 h-3.5 text-slate-400" />
-            <span>{new Date(run.created_at).toLocaleDateString()}</span>
+            <span>{formatDate(run.created_at)}</span>
           </div>
           <span>•</span>
-          <span className="font-mono bg-slate-100 px-2 py-1 rounded text-slate-700">
+          <span className="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-700 dark:text-slate-300">
             v{run.score_version || "1.0.0"}
           </span>
         </div>
       </div>
 
       {/* Hero Decision Card (TypeSafe Jev System One Posture) */}
-      <div className="rounded-2xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-xs space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-100">
+      <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-xs space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-100 dark:border-slate-800">
           <div>
-            <div className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
-              <ShieldCheck className="w-4 h-4 text-indigo-600" />
+            <div className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+              <ShieldCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               <span>TypeSafe Jev System One Posture Gate</span>
             </div>
             <div className="flex items-baseline space-x-3 mt-2">
-              <span className="text-3xl font-extrabold text-slate-900">
+              <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
                 Recommended Market: {winnerMarket}
               </span>
             </div>
-            <p className="mt-1 text-sm text-slate-600 max-w-xl">
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300 max-w-xl">
               {run.strategy_summary ||
                 "Empirical cultural compatibility, category taste affinity, and contextual risk analysis."}
             </p>
@@ -252,9 +252,9 @@ export default function RunIntelligencePage() {
             {run.decision_verdict && (
               <VerdictBadge verdict={run.decision_verdict} size="lg" />
             )}
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-slate-500 dark:text-slate-400">
               Confidence:{" "}
-              <strong className="text-slate-800">
+              <strong className="text-slate-800 dark:text-slate-200">
                 {run.decision_confidence
                   ? `${(run.decision_confidence * 100).toFixed(1)}%`
                   : "High (Deterministic)"}
@@ -266,13 +266,13 @@ export default function RunIntelligencePage() {
         {/* Probabilities Distribution & Deterministic Score */}
         {primaryDecision?.probabilities && (
           <div className="space-y-2">
-            <div className="flex justify-between text-xs text-slate-600 font-semibold">
+            <div className="flex justify-between text-xs text-slate-600 dark:text-slate-300 font-semibold">
               <span>Decision Probability Distribution:</span>
-              <span className="font-mono text-[11px] text-slate-400">
+              <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500">
                 P(Launch)={((primaryDecision.probabilities.launch || 0) * 100).toFixed(1)}% • P(Adapt)={((primaryDecision.probabilities.adapt || 0) * 100).toFixed(1)}% • P(Avoid)={((primaryDecision.probabilities.avoid || 0) * 100).toFixed(1)}%
               </span>
             </div>
-            <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden flex">
+            <div className="h-3 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
               <div
                 style={{ width: `${(primaryDecision.probabilities.launch || 0) * 100}%` }}
                 className="bg-emerald-500 h-full"
@@ -294,14 +294,14 @@ export default function RunIntelligencePage() {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-slate-200 space-x-6 text-sm font-semibold overflow-x-auto">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 space-x-6 text-sm font-semibold overflow-x-auto">
         <button
           onClick={() => setActiveTab("overview")}
           className={cn(
             "pb-3 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap",
             activeTab === "overview"
-              ? "border-indigo-600 text-indigo-700"
-              : "border-transparent text-slate-500 hover:text-slate-800"
+              ? "border-indigo-600 text-indigo-700 dark:border-indigo-400 dark:text-indigo-400"
+              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
           )}
         >
           <BarChart3 className="w-4 h-4" />
@@ -313,8 +313,8 @@ export default function RunIntelligencePage() {
           className={cn(
             "pb-3 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap",
             activeTab === "timeline"
-              ? "border-indigo-600 text-indigo-700"
-              : "border-transparent text-slate-500 hover:text-slate-800"
+              ? "border-indigo-600 text-indigo-700 dark:border-indigo-400 dark:text-indigo-400"
+              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
           )}
         >
           <Cpu className="w-4 h-4" />
@@ -326,8 +326,8 @@ export default function RunIntelligencePage() {
           className={cn(
             "pb-3 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap",
             activeTab === "evidence"
-              ? "border-indigo-600 text-indigo-700"
-              : "border-transparent text-slate-500 hover:text-slate-800"
+              ? "border-indigo-600 text-indigo-700 dark:border-indigo-400 dark:text-indigo-400"
+              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
           )}
         >
           <Database className="w-4 h-4" />
@@ -339,8 +339,8 @@ export default function RunIntelligencePage() {
           className={cn(
             "pb-3 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap",
             activeTab === "simulation"
-              ? "border-indigo-600 text-indigo-700"
-              : "border-transparent text-slate-500 hover:text-slate-800"
+              ? "border-indigo-600 text-indigo-700 dark:border-indigo-400 dark:text-indigo-400"
+              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
           )}
         >
           <Sliders className="w-4 h-4" />
@@ -352,8 +352,8 @@ export default function RunIntelligencePage() {
           className={cn(
             "pb-3 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap",
             activeTab === "report"
-              ? "border-indigo-600 text-indigo-700"
-              : "border-transparent text-slate-500 hover:text-slate-800"
+              ? "border-indigo-600 text-indigo-700 dark:border-indigo-400 dark:text-indigo-400"
+              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
           )}
         >
           <FileText className="w-4 h-4" />
@@ -367,17 +367,17 @@ export default function RunIntelligencePage() {
           {/* 5-Dimension Radar/Breakdown */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Dimensions Bar Card */}
-            <div className="lg:col-span-2 rounded-xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-5">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="lg:col-span-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs space-y-5">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                 <div>
-                  <h2 className="text-base font-semibold text-slate-900">
+                  <h2 className="text-base font-semibold text-slate-900 dark:text-white">
                     5-Dimensional Compatibility Profile — {winnerMarket}
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     Deterministic score calculation based on normalized Qloo taste graphs
                   </p>
                 </div>
-                <span className="text-sm font-bold text-indigo-700 font-mono">
+                <span className="text-sm font-bold text-indigo-700 dark:text-indigo-400 font-mono">
                   {(Number(winnerScore) * 100).toFixed(1)}% Score
                 </span>
               </div>
@@ -420,16 +420,16 @@ export default function RunIntelligencePage() {
                   return (
                     <div key={dim.key} className="space-y-1.5">
                       <div className="flex justify-between text-xs">
-                        <span className="font-semibold text-slate-800">
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">
                           {dim.label}{" "}
-                          <span className="font-normal text-slate-400">({dim.weight})</span>
+                          <span className="font-normal text-slate-400 dark:text-slate-500">({dim.weight})</span>
                         </span>
-                        <span className="font-mono font-bold text-slate-700">{pct}%</span>
+                        <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{pct}%</span>
                       </div>
-                      <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                      <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                         <div
                           style={{ width: `${pct}%` }}
-                          className="h-full rounded-full bg-indigo-600 transition-all duration-500"
+                          className="h-full rounded-full bg-indigo-600 dark:bg-indigo-500 transition-all duration-500"
                         />
                       </div>
                     </div>
@@ -439,11 +439,10 @@ export default function RunIntelligencePage() {
             </div>
 
             {/* Market Comparative Ranking Matrix */}
-            <div className="rounded-xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-4">
-              <h3 className="text-sm font-semibold text-slate-900 pb-2 border-b border-slate-100">
+            <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs space-y-4">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white pb-2 border-b border-slate-100 dark:border-slate-800">
                 Comparative Ranking Matrix
               </h3>
-
               {rankings.length === 0 ? (
                 <div className="text-xs text-slate-400 py-6 text-center">
                   Single market evaluated
@@ -458,8 +457,8 @@ export default function RunIntelligencePage() {
                         className={cn(
                           "p-3 rounded-lg border flex items-center justify-between text-xs transition-colors",
                           isWinner
-                            ? "border-emerald-200 bg-emerald-50/50"
-                            : "border-slate-200 bg-slate-50"
+                            ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/40"
+                            : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40"
                         )}
                       >
                         <div className="flex items-center space-x-2">
@@ -468,19 +467,19 @@ export default function RunIntelligencePage() {
                               "w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px]",
                               isWinner
                                 ? "bg-emerald-600 text-white"
-                                : "bg-slate-200 text-slate-600"
+                                : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
                             )}
                           >
                             #{r.rank}
                           </span>
-                          <span className="font-semibold text-slate-900">{r.market}</span>
+                          <span className="font-semibold text-slate-900 dark:text-white">{r.market}</span>
                         </div>
 
                         <div className="flex items-center space-x-2">
-                          <span className="font-mono font-bold text-slate-800">
+                          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
                             {(Number(r.score) * 100).toFixed(1)}%
                           </span>
-                          <span className="text-[10px] uppercase font-bold text-emerald-800">
+                          <span className="text-[10px] uppercase font-bold text-emerald-800 dark:text-emerald-400">
                             {r.verdict}
                           </span>
                         </div>
@@ -493,14 +492,14 @@ export default function RunIntelligencePage() {
           </div>
 
           {/* Strategic Entry Playbook */}
-          <div className="rounded-xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-4">
-            <h2 className="text-base font-semibold text-slate-900 pb-3 border-b border-slate-100">
+          <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs space-y-4">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white pb-3 border-b border-slate-100 dark:border-slate-800">
               Strategic Market Entry Playbook
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs leading-relaxed text-slate-700">
-              <div className="space-y-3 p-4 rounded-lg bg-slate-50 border border-slate-200/60">
-                <span className="font-semibold uppercase tracking-wider text-slate-500 text-[10px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+              <div className="space-y-3 p-4 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800">
+                <span className="font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-[10px]">
                   Target Distribution & Channel Posture
                 </span>
                 <p>
@@ -508,8 +507,8 @@ export default function RunIntelligencePage() {
                 </p>
               </div>
 
-              <div className="space-y-3 p-4 rounded-lg bg-slate-50 border border-slate-200/60">
-                <span className="font-semibold uppercase tracking-wider text-slate-500 text-[10px]">
+              <div className="space-y-3 p-4 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800">
+                <span className="font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-[10px]">
                   Cultural Nuance & Localization Shield
                 </span>
                 <p>
@@ -523,38 +522,38 @@ export default function RunIntelligencePage() {
 
       {/* Tab 2: Agent Timeline */}
       {activeTab === "timeline" && (
-        <div className="rounded-xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-4 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs space-y-4 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <div>
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white">
                 LangGraph 10-Node Agent Execution Trace
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Step-by-step audit log of specialized agent nodes and execution latency
               </p>
             </div>
-            <span className="text-xs font-semibold text-slate-600">
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
               {steps.length} Steps Completed
             </span>
           </div>
 
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {steps.map((st, idx) => (
               <div
                 key={st.id || idx}
-                className="py-3.5 flex items-center justify-between hover:bg-slate-50 px-2 rounded-lg transition-colors text-xs"
+                className="py-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/40 px-2 rounded-lg transition-colors text-xs"
               >
                 <div className="flex items-center space-x-3">
-                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-[10px]">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center font-bold text-[10px]">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div>
                     <div className="flex items-center space-x-2">
-                      <span className="font-semibold text-slate-900 font-mono">
+                      <span className="font-semibold text-slate-900 dark:text-white font-mono">
                         {st.node_name}
                       </span>
                       {st.agent_role && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
                           {st.agent_role}
                         </span>
                       )}
@@ -562,9 +561,9 @@ export default function RunIntelligencePage() {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-4 text-slate-500 font-mono text-[11px]">
+                <div className="flex items-center space-x-4 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
                   <span>{st.duration_ms ? `${st.duration_ms}ms` : "—"}</span>
-                  <span className="text-emerald-700 font-bold uppercase text-[10px]">
+                  <span className="text-emerald-700 dark:text-emerald-400 font-bold uppercase text-[10px]">
                     {st.status}
                   </span>
                 </div>
@@ -576,17 +575,17 @@ export default function RunIntelligencePage() {
 
       {/* Tab 3: Empirical Evidence Explorer */}
       {activeTab === "evidence" && (
-        <div className="rounded-xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-4 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs space-y-4 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <div>
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white">
                 Normalized Qloo Empirical Evidence
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Citable signals gathered from Qloo Taste Graph API (hackathon.api.qloo.com)
               </p>
             </div>
-            <span className="text-xs font-semibold text-slate-600">
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
               {evidence.length} Verified Records
             </span>
           </div>
@@ -596,35 +595,35 @@ export default function RunIntelligencePage() {
               No evidence records found for this run.
             </div>
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {evidence.map((ev) => (
                 <div
                   key={ev.id}
-                  className="py-4 hover:bg-slate-50 px-2 rounded-lg transition-colors space-y-1.5 text-xs"
+                  className="py-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 px-2 rounded-lg transition-colors space-y-1.5 text-xs"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <span className="font-semibold text-slate-900">{ev.entity_name}</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                      <span className="font-semibold text-slate-900 dark:text-white">{ev.entity_name}</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
                         {ev.signal_type}
                       </span>
                     </div>
 
                     <div className="flex items-center space-x-3 font-mono text-[11px]">
                       {ev.score !== undefined && (
-                        <span className="text-slate-800 font-bold">
+                        <span className="text-slate-800 dark:text-slate-200 font-bold">
                           Score: {(ev.score * 100).toFixed(1)}%
                         </span>
                       )}
-                      <span className="text-slate-400">
+                      <span className="text-slate-400 dark:text-slate-500">
                         Conf: {(ev.confidence * 100).toFixed(0)}%
                       </span>
                     </div>
                   </div>
 
-                  <p className="text-slate-600 leading-relaxed">{ev.content}</p>
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{ev.content}</p>
 
-                  <div className="flex items-center space-x-3 text-[10px] text-slate-400 font-mono pt-1">
+                  <div className="flex items-center space-x-3 text-[10px] text-slate-400 dark:text-slate-500 font-mono pt-1">
                     <span>Source: {ev.source_type}</span>
                     <span>•</span>
                     <span>Provider: {ev.provider}</span>
@@ -638,38 +637,38 @@ export default function RunIntelligencePage() {
 
       {/* Tab 4: Counterfactual What-If Simulation Panel */}
       {activeTab === "simulation" && (
-        <div className="rounded-xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-6 animate-in fade-in duration-200">
+        <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs space-y-6 animate-in fade-in duration-200">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white">
               Counterfactual What-If Simulation
             </h2>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Hypothesize parameter shifts without corrupting the baseline analysis run. Evaluates parameter sensitivity and computes side-by-side score deltas.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                 Modified Audience Persona
               </label>
               <input
                 type="text"
                 value={simPersona}
                 onChange={(e) => setSimPersona(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3.5 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                 Repositioning Hypothesis
               </label>
               <input
                 type="text"
                 value={simPositioning}
                 onChange={(e) => setSimPositioning(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3.5 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
           </div>
@@ -687,17 +686,17 @@ export default function RunIntelligencePage() {
 
           {/* Simulation Output Delta Comparison */}
           {simResult && (
-            <div className="mt-6 rounded-xl border border-indigo-200 bg-indigo-50/40 p-5 space-y-4 animate-in fade-in">
-              <div className="flex items-center justify-between pb-3 border-b border-indigo-200/60">
+            <div className="mt-6 rounded-xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/40 dark:bg-indigo-950/30 p-5 space-y-4 animate-in fade-in">
+              <div className="flex items-center justify-between pb-3 border-b border-indigo-200/60 dark:border-indigo-900/60">
                 <div className="flex items-center space-x-2">
-                  <Sparkles className="w-4 h-4 text-indigo-600" />
-                  <span className="font-bold text-sm text-slate-900">
+                  <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span className="font-bold text-sm text-slate-900 dark:text-white">
                     Simulation Outcome Generated
                   </span>
                 </div>
                 <Link
                   href={`/runs/${simResult.id}`}
-                  className="inline-flex items-center space-x-1 text-xs font-semibold text-indigo-700 hover:text-indigo-900"
+                  className="inline-flex items-center space-x-1 text-xs font-semibold text-indigo-700 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300"
                 >
                   <span>Open Child Run</span>
                   <ExternalLink className="w-3.5 h-3.5" />
@@ -705,22 +704,22 @@ export default function RunIntelligencePage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                <div className="p-3 bg-white rounded-lg border border-indigo-100">
-                  <span className="text-slate-500 text-[11px]">Baseline Score:</span>
-                  <div className="font-mono font-bold text-slate-800 text-sm mt-0.5">
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-indigo-100 dark:border-indigo-900/60">
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px]">Baseline Score:</span>
+                  <div className="font-mono font-bold text-slate-800 dark:text-slate-200 text-sm mt-0.5">
                     {run.overall_score ? `${(run.overall_score * 100).toFixed(1)}%` : "—"}
                   </div>
                 </div>
 
-                <div className="p-3 bg-white rounded-lg border border-indigo-100">
-                  <span className="text-slate-500 text-[11px]">Simulation Score:</span>
-                  <div className="font-mono font-bold text-indigo-700 text-sm mt-0.5">
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-indigo-100 dark:border-indigo-900/60">
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px]">Simulation Score:</span>
+                  <div className="font-mono font-bold text-indigo-700 dark:text-indigo-400 text-sm mt-0.5">
                     {simResult.overall_score ? `${(simResult.overall_score * 100).toFixed(1)}%` : "—"}
                   </div>
                 </div>
 
-                <div className="p-3 bg-white rounded-lg border border-indigo-100">
-                  <span className="text-slate-500 text-[11px]">Verdict Posture:</span>
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-indigo-100 dark:border-indigo-900/60">
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px]">Verdict Posture:</span>
                   <div className="mt-1">
                     <VerdictBadge verdict={simResult.decision_verdict || "ADAPT"} size="sm" />
                   </div>
@@ -733,13 +732,13 @@ export default function RunIntelligencePage() {
 
       {/* Tab 5: Executive Brief Report */}
       {activeTab === "report" && (
-        <div className="rounded-xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-6 animate-in fade-in duration-200">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+        <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs space-y-6 animate-in fade-in duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
             <div>
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white">
                 Executive Market Entry Brief
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Publication-grade brief compiling empirical signals, deterministic scores, and System One gates
               </p>
             </div>
@@ -748,7 +747,7 @@ export default function RunIntelligencePage() {
               <select
                 value={reportFormat}
                 onChange={(e) => setReportFormat(e.target.value as "markdown" | "html")}
-                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none"
+                className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:border-indigo-500 focus:outline-none"
               >
                 <option value="markdown">Markdown (.md)</option>
                 <option value="html">HTML (.html)</option>
@@ -767,10 +766,10 @@ export default function RunIntelligencePage() {
 
           {activeReport ? (
             <div className="space-y-4">
-              <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200/60 text-xs">
+              <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/60 p-3 rounded-lg border border-slate-200/60 dark:border-slate-800 text-xs">
                 <div className="flex items-center space-x-2">
-                  <span className="font-semibold text-slate-800">{activeReport.title}</span>
-                  <span className="text-[10px] font-mono uppercase bg-slate-200 px-1.5 py-0.5 rounded text-slate-700">
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{activeReport.title}</span>
+                  <span className="text-[10px] font-mono uppercase bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-700 dark:text-slate-300">
                     {activeReport.format}
                   </span>
                 </div>
@@ -778,34 +777,34 @@ export default function RunIntelligencePage() {
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={handleCopyReport}
-                    className="inline-flex items-center space-x-1 px-2.5 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-[11px] font-medium"
+                    className="inline-flex items-center space-x-1 px-2.5 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-[11px] font-medium"
                   >
-                    {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-slate-500" />}
+                    {copied ? <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3 h-3 text-slate-500 dark:text-slate-400" />}
                     <span>{copied ? "Copied" : "Copy"}</span>
                   </button>
 
                   <a
                     href={`/api/v1/reports/${activeReport.id}/raw`}
                     download
-                    className="inline-flex items-center space-x-1 px-2.5 py-1 rounded bg-slate-900 text-white hover:bg-slate-800 text-[11px] font-medium"
+                    className="inline-flex items-center space-x-1 px-2.5 py-1 rounded bg-slate-900 dark:bg-indigo-600 text-white hover:bg-slate-800 dark:hover:bg-indigo-700 text-[11px] font-medium"
                   >
-                    <Download className="w-3 h-3" />
+                    <Download className="w-3.5 h-3.5" />
                     <span>Download</span>
                   </a>
                 </div>
               </div>
 
               {/* Report Content Viewer */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-6 overflow-x-auto">
-                <pre className="text-xs leading-relaxed font-mono whitespace-pre-wrap text-slate-800 selection:bg-indigo-100">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/60 p-6 overflow-x-auto">
+                <pre className="text-xs leading-relaxed font-mono whitespace-pre-wrap text-slate-800 dark:text-slate-200 selection:bg-indigo-100 dark:selection:bg-indigo-900">
                   {activeReport.content}
                 </pre>
               </div>
 
               {/* Revisions list */}
               {reports.length > 1 && (
-                <div className="pt-4 border-t border-slate-100">
-                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
                     Saved Revisions ({reports.length})
                   </span>
                   <div className="space-y-1.5">
@@ -816,13 +815,13 @@ export default function RunIntelligencePage() {
                         className={cn(
                           "w-full text-left p-2.5 rounded-lg text-xs flex justify-between items-center transition-colors",
                           activeReport.id === rep.id
-                            ? "bg-indigo-50 border border-indigo-200 text-indigo-900"
-                            : "bg-slate-50 border border-slate-200/60 text-slate-700 hover:bg-slate-100"
+                            ? "bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-300"
+                            : "bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                         )}
                       >
                         <span className="font-medium line-clamp-1">{rep.title}</span>
-                        <span className="text-[10px] text-slate-400 font-mono shrink-0 ml-2">
-                          {new Date(rep.created_at).toLocaleString()}
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono shrink-0 ml-2">
+                          {formatDate(rep.created_at)}
                         </span>
                       </button>
                     ))}
@@ -840,3 +839,4 @@ export default function RunIntelligencePage() {
     </div>
   );
 }
+
