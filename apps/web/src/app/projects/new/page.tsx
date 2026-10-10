@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  Globe2,
   Sparkles,
   Search,
   Plus,
@@ -19,8 +18,6 @@ import {
   Users,
   Compass,
   Edit3,
-  Clock,
-  Info,
   Building2,
   Shirt,
   Music,
@@ -28,6 +25,7 @@ import {
   Palette,
   Tv,
   ShoppingBag,
+  Loader2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Workspace } from "@/lib/types";
@@ -40,12 +38,11 @@ interface MarketPreset {
   country: string;
   country_code: string;
   location_code: string;
-  region: "Asia" | "North America" | "Europe" | "Middle East";
-  potential: "High potential" | "Medium" | "High";
+  region: "Asia" | "North America" | "Europe" | "Middle East" | "Oceania" | "Latin America" | string;
+  potential: "High potential" | "Medium" | "High" | string;
   description: string;
   flag: string;
   color: string;
-  coords: { x: number; y: number }; // For visual world map pin
 }
 
 const PRESET_MARKETS: MarketPreset[] = [
@@ -53,14 +50,13 @@ const PRESET_MARKETS: MarketPreset[] = [
     id: "jp-tyo",
     name: "Tokyo",
     country: "Japan",
-    country_code: "GB",
+    country_code: "JP",
     location_code: "JP-TYO",
     region: "Asia",
     potential: "High potential",
-    description: "Strong streetwear, music and youth culture",
+    description: "Strong streetwear, music and youth subculture hub",
     flag: "🇯🇵",
     color: "from-rose-500/15 via-red-500/10 to-transparent",
-    coords: { x: 78, y: 38 },
   },
   {
     id: "kr-sel",
@@ -70,10 +66,9 @@ const PRESET_MARKETS: MarketPreset[] = [
     location_code: "KR-SEL",
     region: "Asia",
     potential: "High potential",
-    description: "K-pop, fashion and digital culture",
+    description: "K-pop, avant-garde fashion and digital-first youth culture",
     flag: "🇰🇷",
     color: "from-blue-500/15 via-indigo-500/10 to-transparent",
-    coords: { x: 74, y: 36 },
   },
   {
     id: "us-nyc",
@@ -83,10 +78,9 @@ const PRESET_MARKETS: MarketPreset[] = [
     location_code: "US-NYC",
     region: "North America",
     potential: "High potential",
-    description: "Diverse and trend-driven market",
+    description: "Global trendsetter in streetwear, luxury and media innovation",
     flag: "🇺🇸",
     color: "from-amber-500/15 via-orange-500/10 to-transparent",
-    coords: { x: 28, y: 34 },
   },
   {
     id: "gb-lnd",
@@ -96,10 +90,9 @@ const PRESET_MARKETS: MarketPreset[] = [
     location_code: "GB-LND",
     region: "Europe",
     potential: "Medium",
-    description: "Strong fashion and lifestyle culture",
+    description: "Eclectic creative culture with strong fashion and underground music",
     flag: "🇬🇧",
     color: "from-indigo-500/15 via-violet-500/10 to-transparent",
-    coords: { x: 48, y: 26 },
   },
   {
     id: "sg-sin",
@@ -109,10 +102,9 @@ const PRESET_MARKETS: MarketPreset[] = [
     location_code: "SG-SIN",
     region: "Asia",
     potential: "High potential",
-    description: "High purchasing power and global trends",
+    description: "Southeast Asian financial and luxury gateway with affluent consumer base",
     flag: "🇸🇬",
     color: "from-emerald-500/15 via-teal-500/10 to-transparent",
-    coords: { x: 72, y: 56 },
   },
   {
     id: "th-bkk",
@@ -121,11 +113,10 @@ const PRESET_MARKETS: MarketPreset[] = [
     country_code: "TH",
     location_code: "TH-BKK",
     region: "Asia",
-    potential: "Medium",
-    description: "Vibrant street culture and fashion",
+    potential: "High",
+    description: "Fast-growing creative hub with vibrant street fashion and cafe lifestyle",
     flag: "🇹🇭",
     color: "from-purple-500/15 via-pink-500/10 to-transparent",
-    coords: { x: 69, y: 48 },
   },
   {
     id: "de-ber",
@@ -135,10 +126,9 @@ const PRESET_MARKETS: MarketPreset[] = [
     location_code: "DE-BER",
     region: "Europe",
     potential: "Medium",
-    description: "Strong indie and alternative culture",
+    description: "Leading European counterculture, club scene and indie aesthetics",
     flag: "🇩🇪",
     color: "from-yellow-500/15 via-amber-500/10 to-transparent",
-    coords: { x: 52, y: 28 },
   },
   {
     id: "us-lax",
@@ -147,15 +137,171 @@ const PRESET_MARKETS: MarketPreset[] = [
     country_code: "US",
     location_code: "US-LAX",
     region: "North America",
-    potential: "Medium",
-    description: "Streetwear and entertainment hub",
+    potential: "High potential",
+    description: "Entertainment, skate culture and influencer-driven lifestyle epicenter",
     flag: "🇺🇸",
     color: "from-cyan-500/15 via-sky-500/10 to-transparent",
-    coords: { x: 20, y: 40 },
+  },
+  {
+    id: "fr-par",
+    name: "Paris",
+    country: "France",
+    country_code: "FR",
+    location_code: "FR-PAR",
+    region: "Europe",
+    potential: "High potential",
+    description: "Global luxury capital, haute couture and refined cultural heritage",
+    flag: "🇫🇷",
+    color: "from-blue-600/15 via-indigo-600/10 to-transparent",
+  },
+  {
+    id: "ae-dxb",
+    name: "Dubai",
+    country: "United Arab Emirates",
+    country_code: "AE",
+    location_code: "AE-DXB",
+    region: "Middle East",
+    potential: "High potential",
+    description: "Rapid luxury retail growth, experiential hospitality and cosmopolitan market",
+    flag: "🇦🇪",
+    color: "from-amber-600/15 via-yellow-600/10 to-transparent",
+  },
+  {
+    id: "in-bom",
+    name: "Mumbai",
+    country: "India",
+    country_code: "IN",
+    location_code: "IN-BOM",
+    region: "Asia",
+    potential: "High potential",
+    description: "Bollywood, burgeoning Gen Z streetwear and booming consumer tech adoption",
+    flag: "🇮🇳",
+    color: "from-orange-500/15 via-amber-500/10 to-transparent",
+  },
+  {
+    id: "au-syd",
+    name: "Sydney",
+    country: "Australia",
+    country_code: "AU",
+    location_code: "AU-SYD",
+    region: "Oceania",
+    potential: "Medium",
+    description: "Outdoor lifestyle, surf apparel and premium specialty coffee culture",
+    flag: "🇦🇺",
+    color: "from-sky-500/15 via-teal-500/10 to-transparent",
+  },
+  {
+    id: "ca-tor",
+    name: "Toronto",
+    country: "Canada",
+    country_code: "CA",
+    location_code: "CA-TOR",
+    region: "North America",
+    potential: "High",
+    description: "Diverse multicultural market with strong music and contemporary streetwear",
+    flag: "🇨🇦",
+    color: "from-red-600/15 via-rose-600/10 to-transparent",
+  },
+  {
+    id: "it-mil",
+    name: "Milan",
+    country: "Italy",
+    country_code: "IT",
+    location_code: "IT-MIL",
+    region: "Europe",
+    potential: "High potential",
+    description: "Fashion design capital with high artisan craft and luxury retail prestige",
+    flag: "🇮🇹",
+    color: "from-emerald-600/15 via-green-600/10 to-transparent",
+  },
+  {
+    id: "nl-ams",
+    name: "Amsterdam",
+    country: "Netherlands",
+    country_code: "NL",
+    location_code: "NL-AMS",
+    region: "Europe",
+    potential: "Medium",
+    description: "Circular design, sustainability leadership and denim innovation",
+    flag: "🇳🇱",
+    color: "from-orange-600/15 via-amber-600/10 to-transparent",
+  },
+  {
+    id: "hk-hkg",
+    name: "Hong Kong",
+    country: "Hong Kong",
+    country_code: "HK",
+    location_code: "HK-HKG",
+    region: "Asia",
+    potential: "High",
+    description: "High-density retail, luxury flagship market and sneaker collector culture",
+    flag: "🇭🇰",
+    color: "from-red-500/15 via-pink-500/10 to-transparent",
+  },
+  {
+    id: "br-sao",
+    name: "São Paulo",
+    country: "Brazil",
+    country_code: "BR",
+    location_code: "BR-SAO",
+    region: "Latin America",
+    potential: "High",
+    description: "Latin America's fashion capital with energetic urban art and festival scene",
+    flag: "🇧🇷",
+    color: "from-green-500/15 via-yellow-500/10 to-transparent",
+  },
+  {
+    id: "es-mad",
+    name: "Madrid",
+    country: "Spain",
+    country_code: "ES",
+    location_code: "ES-MAD",
+    region: "Europe",
+    potential: "Medium",
+    description: "Fast-paced social dining, nightlife and accessible fashion trends",
+    flag: "🇪🇸",
+    color: "from-yellow-600/15 via-red-600/10 to-transparent",
+  },
+  {
+    id: "sa-ruh",
+    name: "Riyadh",
+    country: "Saudi Arabia",
+    country_code: "SA",
+    location_code: "SA-RUH",
+    region: "Middle East",
+    potential: "High potential",
+    description: "Vision 2030 cultural boom, massive youth demographic and luxury appetite",
+    flag: "🇸🇦",
+    color: "from-emerald-700/15 via-green-700/10 to-transparent",
+  },
+  {
+    id: "se-sto",
+    name: "Stockholm",
+    country: "Sweden",
+    country_code: "SE",
+    location_code: "SE-STO",
+    region: "Europe",
+    potential: "Medium",
+    description: "Scandinavian minimalism, tech forwardness and sustainable consumer trends",
+    flag: "🇸🇪",
+    color: "from-blue-500/15 via-yellow-500/10 to-transparent",
+  },
+  {
+    id: "us-sfo",
+    name: "San Francisco",
+    country: "USA",
+    country_code: "US",
+    location_code: "US-SFO",
+    region: "North America",
+    potential: "High",
+    description: "Silicon Valley tech culture, athleisure and high disposable income",
+    flag: "🇺🇸",
+    color: "from-cyan-600/15 via-blue-600/10 to-transparent",
   },
 ];
 
-// --- Key Interest Presets with Native Icons (Zero Images) ---
+
+// --- Key Interest Presets with Native Icons (Zero External Images) ---
 const INTEREST_PRESETS = [
   { id: "streetwear", label: "Streetwear", icon: Shirt, color: "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/70" },
   { id: "sneakers", label: "Sneakers", icon: ShoppingBag, color: "text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/70" },
@@ -235,6 +381,15 @@ export default function NewProjectWizardPage() {
     PRESET_MARKETS[4], // Singapore
     PRESET_MARKETS[5], // Bangkok
   ]);
+  const [apiMarkets, setApiMarkets] = useState<MarketPreset[]>([]);
+  const [isSearchingApi, setIsSearchingApi] = useState(false);
+  const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
+  const searchDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // --- Step 2: Locations Autocomplete Dropdown State ---
+  const [locSearchQuery, setLocSearchQuery] = useState("");
+  const [isLocDropdownOpen, setIsLocDropdownOpen] = useState(false);
+  const locDropdownRef = React.useRef<HTMLDivElement>(null);
 
   // --- Step 4: Goals & Strategy State ---
   const [primaryGoal, setPrimaryGoal] = useState("Market expansion");
@@ -252,6 +407,48 @@ export default function NewProjectWizardPage() {
   const [additionalContext, setAdditionalContext] = useState(
     "We are planning to launch a premium streetwear collection targeting Gen Z. We want to understand which markets have the highest cultural alignment and what local trends we should consider."
   );
+
+  // Click outside listener for dropdowns
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchDropdownRef.current && !searchDropdownRef.current.contains(event.target as Node)) {
+        setIsSearchDropdownOpen(false);
+      }
+      if (locDropdownRef.current && !locDropdownRef.current.contains(event.target as Node)) {
+        setIsLocDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Fetch candidate locations from API with fallback
+  useEffect(() => {
+    let active = true;
+    const fetchLocations = async () => {
+      try {
+        setIsSearchingApi(true);
+        const results = await api.searchLocations(marketSearchQuery, selectedRegionTab);
+        if (active && Array.isArray(results) && results.length > 0) {
+          setApiMarkets(results as unknown as MarketPreset[]);
+        }
+      } catch {
+        // Fallback to client presets seamlessly
+      } finally {
+        if (active) setIsSearchingApi(false);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      fetchLocations();
+    }, 150);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [marketSearchQuery, selectedRegionTab]);
+
 
   // Initialize Workspace
   useEffect(() => {
@@ -393,31 +590,59 @@ export default function NewProjectWizardPage() {
     { num: 2, title: "Audience" },
     { num: 3, title: "Markets" },
     { num: 4, title: "Goals & Strategy" },
-    { num: 5, title: "Review" },
+    { num: 5, title: "Review & Launch" },
   ];
 
+  // Combined list of all available markets (API results merged with Presets)
+  const allAvailableMarkets: MarketPreset[] = React.useMemo(() => {
+    const map = new Map<string, MarketPreset>();
+    PRESET_MARKETS.forEach((m) => map.set(m.id, m));
+    apiMarkets.forEach((m) => map.set(m.id, m));
+    return Array.from(map.values());
+  }, [apiMarkets]);
+
   // Filter Markets for Tab & Search
-  const filteredMarkets = PRESET_MARKETS.filter((m) => {
+  const filteredMarkets = allAvailableMarkets.filter((m) => {
     const matchesSearch =
+      !marketSearchQuery.trim() ||
       m.name.toLowerCase().includes(marketSearchQuery.toLowerCase()) ||
       m.country.toLowerCase().includes(marketSearchQuery.toLowerCase()) ||
+      m.country_code.toLowerCase().includes(marketSearchQuery.toLowerCase()) ||
+      m.location_code.toLowerCase().includes(marketSearchQuery.toLowerCase()) ||
       m.description.toLowerCase().includes(marketSearchQuery.toLowerCase());
 
     if (!matchesSearch) return false;
 
-    if (selectedRegionTab === "Selected (4)" || selectedRegionTab === `Selected (${selectedMarkets.length})`) {
+    if (selectedRegionTab === `Selected (${selectedMarkets.length})` || selectedRegionTab.startsWith("Selected")) {
       return selectedMarkets.some((s) => s.id === m.id);
     }
     if (selectedRegionTab === "Asia") return m.region === "Asia";
     if (selectedRegionTab === "North America") return m.region === "North America";
     if (selectedRegionTab === "Europe") return m.region === "Europe";
     if (selectedRegionTab === "Middle East") return m.region === "Middle East";
+    if (selectedRegionTab === "Oceania") return m.region === "Oceania";
+    if (selectedRegionTab === "Latin America") return m.region === "Latin America";
 
     return true;
   });
 
+  // Dedicated dropdown results (instant combobox for search bar)
+  const dropdownMarkets = allAvailableMarkets.filter((m) => {
+    if (!marketSearchQuery.trim()) return true;
+    const q = marketSearchQuery.toLowerCase().trim();
+    return (
+      m.name.toLowerCase().includes(q) ||
+      m.country.toLowerCase().includes(q) ||
+      m.country_code.toLowerCase().includes(q) ||
+      m.location_code.toLowerCase().includes(q) ||
+      m.region.toLowerCase().includes(q) ||
+      m.description.toLowerCase().includes(q)
+    );
+  });
+
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 pb-16">
+    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300 pb-16">
       {/* Top Breadcrumb & Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800">
         <div>
@@ -443,7 +668,7 @@ export default function NewProjectWizardPage() {
           </p>
         </div>
 
-        {/* 5-Step Horizontal Stepper (Matching Mockups) */}
+        {/* 5-Step Horizontal Stepper */}
         <div className="flex items-center space-x-2 self-start sm:self-center">
           {steps.map((s, idx) => {
             const isCurrent = step === s.num;
@@ -505,816 +730,1037 @@ export default function NewProjectWizardPage() {
         </div>
       )}
 
-      {/* Main Two-Column Layout (Matching Mockups 03, 04, 05, 07) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Form Controls (8 cols on lg) */}
-        <div className="lg:col-span-8 space-y-6">
-          {/* ========================================================================= */}
-          {/* STEP 1: BRAND & PRODUCT */}
-          {/* ========================================================================= */}
-          {step === 1 && (
-            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-7 shadow-xs space-y-6">
+      {/* Main Single-Column Focused Form Layout (Zero Side Review Panel) */}
+      <div className="space-y-6">
+        {/* ========================================================================= */}
+        {/* STEP 1: BRAND & PRODUCT */}
+        {/* ========================================================================= */}
+        {step === 1 && (
+          <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-xs space-y-6">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                1. Brand & Product Profile
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Tell us about your brand and product so we can analyze relevant cultural signals.
+              </p>
+            </div>
+
+            <div className="space-y-4">
               <div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                  1. Brand & Product Profile
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Tell us about your brand and product so we can analyze relevant cultural signals.
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  Project Name *
+                </label>
+                <input
+                  type="text"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-950/70 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-950 focus:border-indigo-600 dark:focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-2xs"
+                  placeholder="e.g. Tokyo Streetwear Expansion"
+                />
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                  Give your analysis a clear, recognizable name.
                 </p>
               </div>
 
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-                    Project Name *
+                    Brand / Entity Name *
                   </label>
                   <input
                     type="text"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
+                    value={brandName}
+                    onChange={(e) => setBrandName(e.target.value)}
                     className="w-full rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-950/70 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-950 focus:border-indigo-600 dark:focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-2xs"
-                    placeholder="e.g. Tokyo Streetwear Expansion"
+                    placeholder="e.g. Acme Streetwear"
                   />
-                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                    Give your analysis a clear, recognizable name.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-                      Brand / Entity Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={brandName}
-                      onChange={(e) => setBrandName(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-950/70 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-950 focus:border-indigo-600 dark:focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-2xs"
-                      placeholder="e.g. Acme Streetwear"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-                      Brand Category *
-                    </label>
-                    <select
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-950/70 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-950 focus:border-indigo-600 dark:focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-2xs cursor-pointer"
-                    >
-                      <option value="Fashion & Apparel">Fashion & Apparel</option>
-                      <option value="Food & Beverage">Food & Beverage</option>
-                      <option value="Beauty & Personal Care">Beauty & Personal Care</option>
-                      <option value="Consumer Electronics">Consumer Electronics</option>
-                      <option value="Entertainment">Entertainment</option>
-                      <option value="Travel & Hospitality">Travel & Hospitality</option>
-                    </select>
-                  </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-                    Product Description & Scope *
+                    Brand Category *
                   </label>
-                  <textarea
-                    rows={3}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-950/70 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-950 focus:border-indigo-600 dark:focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-2xs"
-                    placeholder="Describe your core product offerings, brand narrative, and key value propositions..."
-                  />
-                </div>
-
-                {/* Brand Tags */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-                    Brand Tags & Attributes
-                  </label>
-                  <div className="flex flex-wrap gap-2 mb-2.5">
-                    {tags.map((t) => (
-                      <span
-                        key={t}
-                        className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80"
-                      >
-                        <span>{t}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveTag(t)}
-                          className="hover:text-indigo-950 dark:hover:text-white"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newTagInput}
-                      onChange={(e) => setNewTagInput(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTag())}
-                      placeholder="Add tag (e.g. Gen Z, Sustainable, Luxury)..."
-                      className="flex-1 rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-950/70 px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-950 focus:border-indigo-600 focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddTag}
-                      className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                    >
-                      <Plus className="w-3.5 h-3.5 inline mr-1" />
-                      Add
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* STEP 2: AUDIENCE (Matching Mockup 03, Zero External Images) */}
-          {/* ========================================================================= */}
-          {step === 2 && (
-            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-7 shadow-xs space-y-6">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                  2. Target Audience
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Tell us about your target audience so we can analyze relevant cultural signals.
-                </p>
-              </div>
-
-              <div className="space-y-5">
-                {/* Audience Name */}
-                <div>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                      Audience Name (optional)
-                    </label>
-                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                      {audienceName.length}/100
-                    </span>
-                  </div>
-                  <input
-                    type="text"
-                    value={audienceName}
-                    maxLength={100}
-                    onChange={(e) => setAudienceName(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-950/70 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-950 focus:border-indigo-600 dark:focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-2xs"
-                    placeholder="e.g. Gen Z Streetwear Enthusiasts"
-                  />
-                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                    Give your audience segment a name to easily identify it.
-                  </p>
-                </div>
-
-                {/* Age Range & Gender Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div>
-                    <div className="flex justify-between items-center mb-1.5">
-                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                        Age range *
-                      </label>
-                      <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                        {ageRange[0]} – {ageRange[1]} years
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-3 pt-2">
-                      <span className="text-xs text-slate-400 font-mono">15</span>
-                      <input
-                        type="range"
-                        min="15"
-                        max="65"
-                        value={ageRange[1]}
-                        onChange={(e) => setAgeRange([ageRange[0], parseInt(e.target.value)])}
-                        className="w-full accent-indigo-600 cursor-pointer"
-                      />
-                      <span className="text-xs text-slate-400 font-mono">65</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                      Gender (optional)
-                    </label>
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {(["All", "Male", "Female", "Non-binary"] as const).map((g) => (
-                        <button
-                          key={g}
-                          type="button"
-                          onClick={() => setGender(g)}
-                          className={cn(
-                            "py-2 px-1 text-xs font-semibold rounded-xl border text-center transition-all cursor-pointer",
-                            gender === g
-                              ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 shadow-2xs ring-1 ring-indigo-500/30"
-                              : "border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/50 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800"
-                          )}
-                        >
-                          {g}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Locations & Income Level Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                      Locations (optional)
-                    </label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {targetLocations.map((loc) => (
-                        <span
-                          key={loc}
-                          className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
-                        >
-                          <span>{loc}</span>
-                          <button
-                            type="button"
-                            onClick={() => setTargetLocations(targetLocations.filter((l) => l !== loc))}
-                            className="hover:text-rose-500"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                      Income level (optional)
-                    </label>
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {(["All", "Low", "Medium", "High"] as const).map((inc) => (
-                        <button
-                          key={inc}
-                          type="button"
-                          onClick={() => setIncomeLevel(inc)}
-                          className={cn(
-                            "py-2 px-1 text-xs font-semibold rounded-xl border text-center transition-all cursor-pointer",
-                            incomeLevel === inc
-                              ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 shadow-2xs ring-1 ring-indigo-500/30"
-                              : "border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/50 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800"
-                          )}
-                        >
-                          {inc}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Key Interests Cards (Pure CSS & Lucide Icons, Zero External Images) */}
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <div>
-                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                        Key interests *
-                      </label>
-                      <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                        Select interests that best describe your audience. You can add custom interests too.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {INTEREST_PRESETS.map((item) => {
-                      const isSelected = selectedInterests.includes(item.label);
-                      const IconComp = item.icon;
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => toggleInterest(item.label)}
-                          className={cn(
-                            "rounded-xl border p-3 text-left transition-all cursor-pointer flex items-center justify-between group",
-                            isSelected
-                              ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/80 dark:bg-indigo-950/70 text-indigo-950 dark:text-white shadow-2xs ring-1 ring-indigo-500/20"
-                              : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/50 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700"
-                          )}
-                        >
-                          <div className="flex items-center space-x-2.5 min-w-0">
-                            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", item.color)}>
-                              <IconComp className="w-4 h-4" />
-                            </div>
-                            <span className="text-xs font-bold truncate block">{item.label}</span>
-                          </div>
-                          {isSelected && (
-                            <div className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] shrink-0 ml-1">
-                              <Check className="w-3 h-3 stroke-[2.5]" />
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Add Custom Interest Button */}
-                  <div className="mt-3">
-                    {!showAddInterestModal ? (
-                      <button
-                        type="button"
-                        onClick={() => setShowAddInterestModal(true)}
-                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:border-indigo-500 hover:text-indigo-600 transition-colors cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Add custom interest</span>
-                      </button>
-                    ) : (
-                      <div className="flex gap-2 max-w-sm">
-                        <input
-                          type="text"
-                          value={customInterestInput}
-                          onChange={(e) => setCustomInterestInput(e.target.value)}
-                          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCustomInterest())}
-                          placeholder="e.g. Vintage Watches, Specialty Coffee..."
-                          className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3 py-1.5 text-xs text-slate-900 dark:text-white"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddCustomInterest}
-                          className="px-3 py-1.5 rounded-xl bg-indigo-600 text-xs font-semibold text-white"
-                        >
-                          Add
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowAddInterestModal(false)}
-                          className="px-2 text-xs text-slate-400"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Lifestyle & Behavior Checkboxes */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                    Lifestyle & behavior (optional)
-                  </label>
-                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-3">
-                    Select lifestyle traits to better understand your audience.
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {LIFESTYLE_TRAITS.map((trait) => {
-                      const isChecked = selectedLifestyles.includes(trait);
-                      return (
-                        <button
-                          key={trait}
-                          type="button"
-                          onClick={() => toggleLifestyle(trait)}
-                          className={cn(
-                            "flex items-center space-x-2.5 p-3 rounded-xl border text-left text-xs transition-all cursor-pointer",
-                            isChecked
-                              ? "border-indigo-600/80 dark:border-indigo-500/80 bg-indigo-50/60 dark:bg-indigo-950/50 text-indigo-950 dark:text-white"
-                              : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/50 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
-                          )}
-                        >
-                          <div
-                            className={cn(
-                              "w-4 h-4 rounded flex items-center justify-center border transition-colors",
-                              isChecked
-                                ? "bg-indigo-600 border-indigo-600 text-white"
-                                : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
-                            )}
-                          >
-                            {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
-                          </div>
-                          <span className="font-medium">{trait}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* STEP 3: MARKETS (Matching Mockup 05, Pure CSS Badges, Zero External Images) */}
-          {/* ========================================================================= */}
-          {step === 3 && (
-            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-7 shadow-xs space-y-6">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                  3. Select Markets
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Choose up to 10 markets to compare. You can select countries, cities or regions based on your launch plans.
-                </p>
-              </div>
-
-              {/* Search & Region Filters */}
-              <div className="space-y-3">
-                <div className="flex flex-col sm:flex-row gap-2.5">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
-                    <input
-                      type="text"
-                      value={marketSearchQuery}
-                      onChange={(e) => setMarketSearchQuery(e.target.value)}
-                      placeholder="Search countries, cities or regions... (e.g. Japan, Tokyo, Europe)"
-                      className="w-full rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-950/70 pl-10 pr-4 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:border-indigo-600 focus:outline-none"
-                    />
-                  </div>
                   <select
-                    value={selectedRegionTab}
-                    onChange={(e) => setSelectedRegionTab(e.target.value)}
-                    className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-950/70 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-950 focus:border-indigo-600 dark:focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-2xs cursor-pointer"
                   >
-                    <option value="All markets">Browse by region</option>
-                    <option value="Asia">Asia</option>
-                    <option value="North America">North America</option>
-                    <option value="Europe">Europe</option>
-                    <option value="Middle East">Middle East</option>
+                    <option value="Fashion & Apparel">Fashion & Apparel</option>
+                    <option value="Food & Beverage">Food & Beverage</option>
+                    <option value="Beauty & Personal Care">Beauty & Personal Care</option>
+                    <option value="Consumer Electronics">Consumer Electronics</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Travel & Hospitality">Travel & Hospitality</option>
                   </select>
                 </div>
-
-                {/* Filter Pills */}
-                <div className="flex items-center space-x-1.5 overflow-x-auto pb-1">
-                  {[
-                    "All markets",
-                    `Selected (${selectedMarkets.length})`,
-                    "Asia",
-                    "North America",
-                    "Europe",
-                    "Middle East",
-                  ].map((tab) => (
-                    <button
-                      key={tab}
-                      type="button"
-                      onClick={() => setSelectedRegionTab(tab)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer",
-                        selectedRegionTab === tab
-                          ? "bg-indigo-600 text-white shadow-2xs"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-                      )}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
               </div>
 
-              {/* Grid of Clean CSS Market Cards (Zero Images) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {filteredMarkets.map((preset) => {
-                  const isSelected = selectedMarkets.some((m) => m.id === preset.id);
-                  return (
-                    <div
-                      key={preset.id}
-                      onClick={() => toggleMarket(preset)}
-                      className={cn(
-                        "rounded-xl border p-4 transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden",
-                        isSelected
-                          ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/50 ring-2 ring-indigo-500/20 shadow-xs"
-                          : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/60 hover:border-slate-300 dark:hover:border-slate-700"
-                      )}
-                    >
-                      {/* Stylized Gradient Accent Strip */}
-                      <div className={cn("absolute top-0 left-0 right-0 h-1 bg-gradient-to-r", preset.color)} />
-
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center space-x-3">
-                          <span className="text-2xl">{preset.flag}</span>
-                          <div>
-                            <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                              {preset.name}, {preset.country}
-                            </h3>
-                            <span className="font-mono text-[10px] text-slate-400 uppercase">
-                              {preset.location_code} <span className="mx-1">•</span> {preset.region}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Top Checkbox */}
-                        <div
-                          className={cn(
-                            "w-5 h-5 rounded-md flex items-center justify-center border transition-all shrink-0",
-                            isSelected
-                              ? "bg-indigo-600 border-indigo-600 text-white shadow-xs"
-                              : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-transparent"
-                          )}
-                        >
-                          <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        </div>
-                      </div>
-
-                      <div className="pt-3 space-y-2">
-                        <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
-                          {preset.description}
-                        </p>
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800/80">
-                          <span
-                            className={cn(
-                              "px-2 py-0.5 rounded text-[10px] font-bold uppercase",
-                              preset.potential === "High potential" || preset.potential === "High"
-                                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60"
-                                : "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60"
-                            )}
-                          >
-                            {preset.potential}
-                          </span>
-                          <span className="text-[10px] text-slate-400">
-                            Verified Qloo Metro
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  Product Description & Scope *
+                </label>
+                <textarea
+                  rows={3}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-950/70 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-950 focus:border-indigo-600 dark:focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-2xs"
+                  placeholder="Describe your core product offerings, brand narrative, and key value propositions..."
+                />
               </div>
 
-              {/* Selected Markets Counter Bar */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-900 dark:text-white">
-                    Selected markets ({selectedMarkets.length}/10)
-                  </span>
-                  {selectedMarkets.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedMarkets([])}
-                      className="text-xs text-rose-600 dark:text-rose-400 hover:underline cursor-pointer font-medium"
-                    >
-                      Clear all
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {selectedMarkets.map((m) => (
+              {/* Brand Tags */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  Brand Tags & Attributes
+                </label>
+                <div className="flex flex-wrap gap-2 mb-2.5">
+                  {tags.map((t) => (
                     <span
-                      key={m.id}
-                      className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200/90 dark:border-slate-700 shadow-2xs"
+                      key={t}
+                      className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80"
                     >
-                      <span>{m.flag}</span>
-                      <span>{m.name}</span>
+                      <span>{t}</span>
                       <button
                         type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleMarket(m);
-                        }}
-                        className="hover:text-rose-500 text-slate-400 ml-1"
+                        onClick={() => handleRemoveTag(t)}
+                        className="hover:text-indigo-950 dark:hover:text-white"
                       >
                         <X className="w-3 h-3" />
                       </button>
                     </span>
                   ))}
                 </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newTagInput}
+                    onChange={(e) => setNewTagInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTag())}
+                    placeholder="Add tag (e.g. Gen Z, Sustainable, Luxury)..."
+                    className="flex-1 rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-950/70 px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-950 focus:border-indigo-600 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddTag}
+                    className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5 inline mr-1" />
+                    Add
+                  </button>
+                </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* ========================================================================= */}
-          {/* STEP 4: GOALS & STRATEGY (Matching Mockup 04) */}
-          {/* ========================================================================= */}
-          {step === 4 && (
-            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-7 shadow-xs space-y-6">
+        {/* ========================================================================= */}
+        {/* STEP 2: AUDIENCE (Zero External Images) */}
+        {/* ========================================================================= */}
+        {step === 2 && (
+          <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-xs space-y-6">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                2. Target Audience
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Tell us about your target audience so we can analyze relevant cultural signals.
+              </p>
+            </div>
+
+            <div className="space-y-5">
+              {/* Audience Name */}
               <div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                  4. Goals & Strategy
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Tell us about your business objectives and launch strategy for this analysis.
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    Audience Name (optional)
+                  </label>
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                    {audienceName.length}/100
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  value={audienceName}
+                  maxLength={100}
+                  onChange={(e) => setAudienceName(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-950/70 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-950 focus:border-indigo-600 dark:focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-2xs"
+                  placeholder="e.g. Gen Z Streetwear Enthusiasts"
+                />
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                  Give your audience segment a name to easily identify it.
                 </p>
               </div>
 
-              <div className="space-y-6">
-                {/* Primary Goal Selector */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2.5">
-                    Primary goal *
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                    {STRATEGIC_GOALS.map((g) => {
-                      const isSelected = primaryGoal === g.title;
-                      const IconComp = g.icon;
-                      return (
-                        <button
-                          key={g.id}
-                          type="button"
-                          onClick={() => setPrimaryGoal(g.title)}
-                          className={cn(
-                            "p-3 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer relative",
-                            isSelected
-                              ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/60 ring-2 ring-indigo-500/20 shadow-2xs"
-                              : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/40 hover:border-slate-300 dark:hover:border-slate-700"
-                          )}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <IconComp
-                              className={cn(
-                                "w-4 h-4",
-                                isSelected ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400"
-                              )}
-                            />
-                            {isSelected && (
-                              <div className="w-3.5 h-3.5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[8px]">
-                                <Check className="w-2.5 h-2.5 stroke-[3]" />
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <span className="text-xs font-bold text-slate-900 dark:text-white block leading-tight">
-                              {g.title}
-                            </span>
-                            <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2 block leading-relaxed">
-                              {g.desc}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Launch Timeline & Budget Range Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                      Launch timeline *
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {["1–3 months", "3–6 months", "6–12 months", "12+ months"].map((time) => (
-                        <button
-                          key={time}
-                          type="button"
-                          onClick={() => setLaunchTimeline(time)}
-                          className={cn(
-                            "py-2.5 px-3 rounded-xl border text-xs font-semibold flex items-center space-x-2 transition-all cursor-pointer",
-                            launchTimeline === time
-                              ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-500/30"
-                              : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/50 text-slate-700 dark:text-slate-300"
-                          )}
-                        >
-                          <div
-                            className={cn(
-                              "w-3.5 h-3.5 rounded-full border flex items-center justify-center",
-                              launchTimeline === time ? "border-indigo-600 bg-indigo-600" : "border-slate-300 dark:border-slate-600"
-                            )}
-                          >
-                            {launchTimeline === time && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                          </div>
-                          <span>{time}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                      Budget range (optional)
-                    </label>
-                    <select
-                      value={budgetRange}
-                      onChange={(e) => setBudgetRange(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-950/70 px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-950 focus:border-indigo-600 focus:outline-none cursor-pointer"
-                    >
-                      <option value="Small (<$100K)">Small (&lt;$100K)</option>
-                      <option value="Medium ($100K – $500K)">Medium ($100K – $500K)</option>
-                      <option value="Large ($500K – $2M)">Large ($500K – $2M)</option>
-                      <option value="Enterprise ($2M+)">Enterprise ($2M+)</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Product Positioning */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                    Product positioning *
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {[
-                      { id: "Premium", title: "Premium", desc: "High-end, quality focused" },
-                      { id: "Mid-market", title: "Mid-market", desc: "Balanced value and quality" },
-                      { id: "Budget-friendly", title: "Budget-friendly", desc: "Price competitive" },
-                    ].map((pos) => {
-                      const isSelected = productPositioning === pos.id;
-                      return (
-                        <button
-                          key={pos.id}
-                          type="button"
-                          onClick={() => setProductPositioning(pos.id as typeof productPositioning)}
-                          className={cn(
-                            "p-3.5 rounded-xl border text-left transition-all cursor-pointer relative",
-                            isSelected
-                              ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/60 ring-2 ring-indigo-500/20 shadow-2xs"
-                              : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/50 hover:border-slate-300 dark:hover:border-slate-700"
-                          )}
-                        >
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="font-bold text-xs text-slate-900 dark:text-white">{pos.title}</span>
-                            {isSelected && (
-                              <div className="w-3.5 h-3.5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[8px]">
-                                <Check className="w-2.5 h-2.5 stroke-[3]" />
-                              </div>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">{pos.desc}</p>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Key Success Metrics */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                    Key success metrics *
-                  </label>
-                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-2.5">
-                    Select the metrics that matter most for this analysis.
-                  </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {[
-                      "Market fit score",
-                      "Audience overlap",
-                      "Revenue potential",
-                      "Brand affinity",
-                      "Cultural relevance",
-                      "Competitive landscape",
-                      "Influencer ecosystem",
-                      "Media and channel fit",
-                    ].map((met) => {
-                      const isChecked = keySuccessMetrics.includes(met);
-                      return (
-                        <button
-                          key={met}
-                          type="button"
-                          onClick={() => toggleMetric(met)}
-                          className={cn(
-                            "flex items-center space-x-2 p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer",
-                            isChecked
-                              ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/50 text-indigo-950 dark:text-white"
-                              : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/50 text-slate-600 dark:text-slate-400"
-                          )}
-                        >
-                          <div
-                            className={cn(
-                              "w-3.5 h-3.5 rounded flex items-center justify-center border transition-colors",
-                              isChecked
-                                ? "bg-indigo-600 border-indigo-600 text-white"
-                                : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
-                            )}
-                          >
-                            {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                          </div>
-                          <span className="font-medium text-[11px] truncate">{met}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Additional Context */}
+              {/* Age Range & Gender Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <div className="flex justify-between items-center mb-1.5">
                     <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                      Additional context (optional)
+                      Age range *
                     </label>
-                    <span className="text-[11px] text-slate-400 font-mono">
-                      {additionalContext.length}/1000
+                    <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                      {ageRange[0]} – {ageRange[1]} years
                     </span>
                   </div>
-                  <textarea
-                    rows={3}
-                    maxLength={1000}
-                    value={additionalContext}
-                    onChange={(e) => setAdditionalContext(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-950/70 px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:border-indigo-600 focus:outline-none"
-                    placeholder="Any other information about your launch strategy, key considerations or specific questions?"
-                  />
+                  <div className="flex items-center space-x-3 pt-2">
+                    <span className="text-xs text-slate-400 font-mono">15</span>
+                    <input
+                      type="range"
+                      min="15"
+                      max="65"
+                      value={ageRange[1]}
+                      onChange={(e) => setAgeRange([ageRange[0], parseInt(e.target.value)])}
+                      className="w-full accent-indigo-600 cursor-pointer"
+                    />
+                    <span className="text-xs text-slate-400 font-mono">65</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                    Gender (optional)
+                  </label>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {(["All", "Male", "Female", "Non-binary"] as const).map((g) => (
+                      <button
+                        key={g}
+                        type="button"
+                        onClick={() => setGender(g)}
+                        className={cn(
+                          "py-2 px-1 text-xs font-semibold rounded-xl border text-center transition-all cursor-pointer",
+                          gender === g
+                            ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 shadow-2xs ring-1 ring-indigo-500/30"
+                            : "border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/50 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800"
+                        )}
+                      >
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Locations & Income Level Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                    Locations (optional)
+                  </label>
+
+                  {/* Selected Location Chips */}
+                  {targetLocations.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-2.5">
+                      {targetLocations.map((loc) => (
+                        <span
+                          key={loc}
+                          className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 shadow-2xs"
+                        >
+                          <span>{loc}</span>
+                          <button
+                            type="button"
+                            onClick={() => setTargetLocations(targetLocations.filter((l) => l !== loc))}
+                            className="hover:text-rose-500 cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Combobox Search Input with Instant Dropdown */}
+                  <div className="relative" ref={locDropdownRef}>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+                        <input
+                          type="text"
+                          value={locSearchQuery}
+                          onFocus={() => setIsLocDropdownOpen(true)}
+                          onChange={(e) => {
+                            setLocSearchQuery(e.target.value);
+                            setIsLocDropdownOpen(true);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              const val = locSearchQuery.trim();
+                              if (val && !targetLocations.includes(val)) {
+                                setTargetLocations([...targetLocations, val]);
+                                setLocSearchQuery("");
+                                setIsLocDropdownOpen(false);
+                              }
+                            }
+                          }}
+                          placeholder="Search or add country/city (e.g. Japan, London, USA)..."
+                          className="w-full rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-950/70 pl-8 pr-7 py-2 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:border-indigo-600 focus:outline-none"
+                        />
+                        {locSearchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setLocSearchQuery("")}
+                            className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const val = locSearchQuery.trim();
+                          if (val && !targetLocations.includes(val)) {
+                            setTargetLocations([...targetLocations, val]);
+                            setLocSearchQuery("");
+                            setIsLocDropdownOpen(false);
+                          }
+                        }}
+                        className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer shrink-0"
+                      >
+                        <Plus className="w-3.5 h-3.5 inline mr-1" />
+                        Add
+                      </button>
+                    </div>
+
+                    {/* Instant Dropdown for Locations */}
+                    {isLocDropdownOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-1.5 z-40 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 animate-in fade-in slide-in-from-top-1 duration-150">
+                        {allAvailableMarkets
+                          .filter((m) => {
+                            const q = locSearchQuery.toLowerCase().trim();
+                            if (!q) return true;
+                            return (
+                              m.name.toLowerCase().includes(q) ||
+                              m.country.toLowerCase().includes(q) ||
+                              m.country_code.toLowerCase().includes(q) ||
+                              m.region.toLowerCase().includes(q)
+                            );
+                          })
+                          .slice(0, 8)
+                          .map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => {
+                                const val = `${m.name}, ${m.country}`;
+                                if (!targetLocations.includes(val)) {
+                                  setTargetLocations([...targetLocations, val]);
+                                }
+                                setLocSearchQuery("");
+                                setIsLocDropdownOpen(false);
+                              }}
+                              className="w-full px-3 py-2 text-left text-xs flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <span className="text-base">{m.flag}</span>
+                                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                  {m.name}, {m.country}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-slate-400 font-mono">{m.region}</span>
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                    Income level (optional)
+                  </label>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {(["All", "Low", "Medium", "High"] as const).map((inc) => (
+                      <button
+                        key={inc}
+                        type="button"
+                        onClick={() => setIncomeLevel(inc)}
+                        className={cn(
+                          "py-2 px-1 text-xs font-semibold rounded-xl border text-center transition-all cursor-pointer",
+                          incomeLevel === inc
+                            ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 shadow-2xs ring-1 ring-indigo-500/30"
+                            : "border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/50 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800"
+                        )}
+                      >
+                        {inc}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Key Interests Cards */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                      Key interests *
+                    </label>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                      Select interests that best describe your audience. You can add custom interests too.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {INTEREST_PRESETS.map((item) => {
+                    const isSelected = selectedInterests.includes(item.label);
+                    const IconComp = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => toggleInterest(item.label)}
+                        className={cn(
+                          "rounded-xl border p-3 text-left transition-all cursor-pointer flex items-center justify-between group",
+                          isSelected
+                            ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/80 dark:bg-indigo-950/70 text-indigo-950 dark:text-white shadow-2xs ring-1 ring-indigo-500/20"
+                            : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/50 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700"
+                        )}
+                      >
+                        <div className="flex items-center space-x-2.5 min-w-0">
+                          <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", item.color)}>
+                            <IconComp className="w-4 h-4" />
+                          </div>
+                          <span className="text-xs font-bold truncate block">{item.label}</span>
+                        </div>
+                        {isSelected && (
+                          <div className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] shrink-0 ml-1">
+                            <Check className="w-3 h-3 stroke-[2.5]" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Add Custom Interest Button */}
+                <div className="mt-3">
+                  {!showAddInterestModal ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowAddInterestModal(true)}
+                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:border-indigo-500 hover:text-indigo-600 transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add custom interest</span>
+                    </button>
+                  ) : (
+                    <div className="flex gap-2 max-w-sm">
+                      <input
+                        type="text"
+                        value={customInterestInput}
+                        onChange={(e) => setCustomInterestInput(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCustomInterest())}
+                        placeholder="e.g. Vintage Watches, Specialty Coffee..."
+                        className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3 py-1.5 text-xs text-slate-900 dark:text-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCustomInterest}
+                        className="px-3 py-1.5 rounded-xl bg-indigo-600 text-xs font-semibold text-white cursor-pointer"
+                      >
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddInterestModal(false)}
+                        className="px-2 text-xs text-slate-400 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Lifestyle & Behavior Checkboxes */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                  Lifestyle & behavior (optional)
+                </label>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-3">
+                  Select lifestyle traits to better understand your audience.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {LIFESTYLE_TRAITS.map((trait) => {
+                    const isChecked = selectedLifestyles.includes(trait);
+                    return (
+                      <button
+                        key={trait}
+                        type="button"
+                        onClick={() => toggleLifestyle(trait)}
+                        className={cn(
+                          "flex items-center space-x-2.5 p-3 rounded-xl border text-left text-xs transition-all cursor-pointer",
+                          isChecked
+                            ? "border-indigo-600/80 dark:border-indigo-500/80 bg-indigo-50/60 dark:bg-indigo-950/50 text-indigo-950 dark:text-white"
+                            : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/50 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "w-4 h-4 rounded flex items-center justify-center border transition-colors",
+                            isChecked
+                              ? "bg-indigo-600 border-indigo-600 text-white"
+                              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                          )}
+                        >
+                          {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                        <span className="font-medium">{trait}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* ========================================================================= */}
-          {/* STEP 5: REVIEW & RUN ANALYSIS (Matching Mockup 07, Zero External Images) */}
-          {/* ========================================================================= */}
-          {step === 5 && (
-            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-7 shadow-xs space-y-6">
+        {/* ========================================================================= */}
+        {/* STEP 3: MARKETS */}
+        {/* ========================================================================= */}
+        {step === 3 && (
+          <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-xs space-y-6">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                3. Select Markets
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Choose up to 10 markets to compare. You can select countries, cities or regions based on your launch plans.
+              </p>
+            </div>
+
+            {/* Search & Region Filters */}
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row gap-2.5">
+                {/* Search Input with Instant Dropdown Popover */}
+                <div className="relative flex-1" ref={searchDropdownRef}>
+                  <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={marketSearchQuery}
+                    onFocus={() => setIsSearchDropdownOpen(true)}
+                    onChange={(e) => {
+                      setMarketSearchQuery(e.target.value);
+                      setIsSearchDropdownOpen(true);
+                    }}
+                    placeholder="Search countries, cities or regions... (e.g. Japan, Tokyo, Paris, Mumbai)"
+                    className="w-full rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-950/70 pl-10 pr-10 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:border-indigo-600 focus:outline-none"
+                  />
+                  <div className="absolute right-3 top-2.5 flex items-center space-x-1.5">
+                    {isSearchingApi && (
+                      <Loader2 className="w-3.5 h-3.5 text-indigo-600 animate-spin" />
+                    )}
+                    {marketSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMarketSearchQuery("");
+                          setIsSearchDropdownOpen(false);
+                        }}
+                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* INSTANT DROPDOWN POPOVER ("dropdown jaise hi aaye") */}
+                  {isSearchDropdownOpen && (
+                    <div className="absolute top-full left-0 right-0 mt-2 z-50 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                      {/* Dropdown Header */}
+                      <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-950/70 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
+                        <span className="font-semibold text-slate-600 dark:text-slate-400">
+                          {isSearchingApi
+                            ? "Searching verified cultural database..."
+                            : `${dropdownMarkets.length} ${dropdownMarkets.length === 1 ? "market" : "markets"} available`}
+                          {marketSearchQuery && ` for "${marketSearchQuery}"`}
+                        </span>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-slate-400 font-medium font-mono">
+                            Selected {selectedMarkets.length}/10
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setIsSearchDropdownOpen(false)}
+                            className="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer"
+                          >
+                            Done
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Dropdown Scrollable Results List */}
+                      <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
+                        {dropdownMarkets.length === 0 ? (
+                          <div className="p-6 text-center text-xs text-slate-500 dark:text-slate-400">
+                            No matching countries or metros found. Try searching for a different country or city name.
+                          </div>
+                        ) : (
+                          dropdownMarkets.map((preset) => {
+                            const isSelected = selectedMarkets.some((m) => m.id === preset.id);
+                            return (
+                              <div
+                                key={preset.id}
+                                onClick={() => toggleMarket(preset)}
+                                className={cn(
+                                  "p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer",
+                                  isSelected && "bg-indigo-50/60 dark:bg-indigo-950/40"
+                                )}
+                              >
+                                <div className="flex items-center space-x-3 min-w-0">
+                                  <span className="text-2xl shrink-0">{preset.flag}</span>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center space-x-2">
+                                      <span className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                                        {preset.name}, {preset.country}
+                                      </span>
+                                      <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 uppercase">
+                                        {preset.location_code}
+                                      </span>
+                                      <span className="text-[10px] text-slate-400 hidden sm:inline">
+                                        • {preset.region}
+                                      </span>
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                                      {preset.description}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center space-x-2.5 shrink-0">
+                                  <span
+                                    className={cn(
+                                      "text-[10px] font-bold px-2 py-0.5 rounded uppercase hidden md:inline",
+                                      preset.potential === "High potential" || preset.potential === "High"
+                                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60"
+                                        : "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60"
+                                    )}
+                                  >
+                                    {preset.potential}
+                                  </span>
+
+                                  <div
+                                    className={cn(
+                                      "w-5 h-5 rounded-md flex items-center justify-center border transition-all",
+                                      isSelected
+                                        ? "bg-indigo-600 border-indigo-600 text-white shadow-xs"
+                                        : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-transparent"
+                                    )}
+                                  >
+                                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <select
+                  value={selectedRegionTab}
+                  onChange={(e) => setSelectedRegionTab(e.target.value)}
+                  className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer"
+                >
+                  <option value="All markets">Browse by region</option>
+                  <option value="Asia">Asia</option>
+                  <option value="North America">North America</option>
+                  <option value="Europe">Europe</option>
+                  <option value="Middle East">Middle East</option>
+                  <option value="Oceania">Oceania</option>
+                  <option value="Latin America">Latin America</option>
+                </select>
+              </div>
+
+              {/* Filter Pills */}
+              <div className="flex items-center space-x-1.5 overflow-x-auto pb-1">
+                {[
+                  "All markets",
+                  `Selected (${selectedMarkets.length})`,
+                  "Asia",
+                  "North America",
+                  "Europe",
+                  "Middle East",
+                  "Oceania",
+                  "Latin America",
+                ].map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setSelectedRegionTab(tab)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer",
+                      selectedRegionTab === tab
+                        ? "bg-indigo-600 text-white shadow-2xs"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                    )}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Grid of Clean CSS Market Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {filteredMarkets.map((preset) => {
+                const isSelected = selectedMarkets.some((m) => m.id === preset.id);
+                return (
+                  <div
+                    key={preset.id}
+                    onClick={() => toggleMarket(preset)}
+                    className={cn(
+                      "rounded-xl border p-4 transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden",
+                      isSelected
+                        ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/50 ring-2 ring-indigo-500/20 shadow-xs"
+                        : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/60 hover:border-slate-300 dark:hover:border-slate-700"
+                    )}
+                  >
+                    {/* Stylized Gradient Accent Strip */}
+                    <div className={cn("absolute top-0 left-0 right-0 h-1 bg-gradient-to-r", preset.color)} />
+
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-2xl">{preset.flag}</span>
+                        <div>
+                          <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                            {preset.name}, {preset.country}
+                          </h3>
+                          <span className="font-mono text-[10px] text-slate-400 uppercase">
+                            {preset.location_code} <span className="mx-1">•</span> {preset.region}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Top Checkbox */}
+                      <div
+                        className={cn(
+                          "w-5 h-5 rounded-md flex items-center justify-center border transition-all shrink-0",
+                          isSelected
+                            ? "bg-indigo-600 border-indigo-600 text-white shadow-xs"
+                            : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-transparent"
+                        )}
+                      >
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      </div>
+                    </div>
+
+                    <div className="pt-3 space-y-2">
+                      <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
+                        {preset.description}
+                      </p>
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                        <span
+                          className={cn(
+                            "px-2 py-0.5 rounded text-[10px] font-bold uppercase",
+                            preset.potential === "High potential" || preset.potential === "High"
+                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60"
+                              : "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60"
+                          )}
+                        >
+                          {preset.potential}
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          Verified Qloo Metro
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Selected Markets Counter Bar */}
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-900 dark:text-white">
+                  Selected markets ({selectedMarkets.length}/10)
+                </span>
+                {selectedMarkets.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMarkets([])}
+                    className="text-xs text-rose-600 dark:text-rose-400 hover:underline cursor-pointer font-medium"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {selectedMarkets.map((m) => (
+                  <span
+                    key={m.id}
+                    className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200/90 dark:border-slate-700 shadow-2xs"
+                  >
+                    <span>{m.flag}</span>
+                    <span>{m.name}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleMarket(m);
+                      }}
+                      className="hover:text-rose-500 text-slate-400 ml-1 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* STEP 4: GOALS & STRATEGY */}
+        {/* ========================================================================= */}
+        {step === 4 && (
+          <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-xs space-y-6">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                4. Goals & Strategy
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Tell us about your business objectives and launch strategy for this analysis.
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              {/* Primary Goal Selector */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2.5">
+                  Primary goal *
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {STRATEGIC_GOALS.map((g) => {
+                    const isSelected = primaryGoal === g.title;
+                    const IconComp = g.icon;
+                    return (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() => setPrimaryGoal(g.title)}
+                        className={cn(
+                          "p-3.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer relative",
+                          isSelected
+                            ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/60 ring-2 ring-indigo-500/20 shadow-2xs"
+                            : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/40 hover:border-slate-300 dark:hover:border-slate-700"
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <IconComp
+                            className={cn(
+                              "w-4 h-4",
+                              isSelected ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400"
+                            )}
+                          />
+                          {isSelected && (
+                            <div className="w-3.5 h-3.5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[8px]">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-slate-900 dark:text-white block leading-tight">
+                            {g.title}
+                          </span>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2 block leading-relaxed">
+                            {g.desc}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Launch Timeline & Budget Range Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                    Launch timeline *
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {["1–3 months", "3–6 months", "6–12 months", "12+ months"].map((time) => (
+                      <button
+                        key={time}
+                        type="button"
+                        onClick={() => setLaunchTimeline(time)}
+                        className={cn(
+                          "py-2.5 px-3 rounded-xl border text-xs font-semibold flex items-center space-x-2 transition-all cursor-pointer",
+                          launchTimeline === time
+                            ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-500/30"
+                            : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/50 text-slate-700 dark:text-slate-300"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "w-3.5 h-3.5 rounded-full border flex items-center justify-center",
+                            launchTimeline === time ? "border-indigo-600 bg-indigo-600" : "border-slate-300 dark:border-slate-600"
+                          )}
+                        >
+                          {launchTimeline === time && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </div>
+                        <span>{time}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                    Budget range (optional)
+                  </label>
+                  <select
+                    value={budgetRange}
+                    onChange={(e) => setBudgetRange(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-950/70 px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-950 focus:border-indigo-600 focus:outline-none cursor-pointer"
+                  >
+                    <option value="Small (<$100K)">Small (&lt;$100K)</option>
+                    <option value="Medium ($100K – $500K)">Medium ($100K – $500K)</option>
+                    <option value="Large ($500K – $2M)">Large ($500K – $2M)</option>
+                    <option value="Enterprise ($2M+)">Enterprise ($2M+)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Product Positioning */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                  Product positioning *
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { id: "Premium", title: "Premium", desc: "High-end, quality focused" },
+                    { id: "Mid-market", title: "Mid-market", desc: "Balanced value and quality" },
+                    { id: "Budget-friendly", title: "Budget-friendly", desc: "Price competitive" },
+                  ].map((pos) => {
+                    const isSelected = productPositioning === pos.id;
+                    return (
+                      <button
+                        key={pos.id}
+                        type="button"
+                        onClick={() => setProductPositioning(pos.id as typeof productPositioning)}
+                        className={cn(
+                          "p-3.5 rounded-xl border text-left transition-all cursor-pointer relative",
+                          isSelected
+                            ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/60 ring-2 ring-indigo-500/20 shadow-2xs"
+                            : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/50 hover:border-slate-300 dark:hover:border-slate-700"
+                        )}
+                      >
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-bold text-xs text-slate-900 dark:text-white">{pos.title}</span>
+                          {isSelected && (
+                            <div className="w-3.5 h-3.5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[8px]">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">{pos.desc}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Key Success Metrics */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                  Key success metrics *
+                </label>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-2.5">
+                  Select the metrics that matter most for this analysis.
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    "Market fit score",
+                    "Audience overlap",
+                    "Revenue potential",
+                    "Brand affinity",
+                    "Cultural relevance",
+                    "Competitive landscape",
+                    "Influencer ecosystem",
+                    "Media and channel fit",
+                  ].map((met) => {
+                    const isChecked = keySuccessMetrics.includes(met);
+                    return (
+                      <button
+                        key={met}
+                        type="button"
+                        onClick={() => toggleMetric(met)}
+                        className={cn(
+                          "flex items-center space-x-2 p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer",
+                          isChecked
+                            ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/50 text-indigo-950 dark:text-white"
+                            : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/50 text-slate-600 dark:text-slate-400"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "w-3.5 h-3.5 rounded flex items-center justify-center border transition-colors",
+                            isChecked
+                              ? "bg-indigo-600 border-indigo-600 text-white"
+                              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                          )}
+                        >
+                          {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                        </div>
+                        <span className="font-medium text-[11px] truncate">{met}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Additional Context */}
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    Additional context (optional)
+                  </label>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {additionalContext.length}/1000
+                  </span>
+                </div>
+                <textarea
+                  rows={3}
+                  maxLength={1000}
+                  value={additionalContext}
+                  onChange={(e) => setAdditionalContext(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-950/70 px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:border-indigo-600 focus:outline-none"
+                  placeholder="Any other information about your launch strategy, key considerations or specific questions?"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* STEP 5: REVIEW & LAUNCH (Complete Centered Overview) */}
+        {/* ========================================================================= */}
+        {step === 5 && (
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-xs space-y-6">
               <div>
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                   5. Review & Run Analysis
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Review all the details below. You can go back and make changes if needed.
+                  Review all project details before initiating the multi-agent Qloo cultural intelligence run.
                 </p>
               </div>
 
-              {/* Dossier Cards Grid */}
+              {/* Review Sections Grid */}
               <div className="space-y-4">
-                {/* 1. Project Overview Card */}
+                {/* 1. Project Overview */}
                 <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/50 p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -1330,8 +1776,7 @@ export default function NewProjectWizardPage() {
                     </button>
                   </div>
                   <div className="flex items-start space-x-3.5">
-                    {/* Branded Vector Monogram (Zero Image) */}
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-extrabold text-lg shadow-sm shrink-0">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-extrabold text-base shadow-xs shrink-0">
                       {projectName.slice(0, 2).toUpperCase()}
                     </div>
                     <div>
@@ -1339,7 +1784,7 @@ export default function NewProjectWizardPage() {
                       <p className="text-xs text-slate-500 dark:text-slate-400">
                         {brandName} <span className="mx-1">•</span> {category}
                       </p>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 line-clamp-1">
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                         {description}
                       </p>
                       <div className="flex flex-wrap gap-1 mt-2">
@@ -1356,7 +1801,7 @@ export default function NewProjectWizardPage() {
                   </div>
                 </div>
 
-                {/* 2. Target Audience Card */}
+                {/* 2. Target Audience */}
                 <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/50 p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -1381,7 +1826,7 @@ export default function NewProjectWizardPage() {
                   </p>
                 </div>
 
-                {/* 3. Selected Markets Card */}
+                {/* 3. Selected Markets */}
                 <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/50 p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -1415,7 +1860,7 @@ export default function NewProjectWizardPage() {
                   </div>
                 </div>
 
-                {/* 4. Goals & Strategy Card */}
+                {/* 4. Goals & Strategy */}
                 <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/50 p-4 space-y-2 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -1447,377 +1892,71 @@ export default function NewProjectWizardPage() {
                 </div>
               </div>
             </div>
-          )}
 
-          {/* Wizard Footer Controls */}
-          <div className="flex items-center justify-between pt-2">
-            {step > 1 ? (
-              <button
-                type="button"
-                onClick={() => setStep(step - 1)}
-                className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/80 shadow-2xs transition-colors cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back</span>
-              </button>
-            ) : (
-              <div />
-            )}
+            {/* Launch Pipeline Card */}
+            <div className="rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-gradient-to-r from-indigo-50/80 via-white to-purple-50/60 dark:from-indigo-950/40 dark:via-slate-900 dark:to-purple-950/30 p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                    Ready to orchestrate your analysis pipeline?
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  Executes the 10-node agent DAG, normalizes Qloo signals, and computes deterministic compatibility scores.
+                </p>
+                <div className="flex items-center space-x-3 text-[11px] text-slate-500 dark:text-slate-400 pt-1">
+                  <span>● Estimated latency: ~3–5s</span>
+                  <span>● 0 ungrounded claims</span>
+                  <span>● TypeSafe Jev gate</span>
+                </div>
+              </div>
 
-            {step < 5 ? (
-              <button
-                type="button"
-                onClick={() => setStep(step + 1)}
-                className="inline-flex items-center space-x-1.5 px-5 py-2.5 rounded-xl bg-indigo-600 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer"
-              >
-                <span>
-                  {step === 1 && "Next: Audience"}
-                  {step === 2 && "Next: Markets"}
-                  {step === 3 && "Next: Goals & Strategy"}
-                  {step === 4 && "Next: Review"}
-                </span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            ) : (
               <button
                 type="button"
                 disabled={loading}
                 onClick={handleLaunchAnalysis}
-                className="inline-flex items-center space-x-2 px-6 py-3 rounded-xl bg-indigo-600 text-xs font-bold text-white shadow-md hover:bg-indigo-700 disabled:opacity-50 transition-colors cursor-pointer"
+                className="shrink-0 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center space-x-2 shadow-md transition-all cursor-pointer disabled:opacity-50"
               >
-                <Sparkles className="w-4 h-4" />
-                <span>{loading ? "Orchestrating Analysis Pipeline..." : "Run Analysis"}</span>
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>{loading ? "Starting Pipeline..." : "Run Analysis"}</span>
+                <ArrowRight className="w-3.5 h-3.5 ml-1" />
               </button>
-            )}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* ========================================================================= */}
-        {/* RIGHT COLUMN: STICKY LIVE PREVIEW SIDEBAR (Pure CSS & SVG, Zero External Images) */}
-        {/* ========================================================================= */}
-        <div className="lg:col-span-4 space-y-5 sticky top-20">
-          {/* STEP 1 & 2: Audience Preview Panel */}
-          {(step === 1 || step === 2) && (
-            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">Audience preview</h3>
-                <span className="text-[10px] text-indigo-600 font-semibold">Live Preview</span>
-              </div>
-
-              {/* Cultural Taste Spectrum Visualizer (Pure CSS Gradient Bar) */}
-              <div className="p-3 rounded-xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-indigo-100 dark:border-indigo-900/60 space-y-2">
-                <div className="flex justify-between items-center text-[10px] font-semibold text-slate-600 dark:text-slate-400">
-                  <span>Cultural Taste Spectrum</span>
-                  <span className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">Qloo Signal 94%</span>
-                </div>
-                <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex">
-                  <div className="h-full bg-indigo-600 w-[45%]" />
-                  <div className="h-full bg-purple-500 w-[30%]" />
-                  <div className="h-full bg-pink-500 w-[25%]" />
-                </div>
-                <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                  <span>Specialty Fashion (45%)</span>
-                  <span>Youth Culture (30%)</span>
-                  <span>Digital (25%)</span>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-bold text-sm text-slate-900 dark:text-white">{audienceName}</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                  Young, urban audience interested in streetwear, sneakers, music and contemporary fashion. Active on social media and interested in limited drops and independent brands.
-                </p>
-              </div>
-
-              {/* Badges */}
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                  {ageRange[0]}–{ageRange[1]} years
-                </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                  {gender} genders
-                </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                  {incomeLevel} income
-                </span>
-                {targetLocations.map((loc) => (
-                  <span
-                    key={loc}
-                    className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                  >
-                    {loc}
-                  </span>
-                ))}
-              </div>
-
-              {/* Key Interests Icons */}
-              <div className="pt-2">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
-                  Key interests
-                </span>
-                <div className="grid grid-cols-4 gap-2 text-center">
-                  {selectedInterests.slice(0, 4).map((i) => (
-                    <div
-                      key={i}
-                      className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800"
-                    >
-                      <Shirt className="w-4 h-4 mx-auto text-indigo-600 dark:text-indigo-400 mb-1" />
-                      <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 block truncate">
-                        {i}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Audience Size Estimate */}
-              <div className="rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800 p-3.5 space-y-2.5">
-                <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  <span>Audience size estimate</span>
-                  <Info className="w-3.5 h-3.5 text-slate-400" />
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block">Japan</span>
-                    <strong className="text-slate-900 dark:text-white font-mono text-sm block">~8.5M</strong>
-                    <div className="h-1 rounded-full bg-indigo-600 mt-1" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block">South Korea</span>
-                    <strong className="text-slate-900 dark:text-white font-mono text-sm block">~6.2M</strong>
-                    <div className="h-1 rounded-full bg-indigo-600 mt-1" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block">Singapore</span>
-                    <strong className="text-slate-900 dark:text-white font-mono text-sm block">~1.8M</strong>
-                    <div className="h-1 rounded-full bg-indigo-600 mt-1" />
-                  </div>
-                </div>
-                <p className="text-[9px] text-slate-400 dark:text-slate-500 pt-1">
-                  These are estimated audience sizes based on available cultural data from Qloo.
-                </p>
-              </div>
-            </div>
+        {/* Wizard Footer Controls */}
+        <div className="flex items-center justify-between pt-2">
+          {step > 1 ? (
+            <button
+              type="button"
+              onClick={() => setStep(step - 1)}
+              className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/80 shadow-2xs transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back</span>
+            </button>
+          ) : (
+            <div />
           )}
 
-          {/* STEP 3: Selected Markets & World Map Panel */}
-          {step === 3 && (
-            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                  Selected markets ({selectedMarkets.length})
-                </h3>
-                <span className="text-[10px] text-indigo-600 font-semibold">Reorder</span>
-              </div>
-
-              {/* Numbered List of Selected Markets */}
-              <div className="space-y-2">
-                {selectedMarkets.map((m, idx) => (
-                  <div
-                    key={m.id}
-                    className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-xs"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <span className="font-mono text-slate-400 text-[11px]">{idx + 1}</span>
-                      <span>{m.flag}</span>
-                      <span className="font-semibold text-slate-800 dark:text-slate-200">
-                        {m.name}, {m.country}
-                      </span>
-                    </div>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400">
-                      High
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Interactive Visual World Map Canvas (Pure SVG) */}
-              <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-950 p-3 relative h-40 flex flex-col justify-between">
-                <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono">
-                  <span>Market Coverage Map</span>
-                  <span className="text-emerald-400">● 4 Pins Active</span>
-                </div>
-
-                {/* SVG Visual Nodes for Selected Markets */}
-                <svg className="w-full h-24" viewBox="0 0 100 60">
-                  <path
-                    d="M10,25 Q30,10 50,25 T90,25"
-                    fill="none"
-                    stroke="#334155"
-                    strokeWidth="0.5"
-                    strokeDasharray="2 2"
-                  />
-                  {selectedMarkets.map((m) => (
-                    <g key={m.id}>
-                      <circle
-                        cx={m.coords.x}
-                        cy={m.coords.y}
-                        r="3.5"
-                        className="fill-indigo-500 animate-ping opacity-75"
-                      />
-                      <circle
-                        cx={m.coords.x}
-                        cy={m.coords.y}
-                        r="2.5"
-                        className="fill-indigo-600"
-                      />
-                      <text
-                        x={m.coords.x + 3}
-                        y={m.coords.y + 1}
-                        fontSize="3"
-                        fill="#cbd5e1"
-                        fontWeight="bold"
-                      >
-                        {m.name}
-                      </text>
-                    </g>
-                  ))}
-                </svg>
-
-                <div className="text-[9px] text-slate-400 font-mono text-right">
-                  Qloo Global Entity Mesh
-                </div>
-              </div>
-
-              {/* Quick Insights */}
-              <div className="rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800 p-3.5 space-y-2 text-xs">
-                <div className="flex items-center space-x-1.5 font-bold text-slate-900 dark:text-white">
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Quick insights</span>
-                </div>
-                <div className="space-y-1.5 text-[11px] text-slate-600 dark:text-slate-400">
-                  <div className="flex items-start space-x-2">
-                    <span className="text-indigo-600 font-bold">•</span>
-                    <span>All selected markets show strong interest in streetwear and sneakers.</span>
-                  </div>
-                  <div className="flex items-start space-x-2">
-                    <span className="text-indigo-600 font-bold">•</span>
-                    <span>High Gen Z population and social media engagement across all four markets.</span>
-                  </div>
-                  <div className="flex items-start space-x-2">
-                    <span className="text-indigo-600 font-bold">•</span>
-                    <span>Each market has unique cultural sub-trends we&apos;ll analyze in detail.</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 4 & 5: Analysis Summary & Launch Card */}
-          {(step === 4 || step === 5) && (
-            <div className="space-y-4">
-              {/* Analysis Summary Card */}
-              <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-3.5">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">Analysis summary</h3>
-                </div>
-
-                <div className="space-y-3 text-xs">
-                  <div className="flex items-start space-x-3">
-                    <Globe2 className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="text-slate-900 dark:text-white block font-semibold">
-                        {selectedMarkets.length} markets to analyze
-                      </strong>
-                      <span className="text-slate-500 text-[11px]">
-                        {selectedMarkets.map((m) => m.name).join(", ")}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-3">
-                    <Users className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="text-slate-900 dark:text-white block font-semibold">
-                        Target audience
-                      </strong>
-                      <span className="text-slate-500 text-[11px]">
-                        Gen Z, {ageRange[0]}–{ageRange[1]}, {gender} genders
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-3">
-                    <BarChart3 className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="text-slate-900 dark:text-white block font-semibold">
-                        Cultural signals
-                      </strong>
-                      <span className="text-slate-500 text-[11px]">
-                        Interests, lifestyle, consumer behavior and brand affinity using Qloo data
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-3">
-                    <Clock className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="text-slate-900 dark:text-white block font-semibold">
-                        Estimated time
-                      </strong>
-                      <span className="text-slate-500 text-[11px]">~3–5 minutes</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Ready to Run Your Analysis? */}
-              <div className="rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-gradient-to-b from-indigo-50/70 to-indigo-50/30 dark:from-indigo-950/40 dark:to-slate-900 p-5 shadow-xs space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                    Ready to run your analysis?
-                  </h3>
-                </div>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  We&apos;ll analyze cultural signals, audience fit and market opportunities using Qloo&apos;s cultural intelligence data.
-                </p>
-
-                <div className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
-                  <div className="flex items-center space-x-2">
-                    <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[3]" />
-                    <span>Analyze cultural affinity across selected markets</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[3]" />
-                    <span>Compare audience fit and market potential</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[3]" />
-                    <span>Identify key trends, subcultures and local preferences</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[3]" />
-                    <span>Generate actionable recommendations</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[3]" />
-                    <span>Create a detailed report with insights and evidence</span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={handleLaunchAnalysis}
-                  className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center space-x-2 shadow-md transition-all cursor-pointer disabled:opacity-50"
-                >
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  <span>{loading ? "Starting Analysis Engine..." : "Run Analysis"}</span>
-                  <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                </button>
-                <p className="text-[10px] text-center text-slate-400">
-                  This will start a new analysis run using your current settings.
-                </p>
-
-                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 flex items-start space-x-2">
-                  <Info className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-                  <span>
-                    You&apos;ll get a notification when the analysis is complete. You can also check the progress in the Runs section.
-                  </span>
-                </div>
-              </div>
-            </div>
+          {step < 5 ? (
+            <button
+              type="button"
+              onClick={() => setStep(step + 1)}
+              className="inline-flex items-center space-x-1.5 px-5 py-2.5 rounded-xl bg-indigo-600 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer"
+            >
+              <span>
+                {step === 1 && "Next: Audience"}
+                {step === 2 && "Next: Markets"}
+                {step === 3 && "Next: Goals & Strategy"}
+                {step === 4 && "Next: Review & Launch"}
+              </span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <div />
           )}
         </div>
       </div>
