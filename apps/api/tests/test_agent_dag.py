@@ -48,13 +48,15 @@ async def test_agent_dag_end_to_end_execution() -> None:
     assert "qloo_researcher" in history
     assert "evidence_normalizer" in history
     assert "scorer" in history
+    assert "jev_decision_gate" in history
     assert "strategy" in history
     assert "final_review_guard" in history
 
-    # 3. Assert evidence was normalized and ranked
+    # 3. Assert evidence, ranking, and decisions
     assert len(final_state["normalized_evidence"]) > 0
     assert "winner_market" in final_state["market_ranking"]
     assert final_state["market_ranking"]["winner_market"] in ("London", "Berlin")
+    assert "market_decisions" in final_state["decisions"]
 
     # 4. Assert strategy generated with verified audit report
     assert len(final_state["strategy_recommendations"]) > 0

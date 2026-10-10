@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.graph import create_analysis_graph
 from src.agents.state import AnalysisState
+from src.db.models.decision import Decision
 from src.db.models.evidence import Evidence
 from src.db.models.project import Project, ProjectMarket
 from src.db.models.run import AnalysisRun, RunStep
@@ -151,6 +152,69 @@ class AnalysisRunService:
             )
             db.add(ev_record)
 
+        # 5b. Persist decisions records into database
+        decisions_state = current_state.get("decisions", {})
+        market_decisions = decisions_state.get("market_decisions", {})
+        for m_name, dec_info in market_decisions.items():
+            posture = dec_info.get("posture", "launch")
+            posture_conf = float(dec_info.get("posture_confidence", 0.90))
+            posture_probs = dec_info.get("posture_probabilities", {posture: 1.0})
+            model_name = str(dec_info.get("model_name", "typesafe-jev-1.13"))
+            latency_ms = int(dec_info.get("latency_ms", 1))
+
+            suff = dec_info.get("evidence_sufficiency", "sufficient")
+            suff_conf = float(dec_info.get("sufficiency_confidence", 0.90))
+            review_req = bool(dec_info.get("human_review_required", False))
+            review_conf = float(dec_info.get("human_review_confidence", 0.90))
+
+            db.add(
+                Decision(
+                    id=uuid.uuid4(),
+                    run_id=run.id,
+                    question_key=f"{m_name}:market_decision",
+                    decision_value=posture,
+                    probabilities_json=posture_probs,
+                    confidence=posture_conf,
+                    model_name=model_name,
+                    schema_version="v1.0.0",
+                    latency_ms=latency_ms,
+                )
+            )
+            db.add(
+                Decision(
+                    id=uuid.uuid4(),
+                    run_id=run.id,
+                    question_key=f"{m_name}:evidence_sufficiency",
+                    decision_value=suff,
+                    probabilities_json={
+                        suff: suff_conf,
+                        "insufficient" if suff == "sufficient" else "sufficient": round(
+                            1.0 - suff_conf, 4
+                        ),
+                    },
+                    confidence=suff_conf,
+                    model_name=model_name,
+                    schema_version="v1.0.0",
+                    latency_ms=latency_ms,
+                )
+            )
+            db.add(
+                Decision(
+                    id=uuid.uuid4(),
+                    run_id=run.id,
+                    question_key=f"{m_name}:human_review_required",
+                    decision_value="yes" if review_req else "no",
+                    probabilities_json={
+                        "yes": 0.90 if review_req else 0.10,
+                        "no": 0.10 if review_req else 0.90,
+                    },
+                    confidence=review_conf,
+                    model_name=model_name,
+                    schema_version="v1.0.0",
+                    latency_ms=latency_ms,
+                )
+            )
+
         # 6. Finalize Run summary
         ranking_data = current_state.get("market_ranking", {})
         final_status = current_state.get("status", "completed")
@@ -161,6 +225,7 @@ class AnalysisRunService:
             "score_margin": ranking_data.get("score_margin"),
             "market_scores": current_state.get("market_scores", {}),
             "comparative_matrix": ranking_data.get("comparative_matrix", {}),
+            "decisions": current_state.get("decisions", {}),
             "recommendations": current_state.get("strategy_recommendations", []),
             "audit_report": current_state.get("audit_report", {}),
         }
@@ -196,5 +261,15 @@ class AnalysisRunService:
     ) -> list[Evidence]:
         """Fetch all evidence collected during an analysis run."""
         stmt = select(Evidence).where(Evidence.run_id == run_id).order_by(Evidence.created_at.asc())
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def get_run_decisions(
+        db: AsyncSession,
+        run_id: uuid.UUID,
+    ) -> list[Decision]:
+        """Fetch all decisions recorded during an analysis run."""
+        stmt = select(Decision).where(Decision.run_id == run_id).order_by(Decision.created_at.asc())
         result = await db.execute(stmt)
         return list(result.scalars().all())

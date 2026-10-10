@@ -69,7 +69,7 @@ async def test_analysis_run_lifecycle_and_api(client: AsyncClient) -> None:
     )
     assert res_steps.status_code == 200
     steps = res_steps.json()
-    assert len(steps) == 9  # All 9 agent nodes recorded in DB
+    assert len(steps) == 10  # All 10 agent nodes recorded in DB
     step_keys = [s["step_key"] for s in steps]
     assert step_keys == [
         "supervisor",
@@ -79,11 +79,12 @@ async def test_analysis_run_lifecycle_and_api(client: AsyncClient) -> None:
         "qloo_researcher",
         "evidence_normalizer",
         "scorer",
+        "jev_decision_gate",
         "strategy",
         "final_review_guard",
     ]
-    # Check sequences are strictly 1..9
-    assert [s["sequence"] for s in steps] == list(range(1, 10))
+    # Check sequences are strictly 1..10
+    assert [s["sequence"] for s in steps] == list(range(1, 11))
 
     # 6. Fetch Evidence -> GET /api/v1/runs/{run_id}/evidence
     res_ev = await client.get(
@@ -94,6 +95,16 @@ async def test_analysis_run_lifecycle_and_api(client: AsyncClient) -> None:
     evidence_list = res_ev.json()
     assert len(evidence_list) > 0
     assert all("kind" in e and "explanation" in e for e in evidence_list)
+
+    # 6b. Fetch Decisions -> GET /api/v1/runs/{run_id}/decisions (Phase 5)
+    res_dec = await client.get(
+        f"/api/v1/runs/{run_id}/decisions",
+        headers=headers_owner,
+    )
+    assert res_dec.status_code == 200
+    decisions_list = res_dec.json()
+    assert len(decisions_list) > 0
+    assert all("question_key" in d and "decision_value" in d for d in decisions_list)
 
     # 7. Multi-tenant security guard: outsider forbidden from accessing run
     token_outsider = f"dev_token:uid_outsider_{uuid.uuid4().hex[:6]}:out@cultura.local:Outsider"

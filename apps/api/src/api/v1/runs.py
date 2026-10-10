@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.security import get_current_user, verify_workspace_access
 from src.db.models.user import User
 from src.db.session import get_db
+from src.schemas.decision import DecisionRead
 from src.schemas.evidence import EvidenceRead
 from src.schemas.run import AnalysisRunCreate, AnalysisRunRead, RunStepRead
 from src.services.analysis_run_service import AnalysisRunService
@@ -113,3 +114,26 @@ async def get_analysis_run_evidence(
     await verify_workspace_access(run.workspace_id, current_user, db)
     evidence_records = await AnalysisRunService.get_run_evidence(db, run_id)
     return [EvidenceRead.model_validate(e) for e in evidence_records]
+
+
+@router.get(
+    "/runs/{run_id}/decisions",
+    response_model=list[DecisionRead],
+    summary="Retrieve typed probabilistic decisions produced by Jev",
+)
+async def get_analysis_run_decisions(
+    run_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[DecisionRead]:
+    """Get all probabilistic decisions recorded during this run."""
+    run = await AnalysisRunService.get_run_by_id(db, run_id)
+    if not run:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Analysis run {run_id} not found",
+        )
+
+    await verify_workspace_access(run.workspace_id, current_user, db)
+    decision_records = await AnalysisRunService.get_run_decisions(db, run_id)
+    return [DecisionRead.model_validate(d) for d in decision_records]
