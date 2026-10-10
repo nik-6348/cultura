@@ -1,0 +1,23 @@
+{
+  "name": "cultura-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cultura — AI Cultural Intelligence Platform",
+  "packageManager": "pnpm@10.5.2",
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build",
+    "lint": "pnpm --filter web lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres",
+    "api:dev": "cd apps/api && uvicorn src.main:app --reload --port 8000",
+    "api:test": "cd apps/api && pytest",
+    "api:migrate": "cd apps/api && alembic upgrade head"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.0"
+  }
+}
