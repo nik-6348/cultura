@@ -14,6 +14,10 @@ import {
   Sliders,
   ExternalLink,
   Cpu,
+  FileText,
+  Download,
+  Copy,
+  Check,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import {
@@ -21,6 +25,7 @@ import {
   DecisionRecord,
   EvidenceRecord,
   RankedMarketItem,
+  ReportRecord,
   RunStep,
 } from "@/lib/types";
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
@@ -34,12 +39,17 @@ export default function RunIntelligencePage() {
   const [steps, setSteps] = useState<RunStep[]>([]);
   const [evidence, setEvidence] = useState<EvidenceRecord[]>([]);
   const [decisions, setDecisions] = useState<DecisionRecord[]>([]);
+  const [reports, setReports] = useState<ReportRecord[]>([]);
+  const [activeReport, setActiveReport] = useState<ReportRecord | null>(null);
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [reportFormat, setReportFormat] = useState<"markdown" | "html">("markdown");
+  const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Tab State
   const [activeTab, setActiveTab] = useState<
-    "overview" | "timeline" | "evidence" | "simulation"
+    "overview" | "timeline" | "evidence" | "simulation" | "report"
   >("overview");
 
   // Simulation Form State
@@ -54,16 +64,21 @@ export default function RunIntelligencePage() {
       try {
         setLoading(true);
         setError(null);
-        const [r, sList, eList, dList] = await Promise.all([
+        const [r, sList, eList, dList, repList] = await Promise.all([
           api.getRun(runId),
           api.getRunSteps(runId),
           api.getRunEvidence(runId),
           api.getRunDecisions(runId),
+          api.getRunReports(runId),
         ]);
         setRun(r);
         setSteps(sList);
         setEvidence(eList);
         setDecisions(dList);
+        setReports(repList);
+        if (repList.length > 0) {
+          setActiveReport(repList[0]);
+        }
 
         const currentPersona = r.input_snapshot_json?.audience_profile?.persona as string;
         if (currentPersona) {
@@ -97,6 +112,28 @@ export default function RunIntelligencePage() {
     } finally {
       setRunningSim(false);
     }
+  };
+
+  const handleGenerateReport = async () => {
+    if (!run) return;
+    try {
+      setGeneratingReport(true);
+      const rep = await api.generateReport(run.id, reportFormat);
+      setReports([rep, ...reports]);
+      setActiveReport(rep);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to compile report";
+      alert(msg);
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
+
+  const handleCopyReport = () => {
+    if (!activeReport?.content) return;
+    navigator.clipboard.writeText(activeReport.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   if (loading) {
@@ -257,11 +294,11 @@ export default function RunIntelligencePage() {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-slate-200 space-x-6 text-sm font-semibold">
+      <div className="flex border-b border-slate-200 space-x-6 text-sm font-semibold overflow-x-auto">
         <button
           onClick={() => setActiveTab("overview")}
           className={cn(
-            "pb-3 flex items-center space-x-2 border-b-2 transition-colors",
+            "pb-3 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap",
             activeTab === "overview"
               ? "border-indigo-600 text-indigo-700"
               : "border-transparent text-slate-500 hover:text-slate-800"
@@ -274,7 +311,7 @@ export default function RunIntelligencePage() {
         <button
           onClick={() => setActiveTab("timeline")}
           className={cn(
-            "pb-3 flex items-center space-x-2 border-b-2 transition-colors",
+            "pb-3 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap",
             activeTab === "timeline"
               ? "border-indigo-600 text-indigo-700"
               : "border-transparent text-slate-500 hover:text-slate-800"
@@ -287,7 +324,7 @@ export default function RunIntelligencePage() {
         <button
           onClick={() => setActiveTab("evidence")}
           className={cn(
-            "pb-3 flex items-center space-x-2 border-b-2 transition-colors",
+            "pb-3 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap",
             activeTab === "evidence"
               ? "border-indigo-600 text-indigo-700"
               : "border-transparent text-slate-500 hover:text-slate-800"
@@ -300,7 +337,7 @@ export default function RunIntelligencePage() {
         <button
           onClick={() => setActiveTab("simulation")}
           className={cn(
-            "pb-3 flex items-center space-x-2 border-b-2 transition-colors",
+            "pb-3 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap",
             activeTab === "simulation"
               ? "border-indigo-600 text-indigo-700"
               : "border-transparent text-slate-500 hover:text-slate-800"
@@ -308,6 +345,19 @@ export default function RunIntelligencePage() {
         >
           <Sliders className="w-4 h-4" />
           <span>What-If Simulation</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("report")}
+          className={cn(
+            "pb-3 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap",
+            activeTab === "report"
+              ? "border-indigo-600 text-indigo-700"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          )}
+        >
+          <FileText className="w-4 h-4" />
+          <span>Executive Brief Report</span>
         </button>
       </div>
 
@@ -676,6 +726,113 @@ export default function RunIntelligencePage() {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 5: Executive Brief Report */}
+      {activeTab === "report" && (
+        <div className="rounded-xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-6 animate-in fade-in duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">
+                Executive Market Entry Brief
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Publication-grade brief compiling empirical signals, deterministic scores, and System One gates
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-3 self-start sm:self-auto">
+              <select
+                value={reportFormat}
+                onChange={(e) => setReportFormat(e.target.value as "markdown" | "html")}
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none"
+              >
+                <option value="markdown">Markdown (.md)</option>
+                <option value="html">HTML (.html)</option>
+              </select>
+
+              <button
+                onClick={handleGenerateReport}
+                disabled={generatingReport}
+                className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>{generatingReport ? "Compiling..." : "Generate Brief"}</span>
+              </button>
+            </div>
+          </div>
+
+          {activeReport ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200/60 text-xs">
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold text-slate-800">{activeReport.title}</span>
+                  <span className="text-[10px] font-mono uppercase bg-slate-200 px-1.5 py-0.5 rounded text-slate-700">
+                    {activeReport.format}
+                  </span>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleCopyReport}
+                    className="inline-flex items-center space-x-1 px-2.5 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-[11px] font-medium"
+                  >
+                    {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-slate-500" />}
+                    <span>{copied ? "Copied" : "Copy"}</span>
+                  </button>
+
+                  <a
+                    href={`/api/v1/reports/${activeReport.id}/raw`}
+                    download
+                    className="inline-flex items-center space-x-1 px-2.5 py-1 rounded bg-slate-900 text-white hover:bg-slate-800 text-[11px] font-medium"
+                  >
+                    <Download className="w-3 h-3" />
+                    <span>Download</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Report Content Viewer */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-6 overflow-x-auto">
+                <pre className="text-xs leading-relaxed font-mono whitespace-pre-wrap text-slate-800 selection:bg-indigo-100">
+                  {activeReport.content}
+                </pre>
+              </div>
+
+              {/* Revisions list */}
+              {reports.length > 1 && (
+                <div className="pt-4 border-t border-slate-100">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">
+                    Saved Revisions ({reports.length})
+                  </span>
+                  <div className="space-y-1.5">
+                    {reports.map((rep) => (
+                      <button
+                        key={rep.id}
+                        onClick={() => setActiveReport(rep)}
+                        className={cn(
+                          "w-full text-left p-2.5 rounded-lg text-xs flex justify-between items-center transition-colors",
+                          activeReport.id === rep.id
+                            ? "bg-indigo-50 border border-indigo-200 text-indigo-900"
+                            : "bg-slate-50 border border-slate-200/60 text-slate-700 hover:bg-slate-100"
+                        )}
+                      >
+                        <span className="font-medium line-clamp-1">{rep.title}</span>
+                        <span className="text-[10px] text-slate-400 font-mono shrink-0 ml-2">
+                          {new Date(rep.created_at).toLocaleString()}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="py-12 text-center text-xs text-slate-400">
+              No executive brief generated yet. Click &quot;Generate Brief&quot; above to compile the full report.
             </div>
           )}
         </div>

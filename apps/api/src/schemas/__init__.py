@@ -14,6 +14,7 @@ from src.schemas.project import (
     ProjectRead,
     ProjectUpdate,
 )
+from src.schemas.report import ReportCreate, ReportRead
 from src.schemas.run import (
     AnalysisRunCreate,
     AnalysisRunDetailedRead,
@@ -54,4 +55,6 @@ __all__ = [
     "AnalysisRunRead",
     "AnalysisRunDetailedRead",
     "RunStepRead",
+    "ReportCreate",
+    "ReportRead",
 ]

@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from src.api.v1.health import router as health_router
 from src.api.v1.memories import router as memories_router
 from src.api.v1.projects import router as projects_router
+from src.api.v1.reports import router as reports_router
 from src.api.v1.runs import router as runs_router
 from src.api.v1.workspaces import router as workspaces_router
 
@@ -11,4 +12,5 @@ v1_router.include_router(health_router)
 v1_router.include_router(workspaces_router)
 v1_router.include_router(projects_router)
 v1_router.include_router(runs_router)
+v1_router.include_router(reports_router)
 v1_router.include_router(memories_router)

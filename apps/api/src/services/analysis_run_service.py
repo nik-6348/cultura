@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.graph import create_analysis_graph
 from src.agents.state import AnalysisState
+from src.core.security_guard import PromptInjectionGuard
 from src.db.models.decision import Decision
 from src.db.models.evidence import Evidence
 from src.db.models.project import Project, ProjectMarket
@@ -61,11 +62,17 @@ class AnalysisRunService:
             type="market_entry",
             status="running",
             input_snapshot_json={
-                "brand_name": project.name,
-                "objective": project.objective or "Market entry strategy",
+                "brand_name": PromptInjectionGuard.sanitize_untrusted_input(project.name),
+                "objective": PromptInjectionGuard.sanitize_untrusted_input(
+                    project.objective or "Market entry strategy"
+                ),
                 "candidate_markets": markets_payload,
-                "brand_profile": project.brand_profile_json,
-                "audience_profile": project.audience_profile_json,
+                "brand_profile": PromptInjectionGuard.validate_and_sanitize_dict(
+                    project.brand_profile_json or {}
+                ),
+                "audience_profile": PromptInjectionGuard.validate_and_sanitize_dict(
+                    project.audience_profile_json or {}
+                ),
             },
             workflow_version="v1.0.0",
             score_version=SCORE_VERSION,
@@ -321,23 +328,24 @@ class AnalysisRunService:
             raise ValueError(f"Parent analysis run {parent_run_id} not found")
 
         # Merge changes into baseline input snapshot
+        sanitized_changes = PromptInjectionGuard.validate_and_sanitize_dict(changes)
         baseline_input = dict(parent_run.input_snapshot_json or {})
         modified_brand = dict(baseline_input.get("brand_profile", {}))
         modified_audience = dict(baseline_input.get("audience_profile", {}))
         modified_markets = list(baseline_input.get("candidate_markets", []))
 
-        if "price_positioning" in changes:
-            modified_brand["price_point"] = changes["price_positioning"]
-        if "category" in changes:
-            modified_brand["category"] = changes["category"]
-        if "target_audience" in changes:
-            modified_audience["target_description"] = changes["target_audience"]
-        if "override_markets" in changes:
-            modified_markets = changes["override_markets"]
-        if "brand_profile" in changes:
-            modified_brand.update(changes["brand_profile"])
-        if "audience_profile" in changes:
-            modified_audience.update(changes["audience_profile"])
+        if "price_positioning" in sanitized_changes:
+            modified_brand["price_point"] = sanitized_changes["price_positioning"]
+        if "category" in sanitized_changes:
+            modified_brand["category"] = sanitized_changes["category"]
+        if "target_audience" in sanitized_changes:
+            modified_audience["target_description"] = sanitized_changes["target_audience"]
+        if "override_markets" in sanitized_changes:
+            modified_markets = sanitized_changes["override_markets"]
+        if "brand_profile" in sanitized_changes:
+            modified_brand.update(sanitized_changes["brand_profile"])
+        if "audience_profile" in sanitized_changes:
+            modified_audience.update(sanitized_changes["audience_profile"])
 
         sim_snapshot = {
             "brand_name": baseline_input.get("brand_name", "Brand"),
@@ -345,7 +353,7 @@ class AnalysisRunService:
             "candidate_markets": modified_markets,
             "brand_profile": modified_brand,
             "audience_profile": modified_audience,
-            "simulation_changes": changes,
+            "simulation_changes": sanitized_changes,
             "parent_run_id": str(parent_run_id),
         }
 
