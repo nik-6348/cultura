@@ -106,7 +106,43 @@ async def test_analysis_run_lifecycle_and_api(client: AsyncClient) -> None:
     assert len(decisions_list) > 0
     assert all("question_key" in d and "decision_value" in d for d in decisions_list)
 
-    # 7. Multi-tenant security guard: outsider forbidden from accessing run
+    # 6c. Trigger What-If Simulation -> POST /api/v1/runs/{run_id}/simulations
+    res_sim = await client.post(
+        f"/api/v1/runs/{run_id}/simulations",
+        json={
+            "changes": {
+                "price_positioning": "luxury_couture",
+                "target_audience": "Affluent high-fashion collectors",
+            }
+        },
+        headers=headers_owner,
+    )
+    assert res_sim.status_code == 201
+    sim_data = res_sim.json()
+    assert sim_data["type"] == "simulation"
+    assert sim_data["status"] == "completed"
+    assert "simulation_delta" in sim_data["result_summary_json"]
+    delta_info = sim_data["result_summary_json"]["simulation_delta"]
+    assert delta_info["parent_run_id"] == run_id
+    assert "score_deltas" in delta_info
+
+    # 7. Test list_project_runs and list_workspace_runs endpoints
+    res_proj_runs = await client.get(
+        f"/api/v1/projects/{project_id}/runs",
+        headers=headers_owner,
+    )
+    assert res_proj_runs.status_code == 200
+    runs_list = res_proj_runs.json()
+    assert len(runs_list) >= 2  # Baseline run + simulation run
+
+    res_ws_runs = await client.get(
+        f"/api/v1/runs?workspace_id={workspace_id}",
+        headers=headers_owner,
+    )
+    assert res_ws_runs.status_code == 200
+    assert len(res_ws_runs.json()) >= 2
+
+    # 8. Multi-tenant security guard: outsider forbidden from accessing run
     token_outsider = f"dev_token:uid_outsider_{uuid.uuid4().hex[:6]}:out@cultura.local:Outsider"
     headers_outsider = {"Authorization": f"Bearer {token_outsider}"}
 

@@ -35,7 +35,7 @@ class Settings(BaseSettings):
 
     # Qloo API
     qloo_api_key: str = ""
-    qloo_base_url: str = "https://api.qloo.com"
+    qloo_base_url: str = "https://hackathon.api.qloo.com"
     qloo_timeout_seconds: int = 30
     qloo_max_retries: int = 3
 

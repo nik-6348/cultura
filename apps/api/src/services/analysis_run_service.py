@@ -1,6 +1,7 @@
 import time
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -273,3 +274,224 @@ class AnalysisRunService:
         stmt = select(Decision).where(Decision.run_id == run_id).order_by(Decision.created_at.asc())
         result = await db.execute(stmt)
         return list(result.scalars().all())
+
+    @staticmethod
+    async def list_project_runs(
+        db: AsyncSession,
+        project_id: uuid.UUID,
+    ) -> list[AnalysisRun]:
+        """Fetch all analysis runs belonging to a project."""
+        stmt = (
+            select(AnalysisRun)
+            .where(AnalysisRun.project_id == project_id)
+            .order_by(AnalysisRun.created_at.desc())
+        )
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def list_workspace_runs(
+        db: AsyncSession,
+        workspace_id: uuid.UUID,
+        limit: int = 20,
+    ) -> list[AnalysisRun]:
+        """Fetch recent analysis runs across an entire workspace."""
+        stmt = (
+            select(AnalysisRun)
+            .where(AnalysisRun.workspace_id == workspace_id)
+            .order_by(AnalysisRun.created_at.desc())
+            .limit(limit)
+        )
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def create_and_execute_simulation(
+        db: AsyncSession,
+        parent_run_id: uuid.UUID,
+        user_id: uuid.UUID,
+        changes: dict[str, Any],
+    ) -> AnalysisRun:
+        """
+        Executes a counterfactual simulation run linked to a parent baseline run.
+        Computes parameter deltas, executes full agent DAG, and records comparison.
+        """
+        parent_run = await AnalysisRunService.get_run_by_id(db, parent_run_id)
+        if not parent_run:
+            raise ValueError(f"Parent analysis run {parent_run_id} not found")
+
+        # Merge changes into baseline input snapshot
+        baseline_input = dict(parent_run.input_snapshot_json or {})
+        modified_brand = dict(baseline_input.get("brand_profile", {}))
+        modified_audience = dict(baseline_input.get("audience_profile", {}))
+        modified_markets = list(baseline_input.get("candidate_markets", []))
+
+        if "price_positioning" in changes:
+            modified_brand["price_point"] = changes["price_positioning"]
+        if "category" in changes:
+            modified_brand["category"] = changes["category"]
+        if "target_audience" in changes:
+            modified_audience["target_description"] = changes["target_audience"]
+        if "override_markets" in changes:
+            modified_markets = changes["override_markets"]
+        if "brand_profile" in changes:
+            modified_brand.update(changes["brand_profile"])
+        if "audience_profile" in changes:
+            modified_audience.update(changes["audience_profile"])
+
+        sim_snapshot = {
+            "brand_name": baseline_input.get("brand_name", "Brand"),
+            "objective": baseline_input.get("objective", "Market Entry"),
+            "candidate_markets": modified_markets,
+            "brand_profile": modified_brand,
+            "audience_profile": modified_audience,
+            "simulation_changes": changes,
+            "parent_run_id": str(parent_run_id),
+        }
+
+        # Create simulation run record
+        sim_run = AnalysisRun(
+            project_id=parent_run.project_id,
+            workspace_id=parent_run.workspace_id,
+            created_by=user_id,
+            parent_run_id=parent_run_id,
+            type="simulation",
+            status="running",
+            input_snapshot_json=sim_snapshot,
+            workflow_version=parent_run.workflow_version,
+            score_version=parent_run.score_version,
+            prompt_version=parent_run.prompt_version,
+        )
+        db.add(sim_run)
+        await db.commit()
+        await db.refresh(sim_run)
+
+        # Setup initial state for LangGraph
+        initial_state: AnalysisState = {
+            "run_id": str(sim_run.id),
+            "project_id": str(parent_run.project_id),
+            "workspace_id": str(parent_run.workspace_id),
+            "brand_name": sim_snapshot["brand_name"],
+            "objective": sim_snapshot["objective"],
+            "candidate_markets": modified_markets,
+            "brand_profile": modified_brand,
+            "audience_profile": modified_audience,
+            "status": "running",
+            "step_history": [],
+            "research_queries": [],
+            "raw_evidence": [],
+            "normalized_evidence": [],
+            "errors": [],
+        }
+
+        graph = create_analysis_graph()
+        thread_config = {"configurable": {"thread_id": str(sim_run.id)}}
+        current_state = initial_state
+        step_sequence = 0
+
+        async for output in graph.astream(initial_state, config=thread_config):
+            for node_name, node_update in output.items():
+                step_sequence += 1
+                start_ts = datetime.now(UTC)
+                start_perf = time.perf_counter()
+                current_state.update(node_update)
+                latency_ms = int((time.perf_counter() - start_perf) * 1000)
+                end_ts = datetime.now(UTC)
+
+                step_record = RunStep(
+                    run_id=sim_run.id,
+                    step_key=node_name,
+                    agent_name=f"{node_name}_agent",
+                    status="completed",
+                    sequence=step_sequence,
+                    started_at=start_ts,
+                    completed_at=end_ts,
+                    latency_ms=max(1, latency_ms),
+                    output_ref=str(node_update.get("current_step", node_name)),
+                )
+                db.add(step_record)
+                await db.commit()
+
+        # Persist normalized evidence
+        for ev_data in current_state.get("normalized_evidence", []):
+            raw_ev_id = ev_data.get("id")
+            ev_id = (
+                uuid.UUID(raw_ev_id)
+                if (isinstance(raw_ev_id, str) and raw_ev_id != "None")
+                else uuid.uuid4()
+            )
+            ev_record = Evidence(
+                id=ev_id,
+                run_id=sim_run.id,
+                project_id=parent_run.project_id,
+                source=ev_data.get("source", "qloo"),
+                kind=ev_data["kind"],
+                market_name=ev_data.get("market_name"),
+                entity_ref=ev_data.get("entity_ref"),
+                value_numeric=ev_data.get("value_numeric"),
+                value_text=ev_data.get("value_text"),
+                explanation=ev_data["explanation"],
+                confidence=ev_data.get("confidence", 1.0),
+                source_metadata_json=ev_data.get("source_metadata_json", {}),
+            )
+            db.add(ev_record)
+
+        # Persist decisions
+        decisions_state = current_state.get("decisions", {})
+        market_decisions = decisions_state.get("market_decisions", {})
+        for m_name, dec_info in market_decisions.items():
+            posture = dec_info.get("posture", "launch")
+            posture_conf = float(dec_info.get("posture_confidence", 0.90))
+            posture_probs = dec_info.get("posture_probabilities", {posture: 1.0})
+            model_name = str(dec_info.get("model_name", "typesafe-jev-1.13"))
+            latency_ms = int(dec_info.get("latency_ms", 1))
+
+            db.add(
+                Decision(
+                    id=uuid.uuid4(),
+                    run_id=sim_run.id,
+                    question_key=f"{m_name}:market_decision",
+                    decision_value=posture,
+                    probabilities_json=posture_probs,
+                    confidence=posture_conf,
+                    model_name=model_name,
+                    schema_version="v1.0.0",
+                    latency_ms=latency_ms,
+                )
+            )
+
+        # Compute delta matrix against parent run
+        parent_result = parent_run.result_summary_json or {}
+        parent_scores = parent_result.get("market_scores", {})
+        sim_scores = current_state.get("market_scores", {})
+        score_deltas: dict[str, float] = {}
+
+        for m_name, s_info in sim_scores.items():
+            sim_val = float(s_info.get("overall_score", 0.0))
+            parent_val = float(parent_scores.get(m_name, {}).get("overall_score", 0.0))
+            score_deltas[m_name] = round(sim_val - parent_val, 4)
+
+        ranking_data = current_state.get("market_ranking", {})
+        sim_run.status = current_state.get("status", "completed")
+        sim_run.result_summary_json = {
+            "winner_market": ranking_data.get("winner_market"),
+            "score_margin": ranking_data.get("score_margin"),
+            "market_scores": sim_scores,
+            "comparative_matrix": ranking_data.get("comparative_matrix", {}),
+            "decisions": current_state.get("decisions", {}),
+            "recommendations": current_state.get("strategy_recommendations", []),
+            "audit_report": current_state.get("audit_report", {}),
+            "simulation_delta": {
+                "parent_run_id": str(parent_run.id),
+                "parent_winner": parent_result.get("winner_market"),
+                "new_winner": ranking_data.get("winner_market"),
+                "winner_changed": (
+                    parent_result.get("winner_market") != ranking_data.get("winner_market")
+                ),
+                "score_deltas": score_deltas,
+                "changes_applied": changes,
+            },
+        }
+        await db.commit()
+        await db.refresh(sim_run)
+        return sim_run
