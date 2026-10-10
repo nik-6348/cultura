@@ -1,5 +1,12 @@
 from src.schemas.decision import DecisionRead
 from src.schemas.evidence import EvidenceBase, EvidenceCreate, EvidenceRead
+from src.schemas.memory import (
+    MemoryCreate,
+    MemoryRead,
+    MemorySearchResult,
+    MemorySemanticSearchRequest,
+    MemoryUpdate,
+)
 from src.schemas.project import (
     ProjectCreate,
     ProjectMarketCreate,
@@ -38,6 +45,11 @@ __all__ = [
     "EvidenceCreate",
     "EvidenceRead",
     "DecisionRead",
+    "MemoryCreate",
+    "MemoryUpdate",
+    "MemoryRead",
+    "MemorySemanticSearchRequest",
+    "MemorySearchResult",
     "AnalysisRunCreate",
     "AnalysisRunRead",
     "AnalysisRunDetailedRead",
