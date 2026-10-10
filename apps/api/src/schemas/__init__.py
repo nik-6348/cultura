@@ -1,3 +1,4 @@
+from src.schemas.evidence import EvidenceBase, EvidenceCreate, EvidenceRead
 from src.schemas.project import (
     ProjectCreate,
     ProjectMarketCreate,
@@ -26,4 +27,7 @@ __all__ = [
     "ProjectRead",
     "ProjectMarketCreate",
     "ProjectMarketRead",
+    "EvidenceBase",
+    "EvidenceCreate",
+    "EvidenceRead",
 ]
