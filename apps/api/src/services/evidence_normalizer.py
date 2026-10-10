@@ -39,6 +39,7 @@ class EvidenceNormalizer:
             confidence = round(min(1.0, max(0.5, item.relevance)), 2)
 
             evidence = Evidence(
+                id=uuid.uuid4(),
                 run_id=run_id,
                 project_id=project_id,
                 source="qloo",
@@ -83,6 +84,7 @@ class EvidenceNormalizer:
         )
 
         density_evidence = Evidence(
+            id=uuid.uuid4(),
             run_id=run_id,
             project_id=project_id,
             source="qloo",
@@ -116,6 +118,7 @@ class EvidenceNormalizer:
 
             evidence_items.append(
                 Evidence(
+                    id=uuid.uuid4(),
                     run_id=run_id,
                     project_id=project_id,
                     source="qloo",
@@ -156,6 +159,7 @@ class EvidenceNormalizer:
         )
 
         trend_evidence = Evidence(
+            id=uuid.uuid4(),
             run_id=run_id,
             project_id=project_id,
             source="qloo",

@@ -6,6 +6,12 @@ from src.schemas.project import (
     ProjectRead,
     ProjectUpdate,
 )
+from src.schemas.run import (
+    AnalysisRunCreate,
+    AnalysisRunDetailedRead,
+    AnalysisRunRead,
+    RunStepRead,
+)
 from src.schemas.user import UserBase, UserCreate, UserRead
 from src.schemas.workspace import (
     WorkspaceCreate,
@@ -30,4 +36,8 @@ __all__ = [
     "EvidenceBase",
     "EvidenceCreate",
     "EvidenceRead",
+    "AnalysisRunCreate",
+    "AnalysisRunRead",
+    "AnalysisRunDetailedRead",
+    "RunStepRead",
 ]
