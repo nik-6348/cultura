@@ -4,16 +4,16 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Compass,
-  LayoutDashboard,
-  FolderKanban,
-  Database,
-  Plus,
-  Building2,
+  Bell,
+  HelpCircle,
+  ChevronRight,
+  Sun,
+  Moon,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Sidebar } from "./Sidebar";
 import { api } from "@/lib/api";
 import { Workspace } from "@/lib/types";
+import { useTheme } from "@/components/theme/ThemeProvider";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -22,121 +22,161 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(null);
+  const { theme, resolvedTheme, setTheme } = useTheme();
+  const mounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+  const isDark = (mounted ? (resolvedTheme || theme) : "light") === "dark";
+
+  const toggleTheme = () => {
+    const nextTheme = isDark ? "light" : "dark";
+    setTheme(nextTheme);
+    if (typeof document !== "undefined") {
+      if (nextTheme === "dark") {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+    }
+  };
+
+  // If this is the landing page or auth routes, do not wrap with the internal SaaS sidebar layout
+  const isPublicRoute =
+    pathname === "/" ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/signup");
 
   useEffect(() => {
-    async function loadWorkspaces() {
+    if (isPublicRoute) return;
+
+    async function loadWorkspace() {
       try {
         const wsList = await api.getWorkspaces();
         if (wsList && wsList.length > 0) {
           setActiveWorkspace(wsList[0]);
         } else {
-          // Auto-provision demo workspace if empty
-          const newWs = await api.createWorkspace("European Strategy Lab", "strategy.cultura.ai");
+          const newWs = await api.createWorkspace(
+            "Acme Brands",
+            "acme.cultura.ai"
+          );
           setActiveWorkspace(newWs);
         }
       } catch (err: unknown) {
-        console.error("Failed to load workspaces", err);
+        console.error("Failed to load workspace in AppShell", err);
       }
     }
-    loadWorkspaces();
-  }, []);
+    loadWorkspace();
+  }, [isPublicRoute]);
 
-  const navLinks = [
-    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/projects", label: "Projects", icon: FolderKanban },
-    { href: "/memory", label: "Knowledge & Memory", icon: Database },
-  ];
+  if (isPublicRoute) {
+    return <>{children}</>;
+  }
+
+  // Generate readable breadcrumbs from pathname
+  const pathParts = pathname.split("/").filter(Boolean);
+  const breadcrumbLabels: Record<string, string> = {
+    dashboard: "Dashboard",
+    projects: "Projects",
+    new: "New Project",
+    runs: "Analysis Runs",
+    reports: "Executive Reports",
+    chat: "Analyst Chat",
+    memory: "Knowledge Hub",
+    observability: "Observability",
+    settings: "Settings",
+  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
-      {/* Top Navigation Header */}
-      <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 glass-header">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          {/* Brand & Workspace Switcher */}
-          <div className="flex items-center space-x-6">
-            <Link href="/dashboard" className="flex items-center space-x-2.5">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-sm shadow-indigo-200">
-                <Compass className="w-5 h-5" />
-              </div>
-              <div className="flex items-baseline space-x-1.5">
-                <span className="font-semibold text-lg tracking-tight text-slate-900">Cultura</span>
-                <span className="text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200/60">
-                  Cultural Intelligence
-                </span>
-              </div>
+    <div className="h-screen flex bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans antialiased overflow-hidden">
+      {/* Enterprise Left Sidebar (Fixed on left, h-screen) */}
+      <Sidebar activeWorkspace={activeWorkspace} />
+
+      {/* Main App Body (Full height container, inner content scrolls) */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+        {/* Top Header & Breadcrumb Utility Bar (Strictly fixed at top, never scrolls) */}
+        <header className="h-16 px-6 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 flex-shrink-0 z-20 flex items-center justify-between shadow-2xs">
+          {/* Breadcrumbs */}
+          <nav className="flex items-center space-x-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <Link
+              href="/dashboard"
+              className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors font-semibold"
+            >
+              {activeWorkspace?.name || "Acme Brands"}
             </Link>
+            {pathParts.map((part, index) => {
+              const isLast = index === pathParts.length - 1;
+              const label =
+                breadcrumbLabels[part] ||
+                (part.length > 12 ? `${part.slice(0, 8)}...` : part);
+              const href = "/" + pathParts.slice(0, index + 1).join("/");
 
-            {/* Workspace Indicator */}
-            {activeWorkspace && (
-              <div className="hidden sm:flex items-center space-x-2 pl-4 border-l border-slate-200 text-sm text-slate-600">
-                <Building2 className="w-4 h-4 text-slate-400" />
-                <span className="font-medium text-slate-800">{activeWorkspace.name}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Center Navigation Links */}
-          <nav className="hidden md:flex items-center space-x-1">
-            {navLinks.map((item) => {
-              const Icon = item.icon;
-              const isActive =
-                pathname === item.href ||
-                (item.href !== "/dashboard" && pathname.startsWith(item.href));
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center space-x-2 px-3.5 py-2 rounded-md text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-slate-100 text-indigo-700"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/60"
+                <React.Fragment key={href}>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                  {isLast ? (
+                    <span className="text-slate-900 dark:text-slate-100 font-semibold">{label}</span>
+                  ) : (
+                    <Link
+                      href={href}
+                      className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+                    >
+                      {label}
+                    </Link>
                   )}
-                >
-                  <Icon className={cn("w-4 h-4", isActive ? "text-indigo-600" : "text-slate-400")} />
-                  <span>{item.label}</span>
-                </Link>
+                </React.Fragment>
               );
             })}
           </nav>
 
-          {/* Right Action Button & Profile */}
-          <div className="flex items-center space-x-3">
-            <Link
-              href="/projects/new"
-              className="inline-flex items-center space-x-2 px-3.5 py-2 rounded-md text-sm font-medium bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 transition-colors"
+          {/* Right Action Tools: Single Theme Toggle, Notifications, Help, Profile */}
+          <div className="flex items-center space-x-2">
+            {/* Single Theme Toggle Icon */}
+            <button
+              type="button"
+              suppressHydrationWarning
+              onClick={toggleTheme}
+              title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
             >
-              <Plus className="w-4 h-4" />
-              <span>New Analysis</span>
-            </Link>
+              {isDark ? (
+                <Sun className="w-4 h-4 text-amber-500 hover:rotate-45 transition-transform" />
+              ) : (
+                <Moon className="w-4 h-4 text-slate-600 dark:text-slate-300 hover:-rotate-12 transition-transform" />
+              )}
+            </button>
 
-            <div className="flex items-center space-x-2 pl-2">
-              <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center font-medium text-xs text-slate-700 border border-slate-300">
-                DS
-              </div>
+            <button
+              title="Notifications"
+              className="relative p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+            >
+              <Bell className="w-4 h-4" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900" />
+            </button>
+
+            <button
+              title="Documentation"
+              className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+            >
+              <HelpCircle className="w-4 h-4" />
+            </button>
+
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 ml-1" />
+
+            <div className="w-8 h-8 rounded-full bg-slate-900 dark:bg-slate-700 text-white font-bold text-xs flex items-center justify-center ring-2 ring-slate-100 dark:ring-slate-800 shadow-2xs">
+              NR
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Page Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {children}
-      </main>
-
-      {/* Clean Minimal Footer */}
-      <footer className="border-t border-slate-200/80 bg-white py-6 text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center space-x-2">
-            <span>Powered by Qloo Cultural Taste Graph</span>
-            <span>•</span>
-            <span>TypeSafe Jev System One Decisions</span>
-            <span>•</span>
-            <span>LangGraph Multi-Agent Architecture</span>
+        {/* Dynamic Page Content: ONLY INNER SCROLL */}
+        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+          <div className="max-w-7xl w-full mx-auto">
+            {children}
           </div>
-          <div>Cultura &copy; 2026. Production Grade SaaS.</div>
-        </div>
-      </footer>
+        </main>
+      </div>
     </div>
   );
 }
