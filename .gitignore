@@ -97,4 +97,3 @@ logs/
 *.log
 # Temporary & Local Scratch (Never commit to git)
 temp/
-docs/
