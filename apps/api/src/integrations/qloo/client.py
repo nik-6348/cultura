@@ -268,6 +268,37 @@ class QlooClient:
         if self.force_synthetic:
             return generate_synthetic_audience_insights(seed_entities, target_categories, location)
 
+        if self._external_client is not None:
+            body: dict[str, Any] = {
+                "entities": seed_entities,
+                "target_categories": target_categories or ["fashion", "dining", "music"],
+            }
+            if location:
+                body["location"] = location
+
+            data = await self._request_with_retry("POST", "/v2/insights/audiences", json_data=body)
+            raw_affinities = data.get("affinities") or []
+            affinities: list[QlooAffinityItem] = []
+
+            for aff in raw_affinities:
+                affinities.append(
+                    QlooAffinityItem(
+                        entity_id=aff.get("entity_id", "unknown"),
+                        name=aff.get("name", "Unknown Correlation"),
+                        category=aff.get("category", "general"),
+                        affinity_score=float(aff.get("affinity_score", aff.get("score", 0.5))),
+                        relevance=float(aff.get("relevance", 1.0)),
+                    )
+                )
+
+            return QlooAudienceInsights(
+                query_entities=seed_entities,
+                affinities=affinities,
+                top_categories=data.get("top_categories", target_categories or []),
+                demographic_skew=data.get("demographic_skew", {}),
+                raw_payload=data,
+            )
+
         try:
             valid_eids: list[str] = []
             for seed in seed_entities:
