@@ -20,25 +20,25 @@ export function VerdictBadge({
   const config = {
     launch: {
       label: "LAUNCH",
-      bg: "bg-emerald-50 border-emerald-200 text-emerald-800",
+      bg: "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800/80 text-emerald-800 dark:text-emerald-300",
       icon: CheckCircle2,
       dotColor: "bg-emerald-500",
     },
     adapt: {
       label: "ADAPT",
-      bg: "bg-amber-50 border-amber-200 text-amber-800",
+      bg: "bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800/80 text-amber-800 dark:text-amber-300",
       icon: AlertTriangle,
       dotColor: "bg-amber-500",
     },
     avoid: {
       label: "AVOID",
-      bg: "bg-rose-50 border-rose-200 text-rose-800",
+      bg: "bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800/80 text-rose-800 dark:text-rose-300",
       icon: XCircle,
       dotColor: "bg-rose-500",
     },
   }[normVerdict] || {
     label: verdict ? verdict.toUpperCase() : "PENDING",
-    bg: "bg-slate-50 border-slate-200 text-slate-700",
+    bg: "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300",
     icon: AlertTriangle,
     dotColor: "bg-slate-400",
   };

@@ -13,7 +13,7 @@ async def qloo_researcher_node(state: AnalysisState) -> dict[str, Any]:
     brand_proxies = state.get("brand_proxies", [])
     seed_entities = [p["entity_id"] for p in brand_proxies] or ["ent_st_supreme", "ent_st_palace"]
 
-    qloo = QlooClient(force_synthetic=True)
+    qloo = QlooClient(fallback_to_synthetic=True)
 
     queries: list[dict[str, Any]] = []
     raw_evidence_items: list[dict[str, Any]] = []
