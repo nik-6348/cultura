@@ -41,7 +41,7 @@ async def run_golden_demo() -> dict[str, Any]:
     seed_proxies = ["ent_st_wtaps", "ent_st_supreme", "ent_st_palace"]
     logger.info("Evaluating brand expansion: %s", brand_name)
 
-    qloo = QlooClient(force_synthetic=True)
+    qloo = QlooClient(fallback_to_synthetic=True)
     evidence_by_market: dict[str, list[Any]] = {}
 
     for market in candidate_markets:
