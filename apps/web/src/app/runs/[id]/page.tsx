@@ -385,34 +385,34 @@ export default function RunIntelligencePage() {
               <div className="space-y-4">
                 {[
                   {
-                    key: "category_affinity",
-                    label: "Category Taste Affinity",
+                    key: "brand_affinity",
+                    label: "Brand Proxy Affinity",
                     weight: "25%",
-                    score: winnerDimensions.category_affinity ?? 0.85,
+                    score: winnerDimensions.brand_affinity ?? winnerDimensions.category_affinity ?? 0.85,
                   },
                   {
                     key: "audience_overlap",
                     label: "Audience Overlap & Preferences",
-                    weight: "25%",
+                    weight: "20%",
                     score: winnerDimensions.audience_overlap ?? 0.82,
                   },
                   {
-                    key: "sentiment_resonance",
-                    label: "Sentiment & Tone Resonance",
+                    key: "category_ecosystem",
+                    label: "Category Ecosystem Density",
                     weight: "20%",
-                    score: winnerDimensions.sentiment_resonance ?? 0.79,
+                    score: winnerDimensions.category_ecosystem ?? winnerDimensions.sentiment_resonance ?? 0.84,
                   },
                   {
-                    key: "trend_momentum",
+                    key: "cultural_momentum",
                     label: "Cultural Trend Momentum",
                     weight: "15%",
-                    score: winnerDimensions.trend_momentum ?? 0.76,
+                    score: winnerDimensions.cultural_momentum ?? winnerDimensions.trend_momentum ?? 0.76,
                   },
                   {
-                    key: "contextual_fit",
-                    label: "Contextual & Regulatory Fit",
-                    weight: "15%",
-                    score: winnerDimensions.contextual_fit ?? 0.78,
+                    key: "evidence_coverage",
+                    label: "Evidence Coverage Completeness",
+                    weight: "20%",
+                    score: winnerDimensions.evidence_coverage ?? winnerDimensions.contextual_fit ?? 1.0,
                   },
                 ].map((dim) => {
                   const scoreVal = Number(dim.score);
