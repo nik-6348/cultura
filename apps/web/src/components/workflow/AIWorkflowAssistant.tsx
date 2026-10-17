@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Sparkles,
   Bot,
   ArrowRight,
   ArrowLeft,
   Check,
-  Search,
   Plus,
   X,
   Play,
@@ -17,14 +16,19 @@ import {
   Target,
   BarChart3,
   Loader2,
-  RefreshCw,
   SlidersHorizontal,
-  ChevronRight,
-  ShieldCheck,
+  Compass,
+  Building2,
   ShoppingBag,
   Coffee,
   Sparkle,
-  Headphones,
+  Search,
+  Send,
+  RotateCcw,
+  Layers,
+  Edit2,
+  ChevronRight,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -77,66 +81,220 @@ interface AIWorkflowAssistantProps {
   loading: boolean;
 }
 
-const TEMPLATE_PRESETS = [
+// 1-Click Brand Presets
+interface BrandSuggestion {
+  name: string;
+  category: string;
+  positioning: "Premium" | "Mid-market" | "Budget-friendly";
+  description: string;
+  tags: string[];
+  suggestedPersona: string;
+  suggestedInterests: string[];
+  suggestedMarkets: string[];
+}
+
+const BRAND_SUGGESTIONS: BrandSuggestion[] = [
   {
-    title: "Streetwear & Apparel",
-    icon: ShoppingBag,
-    brandName: "Acme Streetwear",
-    projectName: "Tokyo Streetwear Expansion",
+    name: "Acme Streetwear Lab",
     category: "Fashion & Apparel",
-    desc: "Premium streetwear collection for urban youth, including apparel, sneakers and accessories.",
-    tags: ["Streetwear", "Youth Culture", "Urban Fashion"],
-    audience: "Gen Z Streetwear Enthusiasts",
-    interests: ["Streetwear", "Sneakers", "Music", "Urban Culture"],
+    positioning: "Premium",
+    description: "Avant-garde technical outerwear and sneaker drops inspired by architectural brutalism.",
+    tags: ["Streetwear", "Youth Culture", "Drop Culture", "Sneakers"],
+    suggestedPersona: "Gen Z Streetwear Collectors & Creators",
+    suggestedInterests: ["Streetwear", "Sneakers", "Electronic Music", "Contemporary Art"],
+    suggestedMarkets: ["Tokyo", "Seoul", "Berlin"],
   },
   {
-    title: "Specialty Coffee Roastery",
-    icon: Coffee,
-    brandName: "Origin Craft Coffee",
-    projectName: "East Asia Specialty Coffee Entry",
+    name: "Kuro Craft Coffee",
     category: "Food & Beverage",
-    desc: "Single-origin micro-lot coffee roaster with third-wave minimalist cafe concepts.",
-    tags: ["Artisanal Coffee", "Cafe Culture", "Specialty Food"],
-    audience: "Affluent Urban Coffee Enthusiasts",
-    interests: ["Third-Wave Coffee", "Art & Design", "Sustainable Living", "Gastronomy"],
+    positioning: "Premium",
+    description: "Minimalist third-wave Japanese pour-over bars with micro-lot origins and bespoke ceramics.",
+    tags: ["Specialty Coffee", "Minimalism", "Cafe Culture", "Craft"],
+    suggestedPersona: "Affluent Minimalist Design Enthusiasts",
+    suggestedInterests: ["Artisanal Coffee", "Minimalist Design", "Architecture", "Slow Living"],
+    suggestedMarkets: ["Tokyo", "London", "New York"],
   },
   {
-    title: "Clean Minimalist Skincare",
-    icon: Sparkle,
-    brandName: "Lumina Organics",
-    projectName: "APAC Clean Skincare Launch",
+    name: "Lumina Niche Fragrance",
     category: "Beauty & Cosmetics",
-    desc: "Dermatologist-formulated vegan skincare with zero synthetic fragrances or micro-plastics.",
-    tags: ["Clean Beauty", "Vegan Cosmetics", "Wellness"],
-    audience: "Eco-Conscious Millennials",
-    interests: ["Skincare", "Wellness", "Organic Living", "Self-Care"],
+    positioning: "Premium",
+    description: "Artisanal unisex extrait de parfum formulated with rare botanicals and olfactory storytelling.",
+    tags: ["Niche Fragrance", "Luxury Olfactory", "Slow Beauty"],
+    suggestedPersona: "High-Net-Worth Aesthetic Connoisseurs",
+    suggestedInterests: ["Fine Art", "Niche Perfumery", "Contemporary Literature", "Wine Culture"],
+    suggestedMarkets: ["Paris", "Seoul", "London"],
   },
   {
-    title: "Spatial Audio Wearables",
-    icon: Headphones,
-    brandName: "Aether Acoustics",
-    projectName: "Global Audio Gear Expansion",
-    category: "Consumer Electronics",
-    desc: "Studio-grade wireless open-ear monitors designed for mobile creators and audiophiles.",
-    tags: ["Audio Hardware", "Creator Economy", "Tech Lifestyle"],
-    audience: "Digital Creators & Audiophiles",
-    interests: ["Electronic Music", "Tech & Gaming", "Podcasting", "Design"],
+    name: "Terra Circular Living",
+    category: "Home & Lifestyle",
+    positioning: "Mid-market",
+    description: "Zero-waste modular home goods and regenerative lifestyle essentials for urban apartments.",
+    tags: ["Sustainability", "Circular Design", "Eco-Living"],
+    suggestedPersona: "Eco-Conscious Urban Professionals",
+    suggestedInterests: ["Sustainability", "Urban Gardening", "Design", "Organic Gastronomy"],
+    suggestedMarkets: ["Berlin", "London", "Tokyo"],
   },
 ];
 
-const CURATED_INTERESTS = [
-  "Streetwear",
-  "Sneakers",
-  "Electronic Music",
-  "Hip-Hop",
-  "Third-Wave Coffee",
-  "Contemporary Art",
-  "Tech & Gaming",
-  "Skate Culture",
-  "Vintage Thrifting",
-  "Sustainable Living",
-  "Nightlife & Clubs",
-  "Wellness & Fitness",
+// 1-Click Persona Suggestions
+interface PersonaSuggestion {
+  title: string;
+  desc: string;
+  age: [number, number];
+  income: "All" | "Low" | "Medium" | "High";
+  interests: string[];
+}
+
+const PERSONA_SUGGESTIONS: PersonaSuggestion[] = [
+  {
+    title: "Gen Z Streetwear & Digital Natives",
+    desc: "Ages 18-26, high trend sensitivity, sneakerheads, underground rap, drop culture",
+    age: [18, 26],
+    income: "Medium",
+    interests: ["Streetwear", "Sneakers", "Music Production", "Digital Art"],
+  },
+  {
+    title: "Minimalist Conscious Urbanites",
+    desc: "Ages 24-38, design lovers, specialty coffee, architectural lifestyle, slow living",
+    age: [24, 38],
+    income: "High",
+    interests: ["Minimalist Design", "Specialty Coffee", "Architecture", "Independent Books"],
+  },
+  {
+    title: "Luxury Connoisseurs & Taste Creators",
+    desc: "Ages 28-50, high net-worth, bespoke tailoring, fine art, exclusive pop-up supper clubs",
+    age: [28, 50],
+    income: "High",
+    interests: ["High Fashion", "Contemporary Art", "Fine Dining", "Rare Collectibles"],
+  },
+  {
+    title: "Subcultural Indie Creatives",
+    desc: "Ages 20-35, vinyl record collectors, DIY fashion, electronic underground, zine publishers",
+    age: [20, 35],
+    income: "Medium",
+    interests: ["Club Culture", "Vintage Thrift", "Vinyl Records", "Independent Film"],
+  },
+];
+
+// 1-Click Market Hubs with Unicode flags
+interface MarketHub {
+  name: string;
+  country: string;
+  country_code: string;
+  location_code: string;
+  flag: string;
+  region: string;
+  subcultures: string;
+}
+
+const MARKET_HUBS: MarketHub[] = [
+  {
+    name: "Tokyo",
+    country: "Japan",
+    country_code: "JP",
+    location_code: "JP-TYO",
+    flag: "🇯🇵",
+    region: "Asia",
+    subcultures: "Harajuku Streetwear, Shibuya Youth, Daikanyama Craft",
+  },
+  {
+    name: "Seoul",
+    country: "South Korea",
+    country_code: "KR",
+    location_code: "KR-SEL",
+    flag: "🇰🇷",
+    region: "Asia",
+    subcultures: "Seongsu Pop-Up Labs, Hannam Luxury, Hongdae Indie",
+  },
+  {
+    name: "Berlin",
+    country: "Germany",
+    country_code: "DE",
+    location_code: "DE-BER",
+    flag: "🇩🇪",
+    region: "Europe",
+    subcultures: "Kreuzberg Electronic, Mitte Avant-Garde, Neukölln DIY",
+  },
+  {
+    name: "London",
+    country: "United Kingdom",
+    country_code: "GB",
+    location_code: "GB-LND",
+    flag: "🇬🇧",
+    region: "Europe",
+    subcultures: "Hackney Creative, Soho Heritage, Shoreditch Tech",
+  },
+  {
+    name: "Paris",
+    country: "France",
+    country_code: "FR",
+    location_code: "FR-PAR",
+    flag: "🇫🇷",
+    region: "Europe",
+    subcultures: "Le Marais Couture, Canal Saint-Martin Natural Wine",
+  },
+  {
+    name: "New York",
+    country: "United States",
+    country_code: "US",
+    location_code: "US-NYC",
+    flag: "🇺🇸",
+    region: "North America",
+    subcultures: "SoHo Flagships, Lower East Side Underground, Brooklyn Indie",
+  },
+  {
+    name: "São Paulo",
+    country: "Brazil",
+    country_code: "BR",
+    location_code: "BR-SAO",
+    flag: "🇧🇷",
+    region: "Latin America",
+    subcultures: "Vila Madalena Arts, Pinheiros Gastronomy, Jardins Luxury",
+  },
+  {
+    name: "Mumbai",
+    country: "India",
+    country_code: "IN",
+    location_code: "IN-BOM",
+    flag: "🇮🇳",
+    region: "Asia",
+    subcultures: "Bandra Creative Hub, Kala Ghoda Arts, Lower Parel Luxury",
+  },
+];
+
+// 1-Click Goal Suggestions
+interface GoalSuggestion {
+  goal: string;
+  timeline: string;
+  positioning: "Premium" | "Mid-market" | "Budget-friendly";
+  desc: string;
+}
+
+const GOAL_SUGGESTIONS: GoalSuggestion[] = [
+  {
+    goal: "Flagship Retail Store Opening",
+    timeline: "Q3 2026 (6-9 Months)",
+    positioning: "Premium",
+    desc: "Permanent brick-and-mortar presence in prime cultural retail district with localized activations.",
+  },
+  {
+    goal: "Underground Cultural Pop-Up & Residency",
+    timeline: "Immediate (1-3 Months)",
+    positioning: "Premium",
+    desc: "High-buzz short-term experiential activation testing initial brand affinity and organic peer buzz.",
+  },
+  {
+    goal: "Direct-to-Consumer Digital Expansion",
+    timeline: "Q4 2026 (9-12 Months)",
+    positioning: "Mid-market",
+    desc: "Localized e-commerce operations, localized content marketing and regional social creators.",
+  },
+  {
+    goal: "Brand Collaboration & Co-Created Drops",
+    timeline: "Flexible (3-6 Months)",
+    positioning: "Premium",
+    desc: "Joint limited-edition drop with verified local cultural tastemakers and concept retailers.",
+  },
 ];
 
 export function AIWorkflowAssistant({
@@ -174,954 +332,960 @@ export function AIWorkflowAssistant({
   onSwitchToManual,
   loading,
 }: AIWorkflowAssistantProps) {
-  const [currentStage, setCurrentStage] = useState<1 | 2 | 3 | 4 | 5>(1);
-  const [marketSearch, setMarketSearch] = useState("");
-  const [searchResults, setSearchResults] = useState<MarketItem[]>([]);
-  const [isSearchingMarkets, setIsSearchingMarkets] = useState(false);
-  const [customInterest, setCustomInterest] = useState("");
-  const [newTag, setNewTag] = useState("");
+  // Current active question index (0: Brand, 1: Audience, 2: Markets, 3: Goals, 4: Blueprint Review)
+  const [currentStep, setCurrentStep] = useState<number>(0);
 
-  // Live Location Search
+  // Free text inputs for each step
+  const [customBrandText, setCustomBrandText] = useState(brandName || "");
+  const [customCategoryText, setCustomCategoryText] = useState(category || "");
+  const [customPersonaText, setCustomPersonaText] = useState(audienceName || "");
+  const [customMarketText, setCustomMarketText] = useState("");
+  const [customGoalText, setCustomGoalText] = useState(primaryGoal || "");
+  const [searchingMarket, setSearchingMarket] = useState(false);
+
+  // Transcript of answered questions
+  const [history, setHistory] = useState<Array<{ step: number; question: string; answer: string }>>([]);
+
+  const inputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
-    let active = true;
-    const fetchLocs = async () => {
-      try {
-        setIsSearchingMarkets(true);
-        const results = await api.searchLocations(marketSearch);
-        if (active && Array.isArray(results)) {
-          setSearchResults(results as unknown as MarketItem[]);
-        }
-      } catch (err) {
-        console.error("AI Location search error", err);
-      } finally {
-        if (active) setIsSearchingMarkets(false);
+    // Focus input on step change
+    inputRef.current?.focus();
+  }, [currentStep]);
+
+  // Handle step 0 confirm (Brand & Concept)
+  const handleConfirmBrand = (customName?: string, customCat?: string, customDesc?: string) => {
+    const finalName = customName || customBrandText.trim() || brandName || "Autonomous Brand";
+    const finalCat = customCat || customCategoryText.trim() || category || "Lifestyle & Apparel";
+    const finalDesc = customDesc || description || `Expansion strategy and cultural resonance analysis for ${finalName}.`;
+
+    setBrandName(finalName);
+    setCategory(finalCat);
+    setDescription(finalDesc);
+    if (!projectName || projectName.startsWith("Analysis:")) {
+      setProjectName(`${finalName} Global Expansion`);
+    }
+
+    setHistory((prev) => [
+      ...prev.filter((h) => h.step !== 0),
+      {
+        step: 0,
+        question: "What brand or concept are you planning to expand?",
+        answer: `${finalName} (${finalCat})`,
+      },
+    ]);
+
+    setCurrentStep(1);
+  };
+
+  // Handle step 1 confirm (Cultural Demographic & Persona)
+  const handleConfirmAudience = (customPersona?: string, customInts?: string[]) => {
+    const finalPersona = customPersona || customPersonaText.trim() || audienceName || "Gen Z & Urban Creatives";
+    const finalInts = customInts || (selectedInterests.length > 0 ? selectedInterests : ["Streetwear", "Specialty Coffee", "Contemporary Design"]);
+
+    setAudienceName(finalPersona);
+    setSelectedInterests(finalInts);
+
+    setHistory((prev) => [
+      ...prev.filter((h) => h.step !== 1),
+      {
+        step: 1,
+        question: "Which cultural demographic and lifestyle cohort should we target?",
+        answer: `${finalPersona}`,
+      },
+    ]);
+
+    setCurrentStep(2);
+  };
+
+  // Handle step 2 market selection toggle
+  const handleToggleMarket = (hub: MarketHub) => {
+    const exists = selectedMarkets.some((m) => m.name.toLowerCase() === hub.name.toLowerCase());
+    if (exists) {
+      setSelectedMarkets(selectedMarkets.filter((m) => m.name.toLowerCase() !== hub.name.toLowerCase()));
+    } else {
+      const newItem: MarketItem = {
+        id: hub.location_code.toLowerCase(),
+        name: hub.name,
+        country: hub.country,
+        country_code: hub.country_code,
+        location_code: hub.location_code,
+        region: hub.region,
+        potential: "High potential",
+        description: hub.subcultures,
+        flag: hub.flag,
+        color: "from-indigo-500/15 via-purple-500/10 to-transparent",
+      };
+      setSelectedMarkets([...selectedMarkets, newItem]);
+    }
+  };
+
+  // Add custom free-text market
+  const handleAddCustomMarket = async () => {
+    const query = customMarketText.trim();
+    if (!query) return;
+
+    try {
+      setSearchingMarket(true);
+      const res = await api.searchLocations(query);
+      const loc = res?.[0];
+
+      const newItem: MarketItem = {
+        id: (loc?.location_code || query).toLowerCase().replace(/\s+/g, "-"),
+        name: loc?.name || query,
+        country: loc?.country || "International",
+        country_code: loc?.country_code || "INT",
+        location_code: loc?.location_code || `INT-${query.slice(0, 3).toUpperCase()}`,
+        region: loc?.region || "Global",
+        potential: "High potential",
+        description: loc?.description || `Cultural epicenter in ${loc?.country || query}`,
+        flag: loc?.flag || "🌐",
+        color: "from-indigo-500/15 via-purple-500/10 to-transparent",
+      };
+
+      if (!selectedMarkets.some((m) => m.name.toLowerCase() === newItem.name.toLowerCase())) {
+        setSelectedMarkets([...selectedMarkets, newItem]);
       }
-    };
-
-    const timer = setTimeout(fetchLocs, 200);
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [marketSearch]);
-
-  const toggleInterest = (interest: string) => {
-    if (selectedInterests.includes(interest)) {
-      setSelectedInterests(selectedInterests.filter((i) => i !== interest));
-    } else {
-      setSelectedInterests([...selectedInterests, interest]);
+      setCustomMarketText("");
+    } catch {
+      // Fallback
+      const newItem: MarketItem = {
+        id: `custom-${query.toLowerCase().replace(/\s+/g, "-")}`,
+        name: query,
+        country: "International",
+        country_code: "INT",
+        location_code: `INT-${query.slice(0, 3).toUpperCase()}`,
+        region: "Global",
+        potential: "High potential",
+        description: `Custom cultural epicenter: ${query}`,
+        flag: "🌐",
+        color: "from-indigo-500/15 via-purple-500/10 to-transparent",
+      };
+      setSelectedMarkets([...selectedMarkets, newItem]);
+      setCustomMarketText("");
+    } finally {
+      setSearchingMarket(false);
     }
   };
 
-  const handleAddCustomInterest = () => {
-    if (customInterest.trim() && !selectedInterests.includes(customInterest.trim())) {
-      setSelectedInterests([...selectedInterests, customInterest.trim()]);
-      setCustomInterest("");
+  // Handle step 2 confirm
+  const handleConfirmMarkets = () => {
+    if (selectedMarkets.length === 0) {
+      // Default to Tokyo & Berlin if user just clicks continue
+      const defaultTokyo = MARKET_HUBS[0];
+      const defaultBerlin = MARKET_HUBS[2];
+      setSelectedMarkets([
+        {
+          id: defaultTokyo.location_code.toLowerCase(),
+          name: defaultTokyo.name,
+          country: defaultTokyo.country,
+          country_code: defaultTokyo.country_code,
+          location_code: defaultTokyo.location_code,
+          region: defaultTokyo.region,
+          potential: "High potential",
+          description: defaultTokyo.subcultures,
+          flag: defaultTokyo.flag,
+          color: "from-indigo-500/15 via-purple-500/10 to-transparent",
+        },
+        {
+          id: defaultBerlin.location_code.toLowerCase(),
+          name: defaultBerlin.name,
+          country: defaultBerlin.country,
+          country_code: defaultBerlin.country_code,
+          location_code: defaultBerlin.location_code,
+          region: defaultBerlin.region,
+          potential: "High potential",
+          description: defaultBerlin.subcultures,
+          flag: defaultBerlin.flag,
+          color: "from-indigo-500/15 via-purple-500/10 to-transparent",
+        },
+      ]);
     }
+
+    setHistory((prev) => [
+      ...prev.filter((h) => h.step !== 2),
+      {
+        step: 2,
+        question: "Which global cultural epicenters or cities do you want to evaluate?",
+        answer: selectedMarkets.map((m) => `${m.flag} ${m.name}`).join(", ") || "Tokyo, Berlin",
+      },
+    ]);
+
+    setCurrentStep(3);
   };
 
-  const toggleMarket = (market: MarketItem) => {
-    if (selectedMarkets.some((m) => m.id === market.id)) {
-      setSelectedMarkets(selectedMarkets.filter((m) => m.id !== market.id));
-    } else {
-      if (selectedMarkets.length >= 10) return;
-      setSelectedMarkets([...selectedMarkets, market]);
-    }
-  };
+  // Handle step 3 confirm (Goals & Strategy)
+  const handleConfirmGoals = (customG?: string, customTimeline?: string, customPos?: "Premium" | "Mid-market" | "Budget-friendly") => {
+    const finalGoal = customG || customGoalText.trim() || primaryGoal || "Flagship Retail Store Opening";
+    const finalTimeline = customTimeline || launchTimeline || "Q3 2026 (6-9 Months)";
+    const finalPos = customPos || productPositioning || "Premium";
 
-  const applyTemplate = (tpl: typeof TEMPLATE_PRESETS[0]) => {
-    setBrandName(tpl.brandName);
-    setProjectName(tpl.projectName);
-    setCategory(tpl.category);
-    setDescription(tpl.desc);
-    setTags(tpl.tags);
-    setAudienceName(tpl.audience);
-    setSelectedInterests(tpl.interests);
-  };
+    setPrimaryGoal(finalGoal);
+    setLaunchTimeline(finalTimeline);
+    setProductPositioning(finalPos);
 
-  const stages = [
-    { num: 1, label: "Brand Profile" },
-    { num: 2, label: "Audience Demographics" },
-    { num: 3, label: "Target Markets" },
-    { num: 4, label: "Strategic Goals" },
-    { num: 5, label: "Review & Launch" },
-  ];
+    setHistory((prev) => [
+      ...prev.filter((h) => h.step !== 3),
+      {
+        step: 3,
+        question: "What is your primary commercial strategy and launch horizon?",
+        answer: `${finalGoal} • ${finalTimeline} (${finalPos})`,
+      },
+    ]);
+
+    setCurrentStep(4);
+  };
 
   return (
-    <div className="space-y-6">
-      {/* AI Assistant Banner */}
-      <div className="rounded-2xl border border-indigo-200/80 dark:border-indigo-900/60 bg-gradient-to-r from-indigo-50/80 via-purple-50/60 to-white dark:from-indigo-950/40 dark:via-purple-950/30 dark:to-slate-900 p-5 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-start space-x-3.5">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-              <Sparkles className="w-5 h-5 stroke-[2.2]" />
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                  Interactive AI Strategic Workflow
-                </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-mono">
-                  Qloo Taste Graph Guided
-                </span>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
-                Step-by-step guided configuration. You can select pre-analyzed suggestions or type custom values. Every parameter directly feeds the multi-agent decision gate.
-              </p>
-            </div>
+    <div className="space-y-6 animate-in fade-in duration-300">
+      {/* Header Bar with Mode Switcher */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-slate-900 border border-indigo-500/30 shadow-lg text-white">
+        <div className="flex items-center space-x-3.5">
+          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-500/30 shrink-0">
+            <Bot className="w-5 h-5 text-white" />
           </div>
-
-          <button
-            type="button"
-            onClick={onSwitchToManual}
-            className="self-start sm:self-center px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 transition-colors shadow-2xs flex items-center space-x-1.5 cursor-pointer"
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span>Switch to Manual Form</span>
-          </button>
+          <div>
+            <div className="flex items-center space-x-2">
+              <h2 className="text-base font-bold tracking-tight">
+                AI Cultural Strategy Auto-Pilot
+              </h2>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase font-semibold">
+                Autonomous
+              </span>
+            </div>
+            <p className="text-xs text-indigo-200/80 mt-0.5">
+              Conversational strategist with 1-click option chips, free-text inputs, and live Qloo taste graph synthesis.
+            </p>
+          </div>
         </div>
 
-        {/* Horizontal Mini-Stepper */}
-        <div className="mt-5 pt-4 border-t border-indigo-100 dark:border-slate-800 flex items-center justify-between gap-2 overflow-x-auto">
-          {stages.map((st) => {
-            const isDone = currentStage > st.num;
-            const isCurrent = currentStage === st.num;
-            return (
-              <button
-                key={st.num}
-                type="button"
-                onClick={() => setCurrentStage(st.num as 1 | 2 | 3 | 4 | 5)}
-                className={cn(
-                  "flex items-center space-x-2 text-xs font-semibold transition-all cursor-pointer py-1 px-2 rounded-lg shrink-0",
-                  isCurrent
-                    ? "text-indigo-600 dark:text-indigo-400 bg-indigo-100/60 dark:bg-indigo-900/40"
-                    : isDone
-                    ? "text-emerald-700 dark:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                )}
-              >
-                <span
-                  className={cn(
-                    "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border",
-                    isDone
-                      ? "bg-emerald-600 border-emerald-600 text-white"
-                      : isCurrent
-                      ? "bg-indigo-600 border-indigo-600 text-white ring-2 ring-indigo-400/30"
-                      : "border-slate-300 dark:border-slate-700 text-slate-500"
-                  )}
-                >
-                  {isDone ? <Check className="w-3 h-3 stroke-[2.5]" /> : st.num}
-                </span>
-                <span>{st.label}</span>
-              </button>
-            );
-          })}
+        <div className="flex items-center space-x-3 self-end sm:self-center">
+          <button
+            onClick={onSwitchToManual}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/15 transition-colors"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>Switch to Manual Wizard</span>
+          </button>
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* STAGE 1: BRAND PROFILE */}
-      {/* ========================================================================= */}
-      {currentStage === 1 && (
-        <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-7 shadow-xs space-y-6 animate-in fade-in duration-200">
-          <div className="flex items-start space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
-              <Bot className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Step 1 of 5: Brand & Core Attributes
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Tell the AI strategist what brand you are expanding. Click a template chip below to auto-fill or enter your custom details.
-              </p>
-            </div>
-          </div>
-
-          {/* Quick-Start Templates */}
-          <div>
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">
-              Quick Suggestions (Click to Apply)
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-              {TEMPLATE_PRESETS.map((tpl) => {
-                const Icon = tpl.icon;
-                const isSelected = brandName === tpl.brandName;
-                return (
-                  <button
-                    key={tpl.title}
-                    type="button"
-                    onClick={() => applyTemplate(tpl)}
-                    className={cn(
-                      "p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between group",
-                      isSelected
-                        ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/60 ring-2 ring-indigo-500/20 shadow-xs"
-                        : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 hover:bg-white dark:hover:bg-slate-800 hover:border-slate-300"
-                    )}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300">
-                        <Icon className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                      </div>
-                      <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                        {tpl.title}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">
-                      {tpl.brandName} • {tpl.category}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Interactive Form Fields */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Brand Name *
-              </label>
-              <input
-                type="text"
-                value={brandName}
-                onChange={(e) => setBrandName(e.target.value)}
-                placeholder="e.g. Acme Streetwear"
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-600 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Analysis Project Title *
-              </label>
-              <input
-                type="text"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                placeholder="e.g. Tokyo Streetwear Expansion"
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-600 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Industry Category *
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white cursor-pointer focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-600 focus:outline-none"
-              >
-                <option value="Fashion & Apparel">Fashion & Apparel</option>
-                <option value="Food & Beverage">Food & Beverage</option>
-                <option value="Beauty & Cosmetics">Beauty & Cosmetics</option>
-                <option value="Consumer Electronics">Consumer Electronics</option>
-                <option value="Media & Entertainment">Media & Entertainment</option>
-                <option value="Home & Design">Home & Design</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Product Positioning Tier
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {(["Premium", "Mid-market", "Budget-friendly"] as const).map((tier) => (
-                  <button
-                    key={tier}
-                    type="button"
-                    onClick={() => setProductPositioning(tier)}
-                    className={cn(
-                      "py-2 px-1 text-xs font-semibold rounded-xl border text-center transition-all cursor-pointer",
-                      productPositioning === tier
-                        ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300"
-                        : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 text-slate-600 dark:text-slate-400 hover:bg-white"
-                    )}
-                  >
-                    {tier}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Core Brand & Product Description *
-              </label>
-              <textarea
-                rows={2}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Explain what products you make, materials, aesthetic and unique selling proposition..."
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-600 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Action Row */}
-          <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={() => setCurrentStage(2)}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs flex items-center space-x-1.5 cursor-pointer"
-            >
-              <span>Next: Target Audience</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* STAGE 2: TARGET AUDIENCE */}
-      {/* ========================================================================= */}
-      {currentStage === 2 && (
-        <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-7 shadow-xs space-y-6 animate-in fade-in duration-200">
-          <div className="flex items-start space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
-              <Users className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Step 2 of 5: Target Audience & Subculture Affinity
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Define the cultural cohort you want to resonate with. Qloo will query audience affinities, music tastes and lifestyle clusters matching these signals.
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Audience Segment Persona Name
-              </label>
-              <input
-                type="text"
-                value={audienceName}
-                onChange={(e) => setAudienceName(e.target.value)}
-                placeholder="e.g. Gen Z Streetwear Enthusiasts"
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-600 focus:outline-none"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Age Cohort
-                </label>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {[
-                    { label: "15 – 25 (Gen Z)", range: [15, 25] as [number, number] },
-                    { label: "25 – 35 (Millennials)", range: [25, 35] as [number, number] },
-                    { label: "35 – 50 (Gen X)", range: [35, 50] as [number, number] },
-                    { label: "All Ages (15–55)", range: [15, 55] as [number, number] },
-                  ].map((item) => (
-                    <button
-                      key={item.label}
-                      type="button"
-                      onClick={() => setAgeRange(item.range)}
-                      className={cn(
-                        "py-2 px-2 text-[11px] font-semibold rounded-xl border text-center transition-all cursor-pointer",
-                        ageRange[0] === item.range[0] && ageRange[1] === item.range[1]
-                          ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-bold"
-                          : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 text-slate-600 dark:text-slate-400 hover:bg-white"
-                      )}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Income Bracket
-                </label>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {(["All", "Low", "Medium", "High"] as const).map((inc) => (
-                    <button
-                      key={inc}
-                      type="button"
-                      onClick={() => setIncomeLevel(inc)}
-                      className={cn(
-                        "py-2 px-1 text-xs font-semibold rounded-xl border text-center transition-all cursor-pointer",
-                        incomeLevel === inc
-                          ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-bold"
-                          : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 text-slate-600 dark:text-slate-400 hover:bg-white"
-                      )}
-                    >
-                      {inc}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Gender Distribution
-                </label>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {(["All", "Male", "Female", "Non-binary"] as const).map((g) => (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => setGender(g)}
-                      className={cn(
-                        "py-2 px-1 text-xs font-semibold rounded-xl border text-center transition-all cursor-pointer",
-                        gender === g
-                          ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-bold"
-                          : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 text-slate-600 dark:text-slate-400 hover:bg-white"
-                      )}
-                    >
-                      {g}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Cultural Taste Interests */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                Subculture & Lifestyle Interests (Select all that apply)
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {CURATED_INTERESTS.map((interest) => {
-                  const isSelected = selectedInterests.includes(interest);
-                  return (
-                    <button
-                      key={interest}
-                      type="button"
-                      onClick={() => toggleInterest(interest)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer flex items-center space-x-1.5",
-                        isSelected
-                          ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-500/30"
-                          : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 text-slate-600 dark:text-slate-400 hover:bg-white"
-                      )}
-                    >
-                      <span>{interest}</span>
-                      {isSelected && <Check className="w-3 h-3 stroke-[2.5]" />}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Add Custom Subculture Interest */}
-              <div className="mt-3 flex items-center gap-2 max-w-sm">
-                <input
-                  type="text"
-                  value={customInterest}
-                  onChange={(e) => setCustomInterest(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCustomInterest())}
-                  placeholder="Add custom taste signal (e.g. Acid Jazz, Pottery)..."
-                  className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3 py-1.5 text-xs text-slate-900 dark:text-white"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddCustomInterest}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 dark:bg-slate-800 text-white text-xs font-semibold cursor-pointer hover:bg-slate-800"
+      {/* Main Grid: Conversation Feed (Left) & Live Strategy Blueprint (Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Conversational Interviewer (7 Cols) */}
+        <div className="lg:col-span-7 space-y-5">
+          {/* Previous Answered History Pills */}
+          {history.length > 0 && (
+            <div className="space-y-3">
+              {history.map((h) => (
+                <div
+                  key={h.step}
+                  className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xs flex items-center justify-between gap-3 text-xs"
                 >
-                  Add
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Row */}
-          <div className="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={() => setCurrentStage(1)}
-              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 transition-colors flex items-center space-x-1.5 cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setCurrentStage(3)}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs flex items-center space-x-1.5 cursor-pointer"
-            >
-              <span>Next: Select Markets</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* STAGE 3: TARGET MARKETS (LIVE API DRIVEN) */}
-      {/* ========================================================================= */}
-      {currentStage === 3 && (
-        <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-7 shadow-xs space-y-6 animate-in fade-in duration-200">
-          <div className="flex items-start space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
-              <Globe2 className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Step 3 of 5: Candidate Markets (Live Global Database)
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Select up to 10 markets to benchmark. Search any world country, metro, or territory without restrictions.
-              </p>
-            </div>
-          </div>
-
-          {/* Live Search Input */}
-          <div className="relative">
-            <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              value={marketSearch}
-              onChange={(e) => setMarketSearch(e.target.value)}
-              placeholder="Live search any city or country worldwide (e.g. Tokyo, Paris, Mumbai, Iceland, Kenya)..."
-              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 pl-10 pr-10 py-2.5 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-600 focus:outline-none"
-            />
-            {isSearchingMarkets && (
-              <Loader2 className="absolute right-3.5 top-3 w-4 h-4 text-indigo-600 animate-spin" />
-            )}
-          </div>
-
-          {/* Selected Markets Pill Summary */}
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-900 dark:text-white">
-                Selected Markets ({selectedMarkets.length}/10)
-              </span>
-              {selectedMarkets.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedMarkets([])}
-                  className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
-                >
-                  Clear all
-                </button>
-              )}
-            </div>
-
-            {selectedMarkets.length === 0 ? (
-              <p className="text-xs text-slate-400 italic">
-                No markets selected yet. Click any market card below or search above.
-              </p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {selectedMarkets.map((m) => (
-                  <span
-                    key={m.id}
-                    className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-900 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 shadow-2xs"
-                  >
-                    <span>{m.flag}</span>
-                    <span>{m.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => toggleMarket(m)}
-                      className="text-slate-400 hover:text-rose-600 transition-colors ml-0.5 cursor-pointer"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Available Markets Grid */}
-          <div>
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">
-              Available Cultural Hubs (Click to Toggle)
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto pr-1">
-              {searchResults.slice(0, 15).map((m) => {
-                const isSelected = selectedMarkets.some((sm) => sm.id === m.id);
-                return (
-                  <div
-                    key={m.id}
-                    onClick={() => toggleMarket(m)}
-                    className={cn(
-                      "p-3 rounded-xl border text-left transition-all cursor-pointer flex items-start justify-between gap-2.5 group",
-                      isSelected
-                        ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/60 ring-2 ring-indigo-500/20 shadow-xs"
-                        : "border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-950/40 hover:bg-white dark:hover:bg-slate-800"
-                    )}
-                  >
-                    <div className="flex items-start space-x-2.5 min-w-0">
-                      <span className="text-2xl shrink-0 mt-0.5">{m.flag}</span>
-                      <div className="min-w-0">
-                        <div className="flex items-center space-x-1.5">
-                          <span className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                            {m.name}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {m.country_code}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                          {m.country} • {m.region}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div
-                      className={cn(
-                        "w-5 h-5 rounded-md flex items-center justify-center border transition-all shrink-0 mt-0.5",
-                        isSelected
-                          ? "bg-indigo-600 border-indigo-600 text-white shadow-xs"
-                          : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-transparent"
-                      )}
-                    >
-                      <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <div className="space-y-1">
+                    <div className="text-[11px] text-slate-400 font-medium">{h.question}</div>
+                    <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>{h.answer}</span>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
 
-          {/* Action Row */}
-          <div className="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={() => setCurrentStage(2)}
-              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 transition-colors flex items-center space-x-1.5 cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back</span>
-            </button>
-            <button
-              type="button"
-              disabled={selectedMarkets.length === 0}
-              onClick={() => setCurrentStage(4)}
-              className={cn(
-                "px-5 py-2.5 rounded-xl text-white text-xs font-bold transition-all shadow-xs flex items-center space-x-1.5",
-                selectedMarkets.length > 0
-                  ? "bg-indigo-600 hover:bg-indigo-700 cursor-pointer"
-                  : "bg-slate-300 dark:bg-slate-800 cursor-not-allowed opacity-60"
-              )}
-            >
-              <span>Next: Strategic Goals</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* STAGE 4: STRATEGIC GOALS & TIMELINE */}
-      {/* ========================================================================= */}
-      {currentStage === 4 && (
-        <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-7 shadow-xs space-y-6 animate-in fade-in duration-200">
-          <div className="flex items-start space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
-              <Target className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Step 4 of 5: Business Objectives & Launch Constraints
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Clarify your expansion goals. The Market Strategy Agent will formulate entry sequencing and local adaptation playbooks tailored to your timeline.
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                Primary Business Objective *
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-                {[
-                  { id: "Market expansion", desc: "Find best new markets for organic growth" },
-                  { id: "Product launch", desc: "Evaluate markets for immediate launch" },
-                  { id: "Competitive analysis", desc: "Benchmark against established players" },
-                  { id: "Consumer research", desc: "Deep dive into local taste trends" },
-                ].map((obj) => (
                   <button
-                    key={obj.id}
-                    type="button"
-                    onClick={() => setPrimaryGoal(obj.id)}
-                    className={cn(
-                      "p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between",
-                      primaryGoal === obj.id
-                        ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/70 text-indigo-950 dark:text-white ring-1 ring-indigo-500/20"
-                        : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 text-slate-700 dark:text-slate-300 hover:bg-white"
-                    )}
+                    onClick={() => setCurrentStep(h.step)}
+                    className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+                    title="Edit answer"
                   >
-                    <span className="text-xs font-bold">{obj.id}</span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                      {obj.desc}
-                    </span>
+                    <Edit2 className="w-3.5 h-3.5" />
                   </button>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
+          )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Launch Timeline
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {["1–3 months", "3–6 months", "6–12 months"].map((tl) => (
+          {/* Active Question Panel */}
+          <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-7 shadow-sm space-y-6">
+            {/* Step 0: Brand & Concept */}
+            {currentStep === 0 && (
+              <div className="space-y-5 animate-in fade-in duration-200">
+                <div className="space-y-1.5">
+                  <div className="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                    <Sparkles className="w-4 h-4" />
+                    <span>Question 1 of 4 • Brand & Concept</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                    What brand or concept are you planning to expand?
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Click a 1-tap recommendation chip below, or type ANY brand name and category freely into the input.
+                  </p>
+                </div>
+
+                {/* 1-Click Option Chips on Top */}
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Popular Strategic Presets (1-Click Fill):
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {BRAND_SUGGESTIONS.map((b) => (
+                      <button
+                        key={b.name}
+                        type="button"
+                        onClick={() => {
+                          setCustomBrandText(b.name);
+                          setCustomCategoryText(b.category);
+                          setProductPositioning(b.positioning);
+                          setDescription(b.description);
+                          setTags(b.tags);
+                          setAudienceName(b.suggestedPersona);
+                          setSelectedInterests(b.suggestedInterests);
+                          handleConfirmBrand(b.name, b.category, b.description);
+                        }}
+                        className="p-3 text-left rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 hover:border-indigo-400 dark:hover:border-indigo-600 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 transition-all text-xs space-y-1 group"
+                      >
+                        <div className="flex items-center justify-between font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                          <span>{b.name}</span>
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                            {b.positioning}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-400">{b.category}</div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
+                          {b.description}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Free Text Input Form */}
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Or Type Any Custom Brand / Concept:
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-500 mb-1 block">
+                        Brand Name
+                      </label>
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        value={customBrandText}
+                        onChange={(e) => setCustomBrandText(e.target.value)}
+                        placeholder="e.g., Jacquemus, Rapha, Local Specialty..."
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleConfirmBrand();
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-500 mb-1 block">
+                        Category / Industry
+                      </label>
+                      <input
+                        type="text"
+                        value={customCategoryText}
+                        onChange={(e) => setCustomCategoryText(e.target.value)}
+                        placeholder="e.g., Luxury Fashion, Third-Wave Coffee..."
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleConfirmBrand();
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-2">
                     <button
-                      key={tl}
                       type="button"
-                      onClick={() => setLaunchTimeline(tl)}
-                      className={cn(
-                        "py-2 px-1 text-xs font-semibold rounded-xl border text-center transition-all cursor-pointer",
-                        launchTimeline === tl
-                          ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-bold"
-                          : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 text-slate-600 dark:text-slate-400 hover:bg-white"
-                      )}
+                      onClick={() => handleConfirmBrand()}
+                      className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors shadow-sm"
                     >
-                      {tl}
+                      <span>Confirm & Continue</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
                     </button>
-                  ))}
+                  </div>
                 </div>
               </div>
+            )}
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Target Pricing Tier
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(["Premium", "Mid-market", "Budget-friendly"] as const).map((tier) => (
+            {/* Step 1: Cultural Demographic & Persona */}
+            {currentStep === 1 && (
+              <div className="space-y-5 animate-in fade-in duration-200">
+                <div className="space-y-1.5">
+                  <div className="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                    <Users className="w-4 h-4" />
+                    <span>Question 2 of 4 • Audience & Persona</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                    Which cultural demographic and lifestyle cohort should we target?
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Select a curated cultural cohort chip, or type your exact audience persona in free-text.
+                  </p>
+                </div>
+
+                {/* 1-Click Persona Chips on Top */}
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Curated Cultural Cohort Chips (1-Click Fill):
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {PERSONA_SUGGESTIONS.map((p) => (
+                      <button
+                        key={p.title}
+                        type="button"
+                        onClick={() => {
+                          setCustomPersonaText(p.title);
+                          setAgeRange(p.age);
+                          setIncomeLevel(p.income);
+                          setSelectedInterests(p.interests);
+                          handleConfirmAudience(p.title, p.interests);
+                        }}
+                        className="p-3 text-left rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 hover:border-indigo-400 dark:hover:border-indigo-600 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 transition-all text-xs space-y-1.5 group"
+                      >
+                        <div className="font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                          {p.title}
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
+                          {p.desc}
+                        </p>
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {p.interests.map((int, i) => (
+                            <span key={i} className="text-[9px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                              {int}
+                            </span>
+                          ))}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Free Text Input Form */}
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Or Type Any Custom Audience Persona:
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-500 mb-1 block">
+                      Target Audience Persona / Cohort Description
+                    </label>
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={customPersonaText}
+                      onChange={(e) => setCustomPersonaText(e.target.value)}
+                      placeholder="e.g., Underground techno producers, Eco-conscious architects, Gen Z gamers..."
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleConfirmAudience();
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
                     <button
-                      key={tier}
                       type="button"
-                      onClick={() => setProductPositioning(tier)}
-                      className={cn(
-                        "py-2 px-1 text-xs font-semibold rounded-xl border text-center transition-all cursor-pointer",
-                        productPositioning === tier
-                          ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-bold"
-                          : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 text-slate-600 dark:text-slate-400 hover:bg-white"
-                      )}
+                      onClick={() => setCurrentStep(0)}
+                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
                     >
-                      {tier}
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Back</span>
                     </button>
-                  ))}
+
+                    <button
+                      type="button"
+                      onClick={() => handleConfirmAudience()}
+                      className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors shadow-sm"
+                    >
+                      <span>Confirm & Continue</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Additional Strategic Context or Hypothesis
-              </label>
-              <textarea
-                rows={2}
-                value={additionalContext}
-                onChange={(e) => setAdditionalContext(e.target.value)}
-                placeholder="Any specific hypothesis, competitor to challenge, or channel focus you want the AI to consider..."
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-600 focus:outline-none"
-              />
-            </div>
-          </div>
+            {/* Step 2: Candidate Cultural Epicenters & Markets */}
+            {currentStep === 2 && (
+              <div className="space-y-5 animate-in fade-in duration-200">
+                <div className="space-y-1.5">
+                  <div className="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                    <Globe2 className="w-4 h-4" />
+                    <span>Question 3 of 4 • Cultural Epicenters & Markets</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                    Which global cultural epicenters or cities do you want to evaluate?
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Click 1-tap city chips to select multiple candidate markets, or type ANY world city into the dynamic resolver.
+                  </p>
+                </div>
 
-          {/* Action Row */}
-          <div className="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={() => setCurrentStage(3)}
-              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 transition-colors flex items-center space-x-1.5 cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setCurrentStage(5)}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs flex items-center space-x-1.5 cursor-pointer"
-            >
-              <span>Review Analysis Spec</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+                {/* 1-Click Market Hub Chips */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    <span>Recommended Global Epicenters (Click to Toggle):</span>
+                    <span className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400">
+                      {selectedMarkets.length} Selected
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {MARKET_HUBS.map((hub) => {
+                      const isSelected = selectedMarkets.some(
+                        (m) => m.name.toLowerCase() === hub.name.toLowerCase()
+                      );
+
+                      return (
+                        <button
+                          key={hub.name}
+                          type="button"
+                          onClick={() => handleToggleMarket(hub)}
+                          className={cn(
+                            "p-3 rounded-xl border text-left transition-all text-xs flex flex-col justify-between space-y-1 relative group",
+                            isSelected
+                              ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/40 shadow-xs"
+                              : "border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 hover:border-slate-400"
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xl" role="img" aria-label={hub.country}>
+                              {hub.flag}
+                            </span>
+                            {isSelected && (
+                              <CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-bold text-slate-900 dark:text-white">
+                              {hub.name}
+                            </div>
+                            <div className="text-[10px] text-slate-400">{hub.country}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Free Text World City Resolver */}
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Or Type Any World City / Country:
+                  </div>
+
+                  <div className="flex space-x-2">
+                    <div className="relative flex-1">
+                      <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        value={customMarketText}
+                        onChange={(e) => setCustomMarketText(e.target.value)}
+                        placeholder="Type city or country: e.g., Amsterdam, Melbourne, Stockholm, Dubai..."
+                        className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleAddCustomMarket();
+                        }}
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleAddCustomMarket}
+                      disabled={searchingMarket || !customMarketText.trim()}
+                      className="px-3.5 py-2 rounded-lg bg-slate-800 dark:bg-slate-700 text-white text-xs font-semibold hover:bg-slate-900 disabled:opacity-50 flex items-center space-x-1"
+                    >
+                      {searchingMarket ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Plus className="w-3.5 h-3.5" />
+                      )}
+                      <span>Add</span>
+                    </button>
+                  </div>
+
+                  {/* Selected Markets Tag Bar */}
+                  {selectedMarkets.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-2">
+                      {selectedMarkets.map((m) => (
+                        <span
+                          key={m.id || m.name}
+                          className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                        >
+                          <span>{m.flag || "🌐"}</span>
+                          <span>{m.name}</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelectedMarkets(
+                                selectedMarkets.filter((x) => x.name !== m.name)
+                              )
+                            }
+                            className="text-slate-400 hover:text-rose-500"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentStep(1)}
+                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Back</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleConfirmMarkets}
+                      className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors shadow-sm"
+                    >
+                      <span>Confirm & Continue</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Strategic Goals & Timeline */}
+            {currentStep === 3 && (
+              <div className="space-y-5 animate-in fade-in duration-200">
+                <div className="space-y-1.5">
+                  <div className="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                    <Target className="w-4 h-4" />
+                    <span>Question 4 of 4 • Strategy & Launch Horizon</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                    What is your primary commercial strategy and launch horizon?
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Select a strategic deployment objective chip, or specify custom milestones in free-text.
+                  </p>
+                </div>
+
+                {/* 1-Click Goal Chips on Top */}
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Strategic Objective Chips (1-Click Fill):
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {GOAL_SUGGESTIONS.map((g) => (
+                      <button
+                        key={g.goal}
+                        type="button"
+                        onClick={() => {
+                          setCustomGoalText(g.goal);
+                          setLaunchTimeline(g.timeline);
+                          setProductPositioning(g.positioning);
+                          handleConfirmGoals(g.goal, g.timeline, g.positioning);
+                        }}
+                        className="p-3 text-left rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 hover:border-indigo-400 dark:hover:border-indigo-600 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 transition-all text-xs space-y-1.5 group"
+                      >
+                        <div className="font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                          {g.goal}
+                        </div>
+                        <div className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400 font-semibold">
+                          {g.timeline}
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
+                          {g.desc}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Free Text Input Form */}
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Or Type Any Custom Strategic Goal:
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-500 mb-1 block">
+                      Custom Objective / Campaign Directive
+                    </label>
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={customGoalText}
+                      onChange={(e) => setCustomGoalText(e.target.value)}
+                      placeholder="e.g., Capsule collection pop-up with local electronic music label..."
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleConfirmGoals();
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentStep(2)}
+                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Back</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleConfirmGoals()}
+                      className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors shadow-sm"
+                    >
+                      <span>Review Executive Blueprint</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Final Blueprint Overview & Ready to Launch */}
+            {currentStep === 4 && (
+              <div className="space-y-6 animate-in fade-in duration-200">
+                <div className="space-y-1.5">
+                  <div className="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Configuration Complete • Ready for Multi-Agent Execution</span>
+                  </div>
+                  <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">
+                    Autonomous Cultural Intelligence Blueprint
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Review your synthesized strategy parameters. Click the launch button below to execute the 10-node agent DAG.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 space-y-3 text-xs">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-semibold">Brand & Industry</span>
+                      <strong className="text-slate-800 dark:text-slate-200">{brandName}</strong> ({category})
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-semibold">Positioning</span>
+                      <strong className="text-slate-800 dark:text-slate-200">{productPositioning}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-semibold">Target Cohort</span>
+                      <strong className="text-slate-800 dark:text-slate-200">{audienceName}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-semibold">Horizon & Goal</span>
+                      <strong className="text-slate-800 dark:text-slate-200">{primaryGoal}</strong>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold mb-1">
+                      Candidate Evaluation Markets ({selectedMarkets.length})
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedMarkets.map((m) => (
+                        <span
+                          key={m.id || m.name}
+                          className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                        >
+                          <span>{m.flag || "🌐"}</span>
+                          <span>{m.name}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(3)}
+                    className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back to Goals</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={onLaunch}
+                    disabled={loading}
+                    className="inline-flex items-center space-x-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 via-indigo-600 to-indigo-700 hover:from-emerald-500 hover:to-indigo-600 text-white font-bold text-sm transition-all shadow-lg shadow-indigo-500/25 active:scale-[0.99] disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Launching Agent Execution...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-4 h-4 fill-white" />
+                        <span>🚀 Auto-Create & Launch Analysis</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      )}
 
-      {/* ========================================================================= */}
-      {/* STAGE 5: FINAL REVIEW & LIVE MULTI-AGENT LAUNCH */}
-      {/* ========================================================================= */}
-      {currentStage === 5 && (
-        <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-xs space-y-6 animate-in fade-in duration-200">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start space-x-3">
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-                <CheckCircle2 className="w-5 h-5 stroke-[2.2]" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  Step 5 of 5: AI Specification Review & Launch
+        {/* Right Column: Real-Time Strategy Blueprint Card (5 Cols) */}
+        <div className="lg:col-span-5 space-y-5 sticky top-6">
+          <div className="rounded-2xl border border-indigo-200/80 dark:border-indigo-900/60 bg-gradient-to-b from-white via-indigo-50/20 to-white dark:from-slate-900 dark:via-indigo-950/20 dark:to-slate-900 p-6 shadow-md space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center space-x-2">
+                <ShieldCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Real-time Strategy Blueprint
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Your parameters have been synthesized into a valid multi-agent execution payload. Review details before kicking off the live run.
-                </p>
               </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800">
+                Live Synthesis
+              </span>
             </div>
 
-            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800 font-mono">
-              Ready to Launch
-            </span>
-          </div>
-
-          {/* Synthesis Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Card 1: Brand & Category */}
-            <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                <span>Brand & Category</span>
-                <button
-                  type="button"
-                  onClick={() => setCurrentStage(1)}
-                  className="text-indigo-600 hover:underline text-[11px] font-semibold"
-                >
-                  Edit
-                </button>
+            {/* Brand & Sector */}
+            <div className="space-y-1.5">
+              <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                Brand Identity & Sector
               </div>
-              <div className="space-y-1">
-                <p className="text-sm font-bold text-slate-900 dark:text-white">{brandName}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {category} • {productPositioning}
-                </p>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2 pt-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-sm text-slate-900 dark:text-white">
+                  {brandName || "Brand Name Pending"}
+                </span>
+                <span className="text-[11px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
+                  {category || "Lifestyle"}
+                </span>
+              </div>
+              {description && (
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
                   {description}
                 </p>
-              </div>
+              )}
             </div>
 
-            {/* Card 2: Target Audience */}
-            <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                <span>Target Cohort</span>
-                <button
-                  type="button"
-                  onClick={() => setCurrentStage(2)}
-                  className="text-indigo-600 hover:underline text-[11px] font-semibold"
-                >
-                  Edit
-                </button>
+            {/* Persona & Vibe */}
+            <div className="space-y-1.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                Target Cultural Demographic
               </div>
-              <div className="space-y-1">
-                <p className="text-sm font-bold text-slate-900 dark:text-white">{audienceName}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Age {ageRange[0]}–{ageRange[1]} • {gender} • {incomeLevel} Income
-                </p>
+              <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">
+                {audienceName || "Urban Cultural Tastemakers"}
+              </div>
+              {selectedInterests.length > 0 && (
                 <div className="flex flex-wrap gap-1 pt-1">
-                  {selectedInterests.slice(0, 4).map((i) => (
+                  {selectedInterests.map((int, i) => (
                     <span
                       key={i}
-                      className="px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-[10px] text-slate-700 dark:text-slate-300 font-medium"
+                      className="text-[10px] px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-medium border border-indigo-200 dark:border-indigo-800"
                     >
-                      {i}
+                      {int}
                     </span>
                   ))}
-                  {selectedInterests.length > 4 && (
-                    <span className="text-[10px] text-slate-400">
-                      +{selectedInterests.length - 4} more
-                    </span>
-                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Candidate Evaluation Hubs */}
+            <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                <span>Candidate Markets ({selectedMarkets.length})</span>
+                <span>Jev Posture</span>
+              </div>
+
+              {selectedMarkets.length === 0 ? (
+                <div className="py-3 text-center text-xs text-slate-400 italic">
+                  No candidate markets selected yet
+                </div>
+              ) : (
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                  {selectedMarkets.map((m) => (
+                    <div
+                      key={m.id || m.name}
+                      className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-xs"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span className="text-base" role="img" aria-label={m.country}>
+                          {m.flag || "🌐"}
+                        </span>
+                        <div>
+                          <div className="font-semibold text-slate-900 dark:text-white">
+                            {m.name}
+                          </div>
+                          <div className="text-[10px] text-slate-400">{m.country}</div>
+                        </div>
+                      </div>
+
+                      <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                        Gate Active
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Qloo Query Vectors Preview */}
+            <div className="space-y-1.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                Qloo Taste Graph Vectors
+              </div>
+              <div className="grid grid-cols-2 gap-1.5 text-[10px] font-mono text-slate-600 dark:text-slate-300">
+                <div className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 truncate">
+                  • brand_affinity
+                </div>
+                <div className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 truncate">
+                  • audience_overlap
+                </div>
+                <div className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 truncate">
+                  • category_density
+                </div>
+                <div className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 truncate">
+                  • subculture_momentum
                 </div>
               </div>
             </div>
 
-            {/* Card 3: Selected Candidate Markets */}
-            <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                <span>Candidate Markets ({selectedMarkets.length})</span>
-                <button
-                  type="button"
-                  onClick={() => setCurrentStage(3)}
-                  className="text-indigo-600 hover:underline text-[11px] font-semibold"
-                >
-                  Edit
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {selectedMarkets.map((m) => (
-                  <span
-                    key={m.id}
-                    className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200"
-                  >
-                    <span>{m.flag}</span>
-                    <span>{m.name}</span>
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Card 4: Execution Pipeline Specs */}
-            <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                <span>Execution Plan</span>
-                <button
-                  type="button"
-                  onClick={() => setCurrentStage(4)}
-                  className="text-indigo-600 hover:underline text-[11px] font-semibold"
-                >
-                  Edit
-                </button>
-              </div>
-              <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400">
-                <p>
-                  <span className="font-semibold text-slate-900 dark:text-white">Goal:</span> {primaryGoal}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-900 dark:text-white">Timeline:</span> {launchTimeline}
-                </p>
-                <p className="flex items-center space-x-1 text-emerald-600 dark:text-emerald-400 pt-1 font-semibold">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>10-Agent Pipeline + Qloo Hash Auditing</span>
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Big Launch Button */}
-          <div className="p-4 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-left">
-              <h4 className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
-                Ready to execute live multi-agent analysis?
-              </h4>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Saves project in PostgreSQL and initiates the 10-step agent DAG in LangGraph.
-              </p>
-            </div>
-
-            <div className="flex items-center space-x-3 w-full sm:w-auto">
+            {/* Direct Launch Action Button */}
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
-                onClick={() => setCurrentStage(4)}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                disabled={loading}
                 onClick={onLaunch}
-                className="flex-1 sm:flex-initial px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold tracking-wide transition-all shadow-md hover:shadow-indigo-500/25 flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
+                disabled={loading || selectedMarkets.length === 0}
+                className="w-full inline-flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-400/20 transition-all active:scale-[0.99] disabled:opacity-50"
               >
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Launching Analysis...</span>
+                    <span>Launching Analysis DAG...</span>
                   </>
                 ) : (
                   <>
-                    <Play className="w-4 h-4 fill-current" />
-                    <span>Launch Multi-Agent Analysis</span>
+                    <Play className="w-3.5 h-3.5 fill-white" />
+                    <span>🚀 Auto-Create & Launch Analysis</span>
                   </>
                 )}
               </button>
+              <p className="text-[10px] text-center text-slate-400 mt-2">
+                Creates project record and immediately triggers 10-node agent DAG
+              </p>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
