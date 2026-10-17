@@ -202,7 +202,7 @@ export default function ProjectHubPage() {
           className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm shadow-indigo-300 transition-all active:scale-[0.98] disabled:opacity-50"
         >
           <PlayCircle className="w-4 h-4" />
-          <span>{runningNew ? "Executing DAG..." : "Run Analysis"}</span>
+          <span>{runningNew ? "Evaluating Markets..." : "Run Analysis"}</span>
         </button>
       </div>
 
@@ -261,8 +261,8 @@ export default function ProjectHubPage() {
                       <div className="font-semibold text-xs text-slate-900 dark:text-white">
                         {m.name}
                       </div>
-                      <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                        Code: {m.country_code || m.location_code || "INT"}
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        {m.country || "Target Market"}
                       </div>
                     </div>
                     <span className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -408,7 +408,7 @@ export default function ProjectHubPage() {
                   No runs executed yet
                 </div>
                 <p className="text-xs text-slate-500">
-                  Click &ldquo;Run Analysis&rdquo; to launch your first 10-node agent pipeline.
+                  Click &ldquo;Run Analysis&rdquo; to evaluate market compatibility and generate strategic expansion recommendations.
                 </p>
               </div>
             )}

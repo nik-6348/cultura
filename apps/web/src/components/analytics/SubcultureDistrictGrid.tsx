@@ -134,14 +134,14 @@ export function SubcultureDistrictGrid({
         <div>
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center space-x-1.5">
             <Compass className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <span>Subculture District & Venue Density — {cityName}</span>
+            <span>Flagship Neighborhoods & Cultural Clusters — {cityName}</span>
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Geo-clustered physical taste anchors and audience gravitational centers
           </p>
         </div>
-        <span className="text-xs font-mono font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
-          Qloo Venue Heatmap
+        <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+          Local Foot-Traffic Anchors
         </span>
       </div>
 

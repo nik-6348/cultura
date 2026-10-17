@@ -59,7 +59,7 @@ export function CompatibilityMatrixChart({
         <span>Market Entry Comparative Matrix</span>
         <div className="flex items-center space-x-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500" />
-          <span>Launch Gate &gt; {Math.round(threshold * 100)}%</span>
+          <span>Readiness Threshold: &gt; {Math.round(threshold * 100)}%</span>
         </div>
       </div>
 

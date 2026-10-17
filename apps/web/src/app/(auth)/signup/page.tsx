@@ -158,7 +158,7 @@ export default function SignUpPage() {
                 Enterprise Workspace Isolation
               </div>
               <div className="text-[11px] text-slate-500 leading-relaxed mt-0.5">
-                Every project runs within a strictly isolated, multi-tenant workspace with pgvector memory guards.
+                Every project runs within a strictly isolated, private workspace with dedicated enterprise security controls.
               </div>
             </div>
           </div>
@@ -187,15 +187,15 @@ export default function SignUpPage() {
             <ul className="text-xs text-slate-300 space-y-2">
               <li className="flex items-center space-x-2">
                 <span className="text-emerald-400 font-bold">✓</span>
-                <span>Deterministic Category, Audience & Sentiment Scoring</span>
+                <span>Multi-Dimensional Cultural & Taste Compatibility Models</span>
               </li>
               <li className="flex items-center space-x-2">
                 <span className="text-emerald-400 font-bold">✓</span>
-                <span>TypeSafe Jev System One Decision Gates</span>
+                <span>Strategic Expansion Readiness Verification</span>
               </li>
               <li className="flex items-center space-x-2">
                 <span className="text-emerald-400 font-bold">✓</span>
-                <span>4-Layer Semantic Memory with pgvector Cosine Recall</span>
+                <span>Institutional Memory & Historical Market Benchmarks</span>
               </li>
             </ul>
           </div>

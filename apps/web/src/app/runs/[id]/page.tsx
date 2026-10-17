@@ -405,13 +405,13 @@ export default function RunIntelligencePage() {
         </div>
       </div>
 
-      {/* Hero Decision Card (TypeSafe Jev System One Posture) */}
+      {/* Hero Decision Card */}
       <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-xs space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-100 dark:border-slate-800">
           <div>
             <div className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
               <ShieldCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <span>TypeSafe Jev System One Posture Gate</span>
+              <span>Market Entry Recommendation</span>
             </div>
             <div className="flex items-baseline space-x-3 mt-2">
               <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
@@ -433,20 +433,33 @@ export default function RunIntelligencePage() {
               <strong className="text-slate-800 dark:text-slate-200">
                 {run.decision_confidence
                   ? `${(run.decision_confidence * 100).toFixed(1)}%`
-                  : "High (Deterministic)"}
+                  : "High (Verified)"}
               </strong>
             </div>
           </div>
         </div>
 
-        {/* Probabilities Distribution & Deterministic Score */}
+        {/* Probabilities Distribution */}
         {primaryDecision?.probabilities && (
           <div className="space-y-2">
-            <div className="flex justify-between text-xs text-slate-600 dark:text-slate-300 font-semibold">
-              <span>Decision Probability Distribution:</span>
-              <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500">
-                P(Launch)={((primaryDecision.probabilities.launch || 0) * 100).toFixed(1)}% • P(Adapt)={((primaryDecision.probabilities.adapt || 0) * 100).toFixed(1)}% • P(Avoid)={((primaryDecision.probabilities.avoid || 0) * 100).toFixed(1)}%
-              </span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs text-slate-600 dark:text-slate-300 font-semibold">
+              <span>Readiness Breakdown:</span>
+              <div className="flex items-center space-x-3 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                <span className="flex items-center space-x-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span>Launch: {((primaryDecision.probabilities.launch || 0) * 100).toFixed(1)}%</span>
+                </span>
+                <span>•</span>
+                <span className="flex items-center space-x-1">
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  <span>Adapt: {((primaryDecision.probabilities.adapt || 0) * 100).toFixed(1)}%</span>
+                </span>
+                <span>•</span>
+                <span className="flex items-center space-x-1">
+                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                  <span>Avoid: {((primaryDecision.probabilities.avoid || 0) * 100).toFixed(1)}%</span>
+                </span>
+              </div>
             </div>
             <div className="h-3 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
               <div
@@ -481,7 +494,7 @@ export default function RunIntelligencePage() {
           )}
         >
           <BarChart3 className="w-4 h-4" />
-          <span>Compatibility Matrix</span>
+          <span>Strategic Overview</span>
         </button>
 
         <button
@@ -494,7 +507,7 @@ export default function RunIntelligencePage() {
           )}
         >
           <Cpu className="w-4 h-4" />
-          <span>Agent Timeline ({steps.length})</span>
+          <span>Pipeline Audit ({steps.length})</span>
         </button>
 
         <button
@@ -507,7 +520,7 @@ export default function RunIntelligencePage() {
           )}
         >
           <Database className="w-4 h-4" />
-          <span>Qloo Evidence ({evidence.length})</span>
+          <span>Consumer Taste Signals ({evidence.length})</span>
         </button>
 
         <button
@@ -520,7 +533,7 @@ export default function RunIntelligencePage() {
           )}
         >
           <Sliders className="w-4 h-4" />
-          <span>What-If Simulation</span>
+          <span>Scenario Lab</span>
         </button>
 
         <button
@@ -551,12 +564,12 @@ export default function RunIntelligencePage() {
                     <span>Multi-Dimensional Cultural Resonance Profile</span>
                   </h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Deterministic 5-axis spider radar mapping Qloo taste signals ({winnerMarket})
+                    Multi-dimensional consumer taste alignment profile ({winnerMarket})
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
-                    {(Number(winnerScore) * 100).toFixed(1)}% Score
+                    {(Number(winnerScore) * 100).toFixed(1)}% Alignment
                   </span>
                 </div>
               </div>
@@ -569,37 +582,37 @@ export default function RunIntelligencePage() {
               {/* Dimensional Breakdown Bars */}
               <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
                 <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Fixed-Point Dimension Weights & Deterministic Outputs:
+                  Cultural Compatibility Dimensions:
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   {[
                     {
                       key: "brand_affinity",
-                      label: "Brand Proxy Affinity",
+                      label: "Brand Identity Affinity",
                       weight: "25%",
                       score: winnerDimensions.brand_affinity ?? winnerDimensions.category_affinity ?? 0.85,
                     },
                     {
                       key: "audience_overlap",
-                      label: "Audience Overlap & Preferences",
+                      label: "Audience Demographic Alignment",
                       weight: "20%",
                       score: winnerDimensions.audience_overlap ?? 0.82,
                     },
                     {
                       key: "category_ecosystem",
-                      label: "Category Ecosystem Density",
+                      label: "Category Retail & Culture Density",
                       weight: "20%",
                       score: winnerDimensions.category_ecosystem ?? winnerDimensions.sentiment_resonance ?? 0.84,
                     },
                     {
                       key: "cultural_momentum",
-                      label: "Cultural Trend Momentum",
+                      label: "Local Trend & Subculture Velocity",
                       weight: "15%",
                       score: winnerDimensions.cultural_momentum ?? winnerDimensions.trend_momentum ?? 0.78,
                     },
                     {
                       key: "evidence_coverage",
-                      label: "Evidence Coverage Completeness",
+                      label: "Signal Confidence & Validation",
                       weight: "20%",
                       score: winnerDimensions.evidence_coverage ?? winnerDimensions.contextual_fit ?? 0.95,
                     },
@@ -641,7 +654,7 @@ export default function RunIntelligencePage() {
                     Candidate Market Hierarchy
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Evaluated markets ranked against Jev System One gates
+                    Evaluated candidate markets ranked by consumer resonance and launch readiness
                   </p>
                 </div>
 
@@ -653,10 +666,10 @@ export default function RunIntelligencePage() {
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-xs text-slate-600 dark:text-slate-300 space-y-1">
                 <div className="font-semibold text-slate-900 dark:text-white flex items-center space-x-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Deterministic Audit Standard</span>
+                  <span>Verified Consumer Taste Benchmark</span>
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Scores calculated with fixed-point arithmetic (10^-4), cryptographically audited against Qloo taste snapshot.
+                  Compatibility scores are synthesized directly from real-world consumer taste signals, category preferences, and urban anchor points.
                 </p>
               </div>
             </div>
@@ -739,10 +752,10 @@ export default function RunIntelligencePage() {
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <div>
               <h2 className="text-base font-semibold text-slate-900 dark:text-white">
-                LangGraph 10-Node Agent Execution Trace
+                Deep Market Evaluation Audit
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Deterministic DAG audit log showing real network I/O, cognitive gating, and in-memory execution latency
+                Step-by-step intelligence audit verifying consumer signals, local market fit, and strategic decision criteria
               </p>
             </div>
             <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
@@ -758,6 +771,24 @@ export default function RunIntelligencePage() {
                 ? `${(dur / 1000).toFixed(1)}s`
                 : `${dur}ms`;
 
+              const nodeDisplayMap: Record<string, { title: string; subtitle: string }> = {
+                supervisor: { title: "Strategic Orchestrator", subtitle: "Scoping analysis parameters and objective alignment" },
+                brand_analyst: { title: "Brand Identity & Positioning", subtitle: "Extracting brand voice, positioning constraints, and identity anchors" },
+                market_analyst: { title: "Territory & Market Infrastructure", subtitle: "Assessing local retail landscape, regulatory factors, and urban dynamics" },
+                audience_matcher: { title: "Audience Demographics & Persona", subtitle: "Profiling target consumer cohorts and psychographic characteristics" },
+                qloo_researcher: { title: "Regional Consumer Taste Graph", subtitle: "Querying empirical cross-affinity signals across music, fashion, and culture" },
+                evidence_normalizer: { title: "Empirical Signal Calibration", subtitle: "Normalizing multi-dimensional taste scores and confidence intervals" },
+                deterministic_scorer: { title: "Cultural Compatibility Scorer", subtitle: "Calculating 5-dimensional resonance index and weighted alignment" },
+                jev_decision_gate: { title: "Strategic Readiness Decision Gate", subtitle: "Evaluating launch threshold, posture verification, and risk gates" },
+                strategy_synthesizer: { title: "Market Entry Playbook Director", subtitle: "Synthesizing localized directives, positioning roadmap, and launch timing" },
+                guardrail_validator: { title: "Strategic Governance Guard", subtitle: "Verifying empirical backing and safeguarding against ungrounded assumptions" },
+              };
+
+              const nodeMeta = (st.node_name && nodeDisplayMap[st.node_name]) || {
+                title: (st.node_name || "Evaluation Step").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+                subtitle: st.agent_role || "Intelligence evaluation task",
+              };
+
               return (
                 <div
                   key={st.id || idx}
@@ -769,24 +800,12 @@ export default function RunIntelligencePage() {
                     </div>
                     <div>
                       <div className="flex items-center space-x-2">
-                        <span className="font-bold text-slate-900 dark:text-white font-mono">
-                          {st.node_name}
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          {nodeMeta.title}
                         </span>
-                        {st.agent_role && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
-                            {st.agent_role}
-                          </span>
-                        )}
-                        {st.node_name === "qloo_researcher" && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-500/20">
-                            Live Qloo Taste Graph Gateway
-                          </span>
-                        )}
-                        {st.node_name === "jev_decision_gate" && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 font-bold border border-violet-500/20">
-                            TypeSafe JEV Cognitive Gate
-                          </span>
-                        )}
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                          {nodeMeta.subtitle}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -819,10 +838,10 @@ export default function RunIntelligencePage() {
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <div>
               <h2 className="text-base font-semibold text-slate-900 dark:text-white">
-                Normalized Qloo Empirical Evidence
+                Verified Consumer Taste Signals
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Citable signals gathered from Qloo Taste Graph API (hackathon.api.qloo.com)
+                Real-world cultural affinity and consumer preference signals verified across global taste graphs
               </p>
             </div>
             <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">

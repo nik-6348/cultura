@@ -88,8 +88,8 @@ export default function ObservabilityPage() {
     `[INFO] 10:14:03.112 [BrandAnalyst] Sanitized untrusted brand profile inputs via PromptInjectionGuard`,
     `[INFO] 10:14:03.840 [QlooGateway] Outgoing GET /tastes/affinities?entity=Category - HTTP 200 (Cache-Miss) 280ms`,
     `[INFO] 10:14:04.220 [EvidenceNormalizer] Normalized ${evidence.length} empirical evidence vectors into [0, 1] range`,
-    `[INFO] 10:14:05.105 [ScorerEngine] Deterministic 5D score computed using Decimal fixed-point arithmetic`,
-    `[INFO] 10:14:05.420 [TypeSafeJevGate] Evaluated System One decision gate -> verdict=${selectedRun?.decision_verdict || "LAUNCH"} confidence=${selectedRun?.decision_confidence || 0.92}`,
+    `[INFO] 10:14:05.105 [ScorerEngine] Multi-dimensional cultural compatibility score computed across 5 dimensions`,
+    `[INFO] 10:14:05.420 [DecisionGate] Evaluated market readiness gate -> verdict=${selectedRun?.decision_verdict || "LAUNCH"} confidence=${selectedRun?.decision_confidence || 0.92}`,
     `[INFO] 10:14:06.012 [MemoryEngine] Stored Layer C factual beliefs & generated Layer D pgvector embedding`,
     `[INFO] 10:14:06.510 [FinalReviewGuard] Completed citation verification. 0 ungrounded claims detected. Status=COMPLETED`,
   ];
@@ -182,7 +182,7 @@ export default function ObservabilityPage() {
           <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
             {decisions.length || 4}
           </div>
-          <div className="text-[10px] text-indigo-600 font-medium">TypeSafe Jev gates</div>
+          <div className="text-[10px] text-indigo-600 font-medium">Readiness verification gates</div>
         </div>
 
         <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
@@ -234,7 +234,7 @@ export default function ObservabilityPage() {
         <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-4 transition-colors">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-              Multi-Agent DAG Execution Spans
+              Multi-Agent Pipeline Execution Spans
             </h3>
             <span className="text-xs text-slate-400 font-mono">
               Trace ID: otel-{selectedRun?.id?.slice(0, 12)}

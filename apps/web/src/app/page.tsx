@@ -43,7 +43,7 @@ export default function LandingPage() {
               How it works
             </a>
             <a href="#engine" className="hover:text-slate-900 transition-colors">
-              Agent DAG
+              Intelligence Engine
             </a>
             <a href="#comparison" className="hover:text-slate-900 transition-colors">
               Why Cultura
@@ -103,7 +103,7 @@ export default function LandingPage() {
               <p className="text-lg text-slate-600 leading-relaxed max-w-xl">
                 Use real cultural taste signals to decide where to <strong>launch</strong>,{" "}
                 <strong>adapt</strong> or <strong>avoid</strong> — with an agentic AI workflow
-                powered by Qloo, deterministic 5D compatibility scoring, and TypeSafe Jev gates.
+                powered by Qloo global taste signals, 5D cultural compatibility modeling, and verified strategic readiness gates.
               </p>
 
               {/* CTAs */}
@@ -129,7 +129,7 @@ export default function LandingPage() {
               <div className="pt-4 flex flex-wrap items-center gap-6 text-xs font-medium text-slate-500">
                 <div className="flex items-center space-x-1.5">
                   <BarChart3 className="w-4 h-4 text-indigo-600" />
-                  <span>Deterministic Decimal Scorer</span>
+                  <span>5D Cultural Compatibility Model</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <Zap className="w-4 h-4 text-amber-500" />
@@ -300,7 +300,7 @@ export default function LandingPage() {
               <span className="text-2xl font-bold font-serif text-indigo-600">03</span>
               <h4 className="font-bold text-slate-900 text-base">Make Faster Decisions</h4>
               <p className="text-sm text-slate-500 leading-relaxed">
-                Evidence-backed recommendations and TypeSafe Jev gates in minutes, not consultant months.
+                Evidence-backed recommendations and strategic market entry verdicts in minutes, not consultant months.
               </p>
             </div>
 
@@ -361,7 +361,7 @@ export default function LandingPage() {
                 The Cultura Standard
               </div>
               <h3 className="text-xl font-bold text-white">
-                Deterministic Qloo Signals & Multi-Agent Intelligence
+                Empirical Consumer Signals & Multi-Agent Intelligence
               </h3>
               <ul className="space-y-3 text-sm text-indigo-100/90">
                 <li className="flex items-start space-x-2.5">
@@ -370,11 +370,11 @@ export default function LandingPage() {
                 </li>
                 <li className="flex items-start space-x-2.5">
                   <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                  <span><strong>Deterministic Decimal Math</strong>: 0 hallucination. Identical mathematical compatibility scores every run.</span>
+                  <span><strong>Deterministic Compatibility Math</strong>: Zero hallucination. Identical mathematical compatibility scores every run.</span>
                 </li>
                 <li className="flex items-start space-x-2.5">
                   <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                  <span><strong>TypeSafe Jev System One Decisions</strong>: Strict Launch / Adapt / Avoid verdicts backed by probability sums.</span>
+                  <span><strong>Strategic Readiness Decision Gates</strong>: Strict Launch / Adapt / Avoid verdicts backed by empirical consumer taste data.</span>
                 </li>
               </ul>
             </div>
@@ -382,18 +382,18 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 5. 10-Node Agent DAG Engine Overview */}
+      {/* 5. Autonomous Multi-Agent Pipeline Overview */}
       <section id="engine" className="py-20 bg-white border-t border-slate-200/80">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
             <span className="text-xs uppercase font-bold tracking-widest text-indigo-600 font-mono">
-              Agentic Orchestration
+              Autonomous Intelligence
             </span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
-              10 Specialized Autonomous Agents in LangGraph DAG
+              10 Specialized Strategic Analysis Agents
             </h2>
             <p className="text-base text-slate-600">
-              Each analysis executes through a strict, reproducible multi-agent pipeline with pgvector semantic memory.
+              Each analysis executes through an autonomous multi-stage evaluation pipeline with institutional memory.
             </p>
           </div>
 
@@ -403,12 +403,12 @@ export default function LandingPage() {
               { num: "02", name: "Brand Analyst", desc: "Extracts identity & positioning constraints" },
               { num: "03", name: "Market Analyst", desc: "Evaluates target territory infrastructure" },
               { num: "04", name: "Audience Analyst", desc: "Maps demographic & psychographic cohorts" },
-              { num: "05", name: "Qloo Researcher", desc: "Queries empirical taste graph entities" },
-              { num: "06", name: "Evidence Normalizer", desc: "Standardizes scores into [0, 1] range" },
-              { num: "07", name: "Deterministic Scorer", desc: "Computes 5D fixed-point Decimal scores" },
-              { num: "08", name: "Jev Decision Gate", desc: "TypeSafe System One Launch/Adapt/Avoid" },
+              { num: "05", name: "Taste Researcher", desc: "Queries empirical consumer taste signals" },
+              { num: "06", name: "Signal Normalizer", desc: "Standardizes scores into [0, 1] range" },
+              { num: "07", name: "Compatibility Scorer", desc: "Computes 5D cultural compatibility index" },
+              { num: "08", name: "Readiness Gate", desc: "Verifies Launch / Adapt / Avoid criteria" },
               { num: "09", name: "Strategy Synthesizer", desc: "Builds actionable go-to-market playbook" },
-              { num: "10", name: "Final Review Guard", desc: "Verifies grounding & blocks hallucinations" },
+              { num: "10", name: "Governance Guard", desc: "Verifies grounding & blocks assumptions" },
             ].map((agent) => (
               <div
                 key={agent.num}

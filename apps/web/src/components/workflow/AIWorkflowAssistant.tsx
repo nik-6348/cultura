@@ -157,13 +157,13 @@ export function AIWorkflowAssistant({
     {
       id: "msg-welcome",
       sender: "agent",
-      text: "Hello! I am your AI Cultural Strategy Copilot.\n\nTell me what brand or expansion concept you have in mind (or pick one of the curated templates below), and I will build your complete **Strategic Expansion Plan**. Then, you can freely edit anything via natural language prompts!",
+      text: "Welcome to Cultura. Tell me what brand or expansion concept you have in mind (or select a curated scenario below), and I will build your **Strategic Expansion Blueprint** with candidate market recommendations.",
       timestamp: formatTimeString(),
       chips: [
-        { label: "⚡ Acme Streetwear Lab (Tokyo & Seoul)", value: "I want to expand Acme Streetwear Lab to Tokyo and Seoul" },
-        { label: "⚡ Kuro Craft Coffee (Tokyo & London)", value: "Launch Kuro Craft Coffee in Tokyo and London" },
-        { label: "⚡ Lumina Niche Fragrance (Paris & Seoul)", value: "Create expansion plan for Lumina Niche Fragrance in Paris and Seoul" },
-        { label: "⚡ Rapha Athleisure (Berlin & London)", value: "Plan European expansion for Rapha Athleisure in Berlin and London" },
+        { label: "Acme Streetwear Lab (Tokyo & Seoul)", value: "I want to expand Acme Streetwear Lab to Tokyo and Seoul" },
+        { label: "Kuro Craft Coffee (Tokyo & London)", value: "Launch Kuro Craft Coffee in Tokyo and London" },
+        { label: "Lumina Niche Fragrance (Paris & Seoul)", value: "Create expansion plan for Lumina Niche Fragrance in Paris and Seoul" },
+        { label: "Rapha Athleisure (Berlin & London)", value: "Plan European expansion for Rapha Athleisure in Berlin and London" },
       ],
     },
   ]);
@@ -332,15 +332,15 @@ export function AIWorkflowAssistant({
           {
             id: `agent-plan-${Date.now()}`,
             sender: "agent",
-            text: `🎯 **Strategic Expansion Plan Synthesized for ${plan.brand}!**\n\nI have structured your initial strategy based on live Qloo taste profiles:\n- **Brand**: ${plan.brand} (${plan.category})\n- **Target Persona**: ${plan.persona}\n- **Candidate Epicenters**: ${marketNames}\n- **Strategic Goal**: ${plan.goal} • ${plan.timeline}\n\n💡 **You can now edit or refine anything via NLP!**\n*Examples: "Change Berlin to Paris", "Add London to candidate markets", "Target luxury connoisseurs instead", "What if we do a pop-up?"*`,
+            text: `**Strategic Expansion Blueprint Synthesized for ${plan.brand}**\n\nI have synthesized your initial strategy based on real-world consumer taste profiles:\n• **Brand**: ${plan.brand} (${plan.category})\n• **Target Persona**: ${plan.persona}\n• **Candidate Markets**: ${marketNames}\n• **Strategic Goal**: ${plan.goal} • ${plan.timeline}\n\n*You can adjust any parameter or explore alternative scenarios by typing below.*`,
             isBlueprintCard: true,
             timestamp: formatTimeString(),
             chips: [
-              { label: "🔄 Swap to Paris & Tokyo", value: "Change markets to Paris and Tokyo" },
-              { label: "➕ Add London to markets", value: "Add London to candidate markets" },
-              { label: "👥 Target Luxury Connoisseurs", value: "Change target audience to High-Net-Worth Luxury Connoisseurs" },
-              { label: "🎯 Switch to Pop-Up", value: "Make the goal an Underground Cultural Pop-Up activation" },
-              { label: "❓ What if we do a Pop-Up?", value: "What if we do a pop-up instead of a permanent store?" },
+              { label: "Swap to Paris & Tokyo", value: "Change markets to Paris and Tokyo" },
+              { label: "Add London to markets", value: "Add London to candidate markets" },
+              { label: "Target Luxury Connoisseurs", value: "Change target audience to High-Net-Worth Luxury Connoisseurs" },
+              { label: "Switch to Agile Pop-Up", value: "Make the goal an Underground Cultural Pop-Up activation" },
+              { label: "What if we do a Pop-Up?", value: "What if we do a pop-up instead of a permanent store?" },
             ],
           },
         ]);
@@ -358,20 +358,20 @@ export function AIWorkflowAssistant({
         if (lower.includes("pop-up") || lower.includes("pop up")) {
           setPrimaryGoal("Underground Cultural Pop-Up & Activation (Immediate)");
           setLaunchTimeline("Immediate (1-3 Months)");
-          diffLogs.push("Goal changed to Agile Pop-Up (-65% capex risk, fast testing)");
-          whatIfInsight = "Simulating Scenario: Shifting from a permanent retail lease to an agile pop-up reduces upfront capital risk by ~65%, cuts time-to-market to under 60 days, and concentrates Qloo drop-culture momentum. I've updated your plan!";
+          diffLogs.push("Goal changed to Agile Pop-Up (-65% upfront risk)");
+          whatIfInsight = "Shifting from a permanent retail lease to an agile pop-up reduces upfront capital exposure by ~65%, cuts time-to-market to under 60 days, and concentrates consumer drop momentum. Your blueprint has been updated.";
         } else if (lower.includes("tokyo")) {
           setSelectedMarkets([resolveCityToMarket("Tokyo")]);
           diffLogs.push("Focused scope strictly on Tokyo 🇯🇵");
-          whatIfInsight = "Simulating Scenario: Focusing solely on Tokyo concentrates your Qloo brand affinity score to 91.4% in Shibuya/Harajuku, avoiding cross-regional dilution during initial launch.";
+          whatIfInsight = "Focusing solely on Tokyo concentrates your brand affinity to 91.4% in Shibuya and Harajuku, avoiding cross-regional dilution during initial launch.";
         } else if (lower.includes("luxury") || lower.includes("affluent")) {
           setProductPositioning("Premium");
           setAudienceName("High-Net-Worth Luxury Connoisseurs");
           setSelectedInterests(["High Fashion", "Contemporary Art", "Bespoke Design"]);
           diffLogs.push("Elevated positioning to Ultra-Premium Luxury");
-          whatIfInsight = "Simulating Scenario: Moving to High-Net-Worth luxury demographic shifts candidate epicenter weight toward Tokyo Daikanyama and Seoul Hannam-dong with +34% margin expansion.";
+          whatIfInsight = "Focusing on the high-net-worth luxury demographic shifts candidate epicenter weight toward Tokyo Daikanyama and Seoul Hannam-dong with +34% estimated margin expansion.";
         } else {
-          whatIfInsight = "Simulating Scenario: Analyzing trade-offs against Qloo category benchmarks. Strategy metrics updated to optimize cultural fit and mitigate launch friction.";
+          whatIfInsight = "Analyzing trade-offs against category benchmarks. Strategy metrics updated to optimize cultural fit and mitigate launch friction.";
         }
 
         setMessages((prev) => [
@@ -379,14 +379,14 @@ export function AIWorkflowAssistant({
           {
             id: `agent-whatif-${Date.now()}`,
             sender: "agent",
-            text: `🧪 **What-If Simulation Analysis**\n\n${whatIfInsight}`,
+            text: `**Strategic Scenario Analysis**\n\n${whatIfInsight}`,
             diffSummary: diffLogs.length > 0 ? diffLogs.join(" • ") : undefined,
             isBlueprintCard: true,
             timestamp: formatTimeString(),
             chips: [
-              { label: "➕ Add Seoul to markets", value: "Add Seoul to candidate markets" },
-              { label: "🎯 Change timeline to Q4", value: "Set timeline to Q4 2026" },
-              { label: "🚀 Launch Analysis DAG", value: "Launch analysis" },
+              { label: "Add Seoul to markets", value: "Add Seoul to candidate markets" },
+              { label: "Change timeline to Q4", value: "Set timeline to Q4 2026" },
+              { label: "Evaluate Expansion Readiness", value: "Launch analysis" },
             ],
           },
         ]);
@@ -513,22 +513,22 @@ export function AIWorkflowAssistant({
         return;
       }
 
-      const diffText = diffLogs.length > 0 ? diffLogs.join(" • ") : "Custom refinements processed and synced into the strategy blueprint";
+      const diffText = diffLogs.length > 0 ? diffLogs.join(" • ") : "Adjustments incorporated and synchronized with candidate market profiles";
 
       setMessages((prev) => [
         ...prev,
         {
           id: `agent-edit-${Date.now()}`,
           sender: "agent",
-          text: `✅ **Plan Updated via NLP!**\n\nI have recalibrated your Strategic Execution Blueprint based on your prompt.\n\nAll dimensions are synced and ready for multi-agent DAG execution.`,
+          text: `**Strategic Blueprint Updated**\n\nI have recalibrated your expansion strategy with your changes. All market criteria and category dimensions are synchronized.`,
           diffSummary: diffText,
           isBlueprintCard: true,
           timestamp: formatTimeString(),
           chips: [
-            { label: "➕ Add Seoul to markets", value: "Add Seoul to candidate markets" },
-            { label: "🎯 Change to Pop-Up", value: "Make the goal an Underground Pop-Up" },
-            { label: "❓ What if we target Gen Z?", value: "What if we target Gen Z digital natives?" },
-            { label: "🚀 Launch Multi-Agent Analysis Now", value: "Launch analysis" },
+            { label: "Add Seoul to markets", value: "Add Seoul to candidate markets" },
+            { label: "Switch to Agile Pop-Up", value: "Make the goal an Underground Pop-Up" },
+            { label: "What if we target Gen Z?", value: "What if we target Gen Z digital natives?" },
+            { label: "Evaluate Expansion Readiness", value: "Launch analysis" },
           ],
         },
       ]);
@@ -548,13 +548,13 @@ export function AIWorkflowAssistant({
       {
         id: `msg-reset-${Date.now()}`,
         sender: "agent",
-        text: "Conversation reset! Let's build your new cultural market expansion plan.\n\n**What brand or concept are you expanding?**",
+        text: "Strategy studio reset. What brand or expansion concept would you like to plan?",
         timestamp: formatTimeString(),
         chips: [
-          { label: "⚡ Acme Streetwear Lab (Tokyo & Seoul)", value: "I want to expand Acme Streetwear Lab to Tokyo and Seoul" },
-          { label: "⚡ Kuro Craft Coffee (Tokyo & London)", value: "Launch Kuro Craft Coffee in Tokyo and London" },
-          { label: "⚡ Lumina Niche Fragrance (Paris & Seoul)", value: "Create expansion plan for Lumina Niche Fragrance in Paris and Seoul" },
-          { label: "⚡ Rapha Athleisure (Berlin & London)", value: "Plan European expansion for Rapha Athleisure in Berlin and London" },
+          { label: "Acme Streetwear Lab (Tokyo & Seoul)", value: "I want to expand Acme Streetwear Lab to Tokyo and Seoul" },
+          { label: "Kuro Craft Coffee (Tokyo & London)", value: "Launch Kuro Craft Coffee in Tokyo and London" },
+          { label: "Lumina Niche Fragrance (Paris & Seoul)", value: "Create expansion plan for Lumina Niche Fragrance in Paris and Seoul" },
+          { label: "Rapha Athleisure (Berlin & London)", value: "Plan European expansion for Rapha Athleisure in Berlin and London" },
         ],
       },
     ]);
@@ -566,19 +566,19 @@ export function AIWorkflowAssistant({
       <div className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs">
         <div className="flex items-center space-x-3">
           <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-xs">
-            <Bot className="w-5 h-5" />
+            <Sparkles className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                 Cultural Strategy Copilot
               </h2>
-              <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                NLP Planner Active
+              <span className="text-[10px] font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
+                Strategy Studio
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Conversational planning & real-time prompt editing powered by Qloo taste graphs
+              Conversational market expansion planning and scenario simulation
             </p>
           </div>
         </div>
@@ -650,7 +650,7 @@ export function AIWorkflowAssistant({
                   {m.chips && m.chips.length > 0 && (
                     <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 space-y-2">
                       <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                        {hasBaselinePlan ? "Quick NLP Actions & What-If Simulations:" : "Quick 1-Click Starters:"}
+                        {hasBaselinePlan ? "Strategic Directives & Scenario Queries:" : "Curated Expansion Templates:"}
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {m.chips.map((chip, idx) => (
@@ -675,14 +675,14 @@ export function AIWorkflowAssistant({
 
                   {/* Executive Strategy Blueprint Card inside Agent Message */}
                   {m.isBlueprintCard && (
-                    <div className="mt-3 p-4 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-900/60 shadow-xs space-y-4">
+                    <div className="mt-3 p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
                       <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
                         <div className="flex items-center space-x-1.5 font-bold text-slate-900 dark:text-white">
                           <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                          <span>Live Strategic Blueprint</span>
+                          <span>Strategic Expansion Blueprint</span>
                         </div>
-                        <span className="font-mono text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
-                          NLP Refinement Active
+                        <span className="text-[10px] uppercase font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                          Ready for Evaluation
                         </span>
                       </div>
 
@@ -722,7 +722,7 @@ export function AIWorkflowAssistant({
                               selectedMarkets.map((mk) => (
                                 <span
                                   key={mk.id || mk.name}
-                                  className="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-semibold text-slate-800 dark:text-slate-200"
+                                  className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-semibold text-slate-800 dark:text-slate-200"
                                 >
                                   <span>{mk.flag || "🌐"}</span>
                                   <span>{mk.name}</span>
@@ -745,22 +745,22 @@ export function AIWorkflowAssistant({
                         </div>
                       </div>
 
-                      {/* Prominent Launch Action Button */}
+                      {/* Prominent Action Button */}
                       <button
                         type="button"
                         onClick={onLaunch}
                         disabled={loading || selectedMarkets.length === 0}
-                        className="w-full inline-flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-indigo-600 to-indigo-700 hover:from-emerald-500 hover:to-indigo-600 text-white font-bold text-sm shadow-md shadow-indigo-500/25 transition-all active:scale-[0.99] disabled:opacity-50"
+                        className="w-full inline-flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-sm transition-all active:scale-[0.99] disabled:opacity-50"
                       >
                         {loading ? (
                           <>
                             <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>Launching Multi-Agent Analysis...</span>
+                            <span>Evaluating Markets & Consumer Signals...</span>
                           </>
                         ) : (
                           <>
                             <Play className="w-4 h-4 fill-white" />
-                            <span>🚀 Launch Multi-Agent Analysis Now</span>
+                            <span>Evaluate Expansion Readiness</span>
                           </>
                         )}
                       </button>
@@ -781,7 +781,7 @@ export function AIWorkflowAssistant({
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" />
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce [animation-delay:0.2s]" />
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce [animation-delay:0.4s]" />
-              <span className="text-[11px] ml-1">Copilot is analyzing your NLP prompt...</span>
+              <span className="text-[11px] ml-1">Calibrating strategic parameters...</span>
             </div>
           )}
 
@@ -804,8 +804,8 @@ export function AIWorkflowAssistant({
               onChange={(e) => setInputText(e.target.value)}
               placeholder={
                 !hasBaselinePlan
-                  ? "Describe your brand or expansion concept (e.g. Acme Wear in Tokyo)..."
-                  : "Type any edit or What-If question (e.g. 'Change Berlin to Paris', 'What if pop-up?')..."
+                  ? "Describe your brand or expansion concept (e.g. Acme Wear in Tokyo & Seoul)..."
+                  : "Type an adjustment or question (e.g. 'Add London', 'What if we do a pop-up?')..."
               }
               className="flex-1 px-4 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-2xs"
             />
@@ -823,10 +823,10 @@ export function AIWorkflowAssistant({
           <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 px-1">
             <span>
               {hasBaselinePlan
-                ? "✨ Natural Language Prompt editing active • Type changes or What-If questions freely"
+                ? "Type any adjustments or strategic scenario questions in plain language"
                 : "Press Enter to generate initial Strategic Blueprint"}
             </span>
-            <span className="font-mono">{hasBaselinePlan ? "Plan Ready" : "Initial Setup"}</span>
+            <span className="font-mono">{hasBaselinePlan ? "Ready" : "Studio"}</span>
           </div>
         </div>
       </div>

@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Cultura — AI Cultural Intelligence Platform",
   description:
-    "Enterprise Cultural Intelligence & Market Entry Decisions powered by Qloo Taste Signals, Deterministic Compatibility Scoring, and TypeSafe Jev System One Decisions.",
+    "Enterprise Cultural Intelligence & Market Entry Decisions powered by Qloo Global Taste Signals, Multi-Dimensional Compatibility Modeling, and Strategic Readiness Verification.",
 };
 
 export default function RootLayout({

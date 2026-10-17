@@ -113,7 +113,7 @@ export default function DashboardPage() {
             Executive Decision Intelligence
           </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Deterministic cultural compatibility scoring, Qloo taste graph evidence, and TypeSafe Jev System One gates.
+            Cross-cultural consumer intelligence, taste alignment analytics, and strategic market expansion recommendations.
           </p>
         </div>
 
@@ -193,7 +193,7 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
-            <span>Deterministic fixed-point scoring</span>
+            <span>5-Dimension Cultural Compatibility Model</span>
             <Link
               href="/runs"
               className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center space-x-1"
@@ -226,7 +226,7 @@ export default function DashboardPage() {
                   Recent Decision Intelligence
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Latest evaluated market entries with TypeSafe Jev System One gates
+                  Latest evaluated candidate markets with verified launch recommendations
                 </p>
               </div>
               <Link
@@ -244,7 +244,7 @@ export default function DashboardPage() {
               <div className="py-8">
                 <EmptyState
                   title="No analysis runs executed yet"
-                  description="Run your first multi-agent market compatibility analysis to generate Qloo evidence and Jev decision postures."
+                  description="Run your first market compatibility analysis to evaluate candidate cities and generate strategic expansion recommendations."
                   actionText="Launch New Analysis"
                   actionHref="/projects/new"
                 />
@@ -391,7 +391,7 @@ export default function DashboardPage() {
           {/* Intelligence Architecture Card */}
           <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
-              Decision Stack Health
+              Intelligence Engine Status
             </h3>
 
             <div className="space-y-3.5">
@@ -399,8 +399,8 @@ export default function DashboardPage() {
                 <div className="flex items-center space-x-2.5">
                   <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
                   <div>
-                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">Qloo Cultural Taste API</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">hackathon.api.qloo.com</div>
+                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">Global Consumer Taste Graph</div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400">Live Consumer Taste Signals</div>
                   </div>
                 </div>
                 <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.5 rounded uppercase">
@@ -412,8 +412,8 @@ export default function DashboardPage() {
                 <div className="flex items-center space-x-2.5">
                   <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
                   <div>
-                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">TypeSafe Jev System One</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">jevstation.com/systemone</div>
+                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">Strategic Readiness Gate</div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400">Predictive Market Entry Engine</div>
                   </div>
                 </div>
                 <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.5 rounded uppercase">
@@ -425,12 +425,12 @@ export default function DashboardPage() {
                 <div className="flex items-center space-x-2.5">
                   <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
                   <div>
-                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">Deterministic Scorer v1.0</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400">5 Dimensions • Missing penalty</div>
+                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">Cultural Resonance Engine</div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400">5 Dimensions • Zero Hallucination Guard</div>
                   </div>
                 </div>
                 <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded uppercase">
-                  Audited
+                  Calibrated
                 </span>
               </div>
 
@@ -438,12 +438,12 @@ export default function DashboardPage() {
                 <div className="flex items-center space-x-2.5">
                   <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
                   <div>
-                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">4-Layer Memory (pgvector)</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400">HNSW Index • 1536d Cosine</div>
+                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">Institutional Brand Memory</div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400">Historical Benchmarks & Campaign Insights</div>
                   </div>
                 </div>
                 <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 px-1.5 py-0.5 rounded uppercase">
-                  Ready
+                  Synchronized
                 </span>
               </div>
             </div>
@@ -460,14 +460,14 @@ export default function DashboardPage() {
               </Link>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              Cultura preserves verified brand corrections, audience assumptions, and previous market decisions in pgvector memory to guarantee strategic continuity across runs.
+              Cultura preserves verified brand corrections, audience assumptions, and previous market decisions in a dedicated institutional memory bank to guarantee strategic continuity across campaigns.
             </p>
             <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
               <span className="flex items-center">
                 <Database className="w-3.5 h-3.5 mr-1 text-slate-400" />
-                Persistent Layer C/D
+                Enterprise Knowledge Bank
               </span>
-              <span className="font-semibold text-slate-700 dark:text-slate-200">Strict Isolation</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200">Continuous Sync</span>
             </div>
           </div>
         </div>
