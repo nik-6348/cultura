@@ -132,28 +132,28 @@ export default function SettingsPage() {
         <div className="space-y-3">
           {[
             {
-              name: "Qloo Cultural Taste Graph",
-              desc: "Empirical taste vectors & affinity signals via Qloo API adapter.",
+              name: "Global Cultural Taste Graph",
+              desc: "Empirical taste vectors & affinity signals via live Qloo API adapter.",
               status: "Connected",
-              type: "Empirical Data",
+              type: "Empirical Signals",
             },
             {
-              name: "TypeSafe Jev System One",
-              desc: "Deterministic decision gating with probability sum validation.",
+              name: "Strategic Readiness Decision Gate",
+              desc: "Market entry gating and strategic launch posture verification.",
               status: "Active",
               type: "Decision Gate",
             },
             {
-              name: "PostgreSQL 16 + pgvector",
-              desc: "4-Layer memory engine with cosine similarity vector indexing.",
+              name: "Institutional Brand Memory Engine",
+              desc: "Longitudinal campaign learnings and cross-market historical benchmarks.",
               status: "Healthy",
-              type: "Semantic Memory",
+              type: "Institutional Memory",
             },
             {
-              name: "LangGraph 10-Node Engine",
-              desc: "Multi-agent DAG state machine orchestrating analysis workflows.",
+              name: "Deep Market Evaluation Pipeline",
+              desc: "Autonomous multi-agent cultural evaluation and strategy synthesis.",
               status: "Operational",
-              type: "Orchestration",
+              type: "Evaluation Engine",
             },
           ].map((item) => (
             <div

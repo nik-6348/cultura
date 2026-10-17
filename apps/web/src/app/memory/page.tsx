@@ -114,7 +114,7 @@ export default function MemoryHubPage() {
             Knowledge & Memory Hub
           </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Persistent 4-layer institutional memory with pgvector semantic recall and conflict supersession.
+            Institutional memory bank preserving strategic decisions, verified brand facts, and past campaign learnings.
           </p>
         </div>
 
@@ -145,7 +145,7 @@ export default function MemoryHubPage() {
               Add Verified Institutional Fact / Strategic Rule
             </span>
             <span className="text-xs text-indigo-700 dark:text-indigo-400 font-medium bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-100 dark:border-indigo-900/60">
-              Layer C Project Fact
+              Verified Brand Knowledge
             </span>
           </div>
 
@@ -197,17 +197,17 @@ export default function MemoryHubPage() {
               disabled={savingMemory}
               className="px-4 py-1.5 rounded-lg bg-indigo-600 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
             >
-              {savingMemory ? "Storing in pgvector..." : "Save Memory"}
+              {savingMemory ? "Saving to Memory Bank..." : "Save Memory"}
             </button>
           </div>
         </form>
       )}
 
-      {/* Semantic Search Box (Layer D pgvector) */}
+      {/* Semantic Search Box */}
       <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-3">
         <div className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
           <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-          <span>Layer D: Semantic Vector Recall (pgvector Cosine Distance &lt;=&gt;)</span>
+          <span>Semantic Knowledge Search & Historical Precedents</span>
         </div>
 
         <form onSubmit={handleSemanticSearch} className="flex gap-2">

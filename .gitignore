@@ -38,6 +38,7 @@ pnpm-debug.log*
 out/
 build/
 dist/
+.playwright-mcp/
 .eslintcache
 .turbo/
 

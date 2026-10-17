@@ -1977,16 +1977,16 @@ export default function NewProjectWizardPage() {
                 <div className="flex items-center space-x-2">
                   <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                   <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                    Ready to orchestrate your analysis pipeline?
+                    Ready to evaluate market expansion readiness?
                   </h3>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-300">
-                  Executes the 10-node agent DAG, normalizes Qloo signals, and computes deterministic compatibility scores.
+                  Analyzes consumer taste signals across candidate markets and verifies brand compatibility.
                 </p>
                 <div className="flex items-center space-x-3 text-[11px] text-slate-500 dark:text-slate-400 pt-1">
-                  <span>● Estimated latency: ~3–5s</span>
-                  <span>● 0 ungrounded claims</span>
-                  <span>● TypeSafe Jev gate</span>
+                  <span>● Real-world consumer signals</span>
+                  <span>● Cross-cultural taste alignment</span>
+                  <span>● Executive readiness verdict</span>
                 </div>
               </div>
 
@@ -1997,7 +1997,7 @@ export default function NewProjectWizardPage() {
                 className="shrink-0 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center space-x-2 shadow-md transition-all cursor-pointer disabled:opacity-50"
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
-                <span>{loading ? "Starting Pipeline..." : "Run Analysis"}</span>
+                <span>{loading ? "Analyzing Markets..." : "Run Analysis"}</span>
                 <ArrowRight className="w-3.5 h-3.5 ml-1" />
               </button>
             </div>

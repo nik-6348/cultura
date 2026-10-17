@@ -9,6 +9,7 @@ export interface Workspace {
 export interface CandidateMarket {
   id?: string;
   name: string;
+  country?: string;
   code?: string;
   country_code?: string;
   location_code?: string;
