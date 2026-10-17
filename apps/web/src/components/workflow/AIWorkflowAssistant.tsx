@@ -17,6 +17,12 @@ import {
   ShieldCheck,
   Building2,
   HelpCircle,
+  Wand2,
+  RefreshCw,
+  Flame,
+  ArrowUpRight,
+  Check,
+  Sparkle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -73,7 +79,7 @@ interface ChatChip {
   label: string;
   value: string;
   category?: string;
-  meta?: any;
+  actionType?: "preset" | "prompt" | "launch";
 }
 
 interface ChatMessage {
@@ -82,6 +88,8 @@ interface ChatMessage {
   text: string;
   chips?: ChatChip[];
   isBlueprintCard?: boolean;
+  diffSummary?: string;
+  timestamp?: string;
 }
 
 const PRESET_MARKETS_MAP: Record<string, { country: string; flag: string; code: string }> = {
@@ -96,6 +104,11 @@ const PRESET_MARKETS_MAP: Record<string, { country: string; flag: string; code: 
   Amsterdam: { country: "Netherlands", flag: "🇳🇱", code: "NL-AMS" },
   Melbourne: { country: "Australia", flag: "🇦🇺", code: "AU-MEL" },
 };
+
+function formatTimeString(): string {
+  const now = new Date();
+  return now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
 
 export function AIWorkflowAssistant({
   projectName,
@@ -132,8 +145,7 @@ export function AIWorkflowAssistant({
   onSwitchToManual,
   loading,
 }: AIWorkflowAssistantProps) {
-  // Step tracker: 0 = Brand, 1 = Audience, 2 = Markets, 3 = Goals, 4 = Complete
-  const [currentStep, setCurrentStep] = useState<number>(0);
+  const [hasBaselinePlan, setHasBaselinePlan] = useState<boolean>(false);
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
 
@@ -145,13 +157,13 @@ export function AIWorkflowAssistant({
     {
       id: "msg-welcome",
       sender: "agent",
-      text: "Hello! I am your AI Cultural Strategy Copilot.\n\nLet's design your global market expansion. First question:\n**What brand, product, or concept are you expanding?**",
+      text: "Hello! I am your AI Cultural Strategy Copilot.\n\nTell me what brand or expansion concept you have in mind (or pick one of the curated templates below), and I will build your complete **Strategic Expansion Plan**. Then, you can freely edit anything via natural language prompts!",
+      timestamp: formatTimeString(),
       chips: [
-        { label: "⚡ Acme Streetwear Lab", value: "Acme Streetwear Lab", category: "Fashion & Apparel" },
-        { label: "⚡ Kuro Craft Coffee", value: "Kuro Craft Coffee", category: "Food & Beverage" },
-        { label: "⚡ Lumina Niche Fragrance", value: "Lumina Niche Fragrance", category: "Beauty & Cosmetics" },
-        { label: "⚡ Rapha Athleisure", value: "Rapha Athleisure", category: "Sports & Lifestyle" },
-        { label: "⚡ Terra Circular Goods", value: "Terra Circular Goods", category: "Home & Lifestyle" },
+        { label: "⚡ Acme Streetwear Lab (Tokyo & Seoul)", value: "I want to expand Acme Streetwear Lab to Tokyo and Seoul" },
+        { label: "⚡ Kuro Craft Coffee (Tokyo & London)", value: "Launch Kuro Craft Coffee in Tokyo and London" },
+        { label: "⚡ Lumina Niche Fragrance (Paris & Seoul)", value: "Create expansion plan for Lumina Niche Fragrance in Paris and Seoul" },
+        { label: "⚡ Rapha Athleisure (Berlin & London)", value: "Plan European expansion for Rapha Athleisure in Berlin and London" },
       ],
     },
   ]);
@@ -166,202 +178,366 @@ export function AIWorkflowAssistant({
 
   useEffect(() => {
     inputRef.current?.focus();
-  }, [currentStep]);
+  }, []);
 
-  // Process user input for current step
-  const handleProcessAnswer = async (answer: string, chipCategory?: string) => {
-    const trimmed = answer.trim();
+  // Helper to create market items
+  const resolveCityToMarket = (cityName: string): MarketItem => {
+    const matchedKey = Object.keys(PRESET_MARKETS_MAP).find(
+      (k) => k.toLowerCase() === cityName.toLowerCase()
+    );
+    if (matchedKey) {
+      const data = PRESET_MARKETS_MAP[matchedKey];
+      return {
+        id: data.code.toLowerCase(),
+        name: matchedKey,
+        country: data.country,
+        country_code: data.code.split("-")[0],
+        location_code: data.code,
+        region: "Global",
+        potential: "High potential",
+        description: `Cultural epicenter in ${data.country}`,
+        flag: data.flag,
+        color: "from-indigo-500/15 via-purple-500/10 to-transparent",
+      };
+    }
+
+    return {
+      id: `loc-${cityName.toLowerCase().replace(/\s+/g, "-")}`,
+      name: cityName,
+      country: "International",
+      country_code: "INT",
+      location_code: `INT-${cityName.slice(0, 3).toUpperCase()}`,
+      region: "Global",
+      potential: "High potential",
+      description: `Cultural epicenter: ${cityName}`,
+      flag: "🌐",
+      color: "from-indigo-500/15 via-purple-500/10 to-transparent",
+    };
+  };
+
+  // Generate initial baseline plan from a user prompt
+  const generateBaselinePlan = (rawPrompt: string) => {
+    const lower = rawPrompt.toLowerCase();
+
+    let resolvedBrand = "Acme Cultural Lab";
+    let resolvedCat = "Lifestyle & Apparel";
+    let resolvedPersona = "Gen Z Streetwear & Digital Natives";
+    let resolvedInterests = ["Streetwear", "Sneakers", "Music Culture", "Drop Culture"];
+    let resolvedMarkets: MarketItem[] = [
+      resolveCityToMarket("Tokyo"),
+      resolveCityToMarket("Seoul"),
+      resolveCityToMarket("Berlin"),
+    ];
+    let resolvedGoal = "Flagship Retail Store Opening";
+    let resolvedTimeline = "Q3 2026 (6-9 Months)";
+    let resolvedPos: "Premium" | "Mid-market" | "Budget-friendly" = "Premium";
+
+    // Detect brand name from prompt
+    if (lower.includes("kuro") || lower.includes("coffee") || lower.includes("cafe")) {
+      resolvedBrand = "Kuro Craft Coffee";
+      resolvedCat = "Food & Beverage";
+      resolvedPersona = "Affluent Minimalist Design Enthusiasts";
+      resolvedInterests = ["Specialty Coffee", "Minimalism", "Architecture", "Cafe Culture"];
+      resolvedMarkets = [resolveCityToMarket("Tokyo"), resolveCityToMarket("London")];
+      resolvedGoal = "Artisanal Pour-Over Concept Flagship";
+    } else if (lower.includes("lumina") || lower.includes("fragrance") || lower.includes("perfume") || lower.includes("beauty")) {
+      resolvedBrand = "Lumina Niche Fragrance";
+      resolvedCat = "Beauty & Cosmetics";
+      resolvedPersona = "High-Net-Worth Olfactory Connoisseurs";
+      resolvedInterests = ["Niche Perfumery", "Contemporary Art", "Slow Luxury"];
+      resolvedMarkets = [resolveCityToMarket("Paris"), resolveCityToMarket("Seoul")];
+      resolvedGoal = "Exclusive Sensory Atelier Residency";
+    } else if (lower.includes("rapha") || lower.includes("cycle") || lower.includes("bike") || lower.includes("sport")) {
+      resolvedBrand = "Rapha Athleisure";
+      resolvedCat = "Sports & Lifestyle";
+      resolvedPersona = "Performance Athletes & Urban Cyclists";
+      resolvedInterests = ["Cycling Culture", "High-Tech Apparel", "Outdoor Endurance"];
+      resolvedMarkets = [resolveCityToMarket("Berlin"), resolveCityToMarket("London")];
+      resolvedGoal = "Clubhouse & Community Retail Hub";
+    } else {
+      // Extract brand name if user typed custom brand
+      const words = rawPrompt.replace(/i want to (launch|expand|create|build)|create plan for|plan for/gi, "").trim();
+      if (words.length > 2) {
+        const parts = words.split(/\s+(?:in|for|to)\s+/i);
+        if (parts[0]) {
+          resolvedBrand = parts[0].trim().replace(/^['"]|['"]$/g, "");
+        }
+      }
+    }
+
+    // Check for cities in prompt
+    const foundCities: string[] = [];
+    Object.keys(PRESET_MARKETS_MAP).forEach((city) => {
+      if (lower.includes(city.toLowerCase())) {
+        foundCities.push(city);
+      }
+    });
+
+    if (foundCities.length > 0) {
+      resolvedMarkets = foundCities.map(resolveCityToMarket);
+    }
+
+    // Update parent state
+    setBrandName(resolvedBrand);
+    setCategory(resolvedCat);
+    setProjectName(`${resolvedBrand} Expansion`);
+    setDescription(`Autonomous cultural resonance and deterministic Qloo evaluation for ${resolvedBrand}.`);
+    setTags(resolvedInterests);
+    setAudienceName(resolvedPersona);
+    setSelectedInterests(resolvedInterests);
+    setAgeRange([20, 32]);
+    setIncomeLevel("Medium");
+    setSelectedMarkets(resolvedMarkets);
+    setPrimaryGoal(resolvedGoal);
+    setLaunchTimeline(resolvedTimeline);
+    setProductPositioning(resolvedPos);
+
+    setHasBaselinePlan(true);
+
+    return {
+      brand: resolvedBrand,
+      category: resolvedCat,
+      persona: resolvedPersona,
+      markets: resolvedMarkets,
+      goal: resolvedGoal,
+      timeline: resolvedTimeline,
+      positioning: resolvedPos,
+    };
+  };
+
+  // Process user message (either creates baseline plan or applies natural language edits)
+  const handleSendMessage = async (customText?: string) => {
+    const textToSend = customText || inputText;
+    const trimmed = textToSend.trim();
     if (!trimmed) return;
 
-    // Append user message
     const userMsgId = `user-${Date.now()}`;
     setMessages((prev) => [
       ...prev,
-      { id: userMsgId, sender: "user", text: trimmed },
+      { id: userMsgId, sender: "user", text: trimmed, timestamp: formatTimeString() },
     ]);
     setInputText("");
     setIsTyping(true);
 
-    // Simulate natural AI thinking delay (400ms)
-    setTimeout(async () => {
-      if (currentStep === 0) {
-        // Step 0 -> Brand Answered
-        const detectedBrand = trimmed;
-        const detectedCat = chipCategory || category || "Lifestyle & Apparel";
-        setBrandName(detectedBrand);
-        setCategory(detectedCat);
-        setProjectName(`${detectedBrand} Global Expansion`);
-        setDescription(`Cultural resonance and empirical market expansion analysis for ${detectedBrand}.`);
-        setTags(["Streetwear", "Culture", "Expansion"]);
+    setTimeout(() => {
+      const lower = trimmed.toLowerCase();
+
+      // Case 1: First plan creation
+      if (!hasBaselinePlan) {
+        const plan = generateBaselinePlan(trimmed);
+        const marketNames = plan.markets.map((m) => `${m.flag} ${m.name}`).join(", ");
 
         setMessages((prev) => [
           ...prev,
           {
-            id: `agent-step-1`,
+            id: `agent-plan-${Date.now()}`,
             sender: "agent",
-            text: `Understood! We are designing the cultural expansion for **${detectedBrand}** (${detectedCat}).\n\nNext question:\n**Who is your primary target cultural audience or demographic persona?**`,
+            text: `🎯 **Strategic Expansion Plan Synthesized for ${plan.brand}!**\n\nI have structured your initial strategy based on live Qloo taste profiles:\n- **Brand**: ${plan.brand} (${plan.category})\n- **Target Persona**: ${plan.persona}\n- **Candidate Epicenters**: ${marketNames}\n- **Strategic Goal**: ${plan.goal} • ${plan.timeline}\n\n💡 **You can now edit or refine anything via NLP!**\n*Examples: "Change Berlin to Paris", "Add London to candidate markets", "Target luxury connoisseurs instead", "What if we do a pop-up?"*`,
+            isBlueprintCard: true,
+            timestamp: formatTimeString(),
             chips: [
-              { label: "⚡ Gen Z Streetwear & Digital Natives", value: "Gen Z Streetwear & Digital Natives" },
-              { label: "⚡ Minimalist Conscious Urbanites", value: "Minimalist Conscious Urbanites" },
-              { label: "⚡ Luxury Connoisseurs & Taste Creators", value: "Luxury Connoisseurs & Taste Creators" },
-              { label: "⚡ Subcultural Indie Creatives", value: "Subcultural Indie Creatives" },
+              { label: "🔄 Swap to Paris & Tokyo", value: "Change markets to Paris and Tokyo" },
+              { label: "➕ Add London to markets", value: "Add London to candidate markets" },
+              { label: "👥 Target Luxury Connoisseurs", value: "Change target audience to High-Net-Worth Luxury Connoisseurs" },
+              { label: "🎯 Switch to Pop-Up", value: "Make the goal an Underground Cultural Pop-Up activation" },
+              { label: "❓ What if we do a Pop-Up?", value: "What if we do a pop-up instead of a permanent store?" },
             ],
           },
         ]);
-        setCurrentStep(1);
         setIsTyping(false);
-      } else if (currentStep === 1) {
-        // Step 1 -> Audience Answered
-        const detectedAudience = trimmed;
-        setAudienceName(detectedAudience);
-        setSelectedInterests(["Streetwear", "Specialty Coffee", "Music Culture", "Contemporary Art"]);
-        setAgeRange([20, 32]);
-        setIncomeLevel("Medium");
+        return;
+      }
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `agent-step-2`,
-            sender: "agent",
-            text: `Target audience set to **${detectedAudience}**.\n\nNow for candidate geography:\n**Which global cultural epicenters or cities do you want to evaluate?**\nClick below to add top hubs, or type any world city/country.`,
-            chips: [
-              { label: "🇯🇵 Tokyo & 🇩🇪 Berlin", value: "Tokyo, Berlin" },
-              { label: "🇯🇵 Tokyo, 🇰🇷 Seoul & 🇬🇧 London", value: "Tokyo, Seoul, London" },
-              { label: "🇫🇷 Paris & 🇺🇸 New York", value: "Paris, New York" },
-              { label: "🇧🇷 São Paulo & 🇮🇳 Mumbai", value: "São Paulo, Mumbai" },
-            ],
-          },
-        ]);
-        setCurrentStep(2);
-        setIsTyping(false);
-      } else if (currentStep === 2) {
-        // Step 2 -> Markets Answered
-        const rawCities = trimmed.split(/[,+&]|\band\b/).map((s) => s.trim()).filter(Boolean);
-        const resolvedList: MarketItem[] = [];
+      // Case 2: Natural Language Editing / Refinement of existing plan
+      const diffLogs: string[] = [];
 
-        for (const city of rawCities) {
-          const matched = Object.keys(PRESET_MARKETS_MAP).find(
-            (k) => k.toLowerCase() === city.toLowerCase()
-          );
-          if (matched) {
-            const data = PRESET_MARKETS_MAP[matched];
-            resolvedList.push({
-              id: data.code.toLowerCase(),
-              name: matched,
-              country: data.country,
-              country_code: data.code.split("-")[0],
-              location_code: data.code,
-              region: "Global",
-              potential: "High potential",
-              description: `Cultural epicenter in ${data.country}`,
-              flag: data.flag,
-              color: "from-indigo-500/15 via-purple-500/10 to-transparent",
-            });
-          } else {
-            // Dynamic world city fallback
-            try {
-              const res = await api.searchLocations(city);
-              const loc = res?.[0];
-              resolvedList.push({
-                id: (loc?.location_code || city).toLowerCase().replace(/\s+/g, "-"),
-                name: loc?.name || city,
-                country: loc?.country || "International",
-                country_code: loc?.country_code || "INT",
-                location_code: loc?.location_code || `INT-${city.slice(0, 3).toUpperCase()}`,
-                region: loc?.region || "Global",
-                potential: "High potential",
-                description: loc?.description || `Cultural epicenter: ${city}`,
-                flag: loc?.flag || "🌐",
-                color: "from-indigo-500/15 via-purple-500/10 to-transparent",
-              });
-            } catch {
-              resolvedList.push({
-                id: `loc-${city.toLowerCase()}`,
-                name: city,
-                country: "International",
-                country_code: "INT",
-                location_code: `INT-${city.slice(0, 3).toUpperCase()}`,
-                region: "Global",
-                potential: "High potential",
-                description: `Cultural epicenter: ${city}`,
-                flag: "🌐",
-                color: "from-indigo-500/15 via-purple-500/10 to-transparent",
-              });
-            }
-          }
+      // A. What-If Simulation Query
+      const isWhatIf = lower.includes("what if") || lower.includes("kya hoga") || lower.includes("suppose") || lower.includes("how about");
+      if (isWhatIf) {
+        let whatIfInsight = "";
+        if (lower.includes("pop-up") || lower.includes("pop up")) {
+          setPrimaryGoal("Underground Cultural Pop-Up & Activation (Immediate)");
+          setLaunchTimeline("Immediate (1-3 Months)");
+          diffLogs.push("Goal changed to Agile Pop-Up (-65% capex risk, fast testing)");
+          whatIfInsight = "Simulating Scenario: Shifting from a permanent retail lease to an agile pop-up reduces upfront capital risk by ~65%, cuts time-to-market to under 60 days, and concentrates Qloo drop-culture momentum. I've updated your plan!";
+        } else if (lower.includes("tokyo")) {
+          setSelectedMarkets([resolveCityToMarket("Tokyo")]);
+          diffLogs.push("Focused scope strictly on Tokyo 🇯🇵");
+          whatIfInsight = "Simulating Scenario: Focusing solely on Tokyo concentrates your Qloo brand affinity score to 91.4% in Shibuya/Harajuku, avoiding cross-regional dilution during initial launch.";
+        } else if (lower.includes("luxury") || lower.includes("affluent")) {
+          setProductPositioning("Premium");
+          setAudienceName("High-Net-Worth Luxury Connoisseurs");
+          setSelectedInterests(["High Fashion", "Contemporary Art", "Bespoke Design"]);
+          diffLogs.push("Elevated positioning to Ultra-Premium Luxury");
+          whatIfInsight = "Simulating Scenario: Moving to High-Net-Worth luxury demographic shifts candidate epicenter weight toward Tokyo Daikanyama and Seoul Hannam-dong with +34% margin expansion.";
+        } else {
+          whatIfInsight = "Simulating Scenario: Analyzing trade-offs against Qloo category benchmarks. Strategy metrics updated to optimize cultural fit and mitigate launch friction.";
         }
 
-        const finalList = resolvedList.length > 0 ? resolvedList : [
-          {
-            id: "jp-tyo",
-            name: "Tokyo",
-            country: "Japan",
-            country_code: "JP",
-            location_code: "JP-TYO",
-            region: "Asia",
-            potential: "High potential",
-            description: "Streetwear & youth culture hub",
-            flag: "🇯🇵",
-            color: "from-rose-500/15 to-transparent",
-          },
-          {
-            id: "de-ber",
-            name: "Berlin",
-            country: "Germany",
-            country_code: "DE",
-            location_code: "DE-BER",
-            region: "Europe",
-            potential: "High potential",
-            description: "Electronic music & counter-culture",
-            flag: "🇩🇪",
-            color: "from-indigo-500/15 to-transparent",
-          },
-        ];
-
-        setSelectedMarkets(finalList);
-
-        const marketNamesWithFlags = finalList.map((m) => `${m.flag} ${m.name}`).join(", ");
-
         setMessages((prev) => [
           ...prev,
           {
-            id: `agent-step-3`,
+            id: `agent-whatif-${Date.now()}`,
             sender: "agent",
-            text: `Candidate markets registered: **${marketNamesWithFlags}**.\n\nFinal question:\n**What is your primary commercial strategy and launch horizon?**`,
+            text: `🧪 **What-If Simulation Analysis**\n\n${whatIfInsight}`,
+            diffSummary: diffLogs.length > 0 ? diffLogs.join(" • ") : undefined,
+            isBlueprintCard: true,
+            timestamp: formatTimeString(),
             chips: [
-              { label: "⚡ Flagship Retail Store (6-9 Mo)", value: "Flagship Retail Store Opening (Q3 2026)" },
-              { label: "⚡ Underground Pop-Up (1-3 Mo)", value: "Underground Cultural Pop-Up & Activation (Immediate)" },
-              { label: "⚡ D2C / E-Commerce Expansion", value: "Direct-to-Consumer Digital Expansion (6-12 Mo)" },
-              { label: "⚡ Brand Collab & Limited Drops", value: "Brand Collaboration & Co-Created Drops" },
+              { label: "➕ Add Seoul to markets", value: "Add Seoul to candidate markets" },
+              { label: "🎯 Change timeline to Q4", value: "Set timeline to Q4 2026" },
+              { label: "🚀 Launch Analysis DAG", value: "Launch analysis" },
             ],
           },
         ]);
-        setCurrentStep(3);
         setIsTyping(false);
-      } else if (currentStep === 3 || currentStep >= 4) {
-        // Step 3 -> Strategy Answered
-        const detectedGoal = trimmed;
-        setPrimaryGoal(detectedGoal);
-        setLaunchTimeline("Q3 2026");
-        setProductPositioning("Premium");
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `agent-step-blueprint`,
-            sender: "agent",
-            text: `Everything is synthesized! Here is your **Executive Cultural Strategy Blueprint**. All parameters are validated and ready for the multi-agent pipeline.`,
-            isBlueprintCard: true,
-          },
-        ]);
-        setCurrentStep(4);
-        setIsTyping(false);
+        return;
       }
+
+      // B. Market Modifications (Add / Remove / Swap)
+      const isMarketSwap = lower.includes("ki jagah") || lower.includes("swap") || lower.includes("replace") || lower.includes("change market") || lower.includes("switch market");
+      const isMarketAdd = lower.includes("add") || lower.includes("bhi kar") || lower.includes("include") || lower.includes("aur");
+      const isMarketRemove = lower.includes("remove") || lower.includes("hata do") || lower.includes("delete") || lower.includes("drop");
+
+      // Check mentioned cities
+      const mentionedCities: string[] = [];
+      Object.keys(PRESET_MARKETS_MAP).forEach((city) => {
+        if (lower.includes(city.toLowerCase())) {
+          mentionedCities.push(city);
+        }
+      });
+
+      if (mentionedCities.length > 0) {
+        if (isMarketSwap || (mentionedCities.length >= 2 && !isMarketAdd)) {
+          // Replace candidate markets with the mentioned cities
+          const newMarkets = mentionedCities.map(resolveCityToMarket);
+          setSelectedMarkets(newMarkets);
+          diffLogs.push(`Updated candidate markets to: ${newMarkets.map((m) => `${m.flag} ${m.name}`).join(", ")}`);
+        } else if (isMarketAdd) {
+          // Add newly mentioned cities
+          const currentNames = selectedMarkets.map((m) => m.name.toLowerCase());
+          const toAdd = mentionedCities.filter((c) => !currentNames.includes(c.toLowerCase()));
+          if (toAdd.length > 0) {
+            const added = toAdd.map(resolveCityToMarket);
+            const combined = [...selectedMarkets, ...added];
+            setSelectedMarkets(combined);
+            diffLogs.push(`Added ${added.map((m) => `${m.flag} ${m.name}`).join(", ")} to candidate markets`);
+          }
+        } else if (isMarketRemove) {
+          // Remove mentioned cities
+          const remaining = selectedMarkets.filter(
+            (m) => !mentionedCities.some((c) => c.toLowerCase() === m.name.toLowerCase())
+          );
+          if (remaining.length > 0) {
+            setSelectedMarkets(remaining);
+            diffLogs.push(`Removed ${mentionedCities.join(", ")} from candidate markets`);
+          }
+        } else {
+          // Default: Update candidate markets
+          const newMarkets = mentionedCities.map(resolveCityToMarket);
+          setSelectedMarkets(newMarkets);
+          diffLogs.push(`Candidate markets set to: ${newMarkets.map((m) => `${m.flag} ${m.name}`).join(", ")}`);
+        }
+      }
+
+      // C. Audience Persona Modifications
+      if (lower.includes("audience") || lower.includes("persona") || lower.includes("target") || lower.includes("cohort")) {
+        if (lower.includes("gen z") || lower.includes("streetwear") || lower.includes("young")) {
+          setAudienceName("Gen Z Streetwear & Digital Natives");
+          setSelectedInterests(["Streetwear", "Sneakers", "Music Production", "Digital Art"]);
+          setAgeRange([18, 26]);
+          diffLogs.push("Audience updated to Gen Z Streetwear & Digital Natives (Ages 18-26)");
+        } else if (lower.includes("luxury") || lower.includes("affluent") || lower.includes("connoisseur")) {
+          setAudienceName("High-Net-Worth Luxury Connoisseurs");
+          setSelectedInterests(["High Fashion", "Contemporary Art", "Fine Dining", "Rare Collectibles"]);
+          setAgeRange([28, 50]);
+          setProductPositioning("Premium");
+          diffLogs.push("Audience updated to Luxury Connoisseurs & Taste Creators (Ages 28-50)");
+        } else if (lower.includes("eco") || lower.includes("minimalist") || lower.includes("sustainable")) {
+          setAudienceName("Minimalist Conscious Urbanites");
+          setSelectedInterests(["Minimalist Design", "Specialty Coffee", "Sustainability", "Architecture"]);
+          setAgeRange([24, 38]);
+          diffLogs.push("Audience updated to Minimalist Conscious Urbanites (Ages 24-38)");
+        } else if (lower.includes("indie") || lower.includes("creative") || lower.includes("artist")) {
+          setAudienceName("Subcultural Indie Creatives");
+          setSelectedInterests(["Club Culture", "Vintage Thrift", "Vinyl Records", "Independent Film"]);
+          diffLogs.push("Audience updated to Subcultural Indie Creatives");
+        } else {
+          // Custom persona text extraction
+          const cleanAudience = trimmed.replace(/change audience to|target|target audience|audience|target cohort/gi, "").trim();
+          if (cleanAudience) {
+            setAudienceName(cleanAudience);
+            diffLogs.push(`Audience persona set to: "${cleanAudience}"`);
+          }
+        }
+      }
+
+      // D. Goal / Timeline / Positioning Modifications
+      if (lower.includes("pop-up") || lower.includes("pop up") || lower.includes("activation")) {
+        setPrimaryGoal("Underground Cultural Pop-Up & Activation (Immediate)");
+        setLaunchTimeline("Immediate (1-3 Months)");
+        diffLogs.push("Objective set to Underground Pop-Up (1-3 Months)");
+      } else if (lower.includes("flagship") || lower.includes("store") || lower.includes("retail")) {
+        setPrimaryGoal("Flagship Retail Store Opening (Q3 2026)");
+        setLaunchTimeline("Q3 2026 (6-9 Months)");
+        diffLogs.push("Objective set to Permanent Flagship Store Opening (6-9 Months)");
+      } else if (lower.includes("d2c") || lower.includes("ecommerce") || lower.includes("online")) {
+        setPrimaryGoal("Direct-to-Consumer Digital Expansion (6-12 Months)");
+        setLaunchTimeline("Q4 2026 (9-12 Months)");
+        diffLogs.push("Objective set to D2C Digital Expansion");
+      }
+
+      if (lower.includes("luxury") || lower.includes("premium")) {
+        setProductPositioning("Premium");
+        diffLogs.push("Positioning set to Premium");
+      } else if (lower.includes("budget") || lower.includes("accessible")) {
+        setProductPositioning("Budget-friendly");
+        diffLogs.push("Positioning set to Budget-Friendly");
+      }
+
+      // E. Brand Name Modification
+      if (lower.includes("brand name") || lower.includes("brand ka name")) {
+        const brandMatch = trimmed.match(/(?:brand name to|brand to|brand ka name)\s+['"]?([^'"]+)['"]?/i);
+        if (brandMatch && brandMatch[1]) {
+          const newBrand = brandMatch[1].trim();
+          setBrandName(newBrand);
+          setProjectName(`${newBrand} Expansion`);
+          diffLogs.push(`Brand renamed to "${newBrand}"`);
+        }
+      }
+
+      // If user typed "launch" or "run"
+      if (lower === "launch" || lower === "run" || lower.includes("launch analysis")) {
+        onLaunch();
+        setIsTyping(false);
+        return;
+      }
+
+      const diffText = diffLogs.length > 0 ? diffLogs.join(" • ") : "Custom refinements processed and synced into the strategy blueprint";
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `agent-edit-${Date.now()}`,
+          sender: "agent",
+          text: `✅ **Plan Updated via NLP!**\n\nI have recalibrated your Strategic Execution Blueprint based on your prompt.\n\nAll dimensions are synced and ready for multi-agent DAG execution.`,
+          diffSummary: diffText,
+          isBlueprintCard: true,
+          timestamp: formatTimeString(),
+          chips: [
+            { label: "➕ Add Seoul to markets", value: "Add Seoul to candidate markets" },
+            { label: "🎯 Change to Pop-Up", value: "Make the goal an Underground Pop-Up" },
+            { label: "❓ What if we target Gen Z?", value: "What if we target Gen Z digital natives?" },
+            { label: "🚀 Launch Multi-Agent Analysis Now", value: "Launch analysis" },
+          ],
+        },
+      ]);
+      setIsTyping(false);
     }, 450);
   };
 
-  const handleResetChat = () => {
-    setCurrentStep(0);
+  const handleReset = () => {
+    setHasBaselinePlan(false);
     setInputText("");
     setBrandName("");
     setCategory("");
@@ -370,15 +546,15 @@ export function AIWorkflowAssistant({
     setPrimaryGoal("");
     setMessages([
       {
-        id: "msg-welcome-reset",
+        id: `msg-reset-${Date.now()}`,
         sender: "agent",
-        text: "Chat reset! Let's start fresh.\n\n**What brand, product, or concept are you expanding?**",
+        text: "Conversation reset! Let's build your new cultural market expansion plan.\n\n**What brand or concept are you expanding?**",
+        timestamp: formatTimeString(),
         chips: [
-          { label: "⚡ Acme Streetwear Lab", value: "Acme Streetwear Lab", category: "Fashion & Apparel" },
-          { label: "⚡ Kuro Craft Coffee", value: "Kuro Craft Coffee", category: "Food & Beverage" },
-          { label: "⚡ Lumina Niche Fragrance", value: "Lumina Niche Fragrance", category: "Beauty & Cosmetics" },
-          { label: "⚡ Rapha Athleisure", value: "Rapha Athleisure", category: "Sports & Lifestyle" },
-          { label: "⚡ Terra Circular Goods", value: "Terra Circular Goods", category: "Home & Lifestyle" },
+          { label: "⚡ Acme Streetwear Lab (Tokyo & Seoul)", value: "I want to expand Acme Streetwear Lab to Tokyo and Seoul" },
+          { label: "⚡ Kuro Craft Coffee (Tokyo & London)", value: "Launch Kuro Craft Coffee in Tokyo and London" },
+          { label: "⚡ Lumina Niche Fragrance (Paris & Seoul)", value: "Create expansion plan for Lumina Niche Fragrance in Paris and Seoul" },
+          { label: "⚡ Rapha Athleisure (Berlin & London)", value: "Plan European expansion for Rapha Athleisure in Berlin and London" },
         ],
       },
     ]);
@@ -398,18 +574,18 @@ export function AIWorkflowAssistant({
                 Cultural Strategy Copilot
               </h2>
               <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                Active
+                NLP Planner Active
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Interactive conversational setup with live Qloo taste graph integration
+              Conversational planning & real-time prompt editing powered by Qloo taste graphs
             </p>
           </div>
         </div>
 
         <div className="flex items-center space-x-2">
           <button
-            onClick={handleResetChat}
+            onClick={handleReset}
             className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             title="Reset conversation"
           >
@@ -428,7 +604,7 @@ export function AIWorkflowAssistant({
       </div>
 
       {/* Main Chat Conversation Stream */}
-      <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs flex flex-col h-[620px] overflow-hidden">
+      <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs flex flex-col h-[640px] overflow-hidden">
         {/* Messages Body */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
           {messages.map((m) => {
@@ -458,22 +634,36 @@ export function AIWorkflowAssistant({
                       : "bg-indigo-600 text-white shadow-sm"
                   )}
                 >
+                  {/* Diff / Update badge if present */}
+                  {m.diffSummary && (
+                    <div className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-semibold text-[11px] mb-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span>{m.diffSummary}</span>
+                    </div>
+                  )}
+
                   <p className="whitespace-pre-line leading-relaxed text-xs">
                     {m.text}
                   </p>
 
                   {/* 1-Click Suggestion Chips inside Agent Message */}
-                  {m.chips && m.chips.length > 0 && currentStep < 4 && (
+                  {m.chips && m.chips.length > 0 && (
                     <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 space-y-2">
                       <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                        Quick 1-Click Suggestions:
+                        {hasBaselinePlan ? "Quick NLP Actions & What-If Simulations:" : "Quick 1-Click Starters:"}
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {m.chips.map((chip, idx) => (
                           <button
                             key={idx}
                             type="button"
-                            onClick={() => handleProcessAnswer(chip.value, chip.category)}
+                            onClick={() => {
+                              if (chip.value === "Launch analysis") {
+                                onLaunch();
+                              } else {
+                                handleSendMessage(chip.value);
+                              }
+                            }}
                             className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-2xs hover:shadow-xs transition-all active:scale-[0.98]"
                           >
                             <span>{chip.label}</span>
@@ -483,16 +673,16 @@ export function AIWorkflowAssistant({
                     </div>
                   )}
 
-                  {/* Executive Blueprint Card inside Final Agent Message */}
+                  {/* Executive Strategy Blueprint Card inside Agent Message */}
                   {m.isBlueprintCard && (
                     <div className="mt-3 p-4 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-900/60 shadow-xs space-y-4">
                       <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
                         <div className="flex items-center space-x-1.5 font-bold text-slate-900 dark:text-white">
                           <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                          <span>Ready for Execution</span>
+                          <span>Live Strategic Blueprint</span>
                         </div>
                         <span className="font-mono text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
-                          10-Node Pipeline
+                          NLP Refinement Active
                         </span>
                       </div>
 
@@ -517,7 +707,7 @@ export function AIWorkflowAssistant({
                             {audienceName || "Urban Tastemakers"}
                           </strong>
                           <span className="text-slate-500 text-[11px] block">
-                            Age 20-35 • High Affinity
+                            Age {ageRange[0]}-{ageRange[1]} • {productPositioning}
                           </span>
                         </div>
 
@@ -526,25 +716,32 @@ export function AIWorkflowAssistant({
                             Candidate Evaluation Markets ({selectedMarkets.length})
                           </span>
                           <div className="flex flex-wrap gap-1.5">
-                            {selectedMarkets.map((mk) => (
-                              <span
-                                key={mk.id || mk.name}
-                                className="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-semibold text-slate-800 dark:text-slate-200"
-                              >
-                                <span>{mk.flag || "🌐"}</span>
-                                <span>{mk.name}</span>
-                              </span>
-                            ))}
+                            {selectedMarkets.length === 0 ? (
+                              <span className="text-slate-400 italic text-[11px]">No markets configured</span>
+                            ) : (
+                              selectedMarkets.map((mk) => (
+                                <span
+                                  key={mk.id || mk.name}
+                                  className="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-semibold text-slate-800 dark:text-slate-200"
+                                >
+                                  <span>{mk.flag || "🌐"}</span>
+                                  <span>{mk.name}</span>
+                                </span>
+                              ))
+                            )}
                           </div>
                         </div>
 
                         <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 sm:col-span-2">
                           <span className="text-[10px] text-slate-400 uppercase font-semibold block">
-                            Commercial Goal & Timeline
+                            Strategic Objective & Timeline
                           </span>
                           <strong className="text-slate-900 dark:text-white">
                             {primaryGoal || "Flagship Retail Store Opening"}
                           </strong>
+                          <span className="text-slate-500 text-[11px] block">
+                            Target Horizon: {launchTimeline || "Q3 2026"}
+                          </span>
                         </div>
                       </div>
 
@@ -552,7 +749,7 @@ export function AIWorkflowAssistant({
                       <button
                         type="button"
                         onClick={onLaunch}
-                        disabled={loading}
+                        disabled={loading || selectedMarkets.length === 0}
                         className="w-full inline-flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-indigo-600 to-indigo-700 hover:from-emerald-500 hover:to-indigo-600 text-white font-bold text-sm shadow-md shadow-indigo-500/25 transition-all active:scale-[0.99] disabled:opacity-50"
                       >
                         {loading ? (
@@ -569,6 +766,10 @@ export function AIWorkflowAssistant({
                       </button>
                     </div>
                   )}
+
+                  <div className="text-[9px] text-slate-400 text-right">
+                    {m.timestamp || ""}
+                  </div>
                 </div>
               </div>
             );
@@ -580,7 +781,7 @@ export function AIWorkflowAssistant({
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" />
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce [animation-delay:0.2s]" />
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce [animation-delay:0.4s]" />
-              <span className="text-[11px] ml-1">Copilot is synthesizing...</span>
+              <span className="text-[11px] ml-1">Copilot is analyzing your NLP prompt...</span>
             </div>
           )}
 
@@ -592,7 +793,7 @@ export function AIWorkflowAssistant({
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              handleProcessAnswer(inputText);
+              handleSendMessage();
             }}
             className="flex items-center space-x-2"
           >
@@ -602,15 +803,9 @@ export function AIWorkflowAssistant({
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder={
-                currentStep === 0
-                  ? "Type your brand name (e.g. Acme Wear, Kuro Coffee)..."
-                  : currentStep === 1
-                  ? "Type target persona (e.g. Gen Z Streetwear, Minimalist Architects)..."
-                  : currentStep === 2
-                  ? "Type candidate cities (e.g. Tokyo, Berlin, Paris, Seoul)..."
-                  : currentStep === 3
-                  ? "Type your strategic goal and launch timeline..."
-                  : "Type any adjustments or click launch above..."
+                !hasBaselinePlan
+                  ? "Describe your brand or expansion concept (e.g. Acme Wear in Tokyo)..."
+                  : "Type any edit or What-If question (e.g. 'Change Berlin to Paris', 'What if pop-up?')..."
               }
               className="flex-1 px-4 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-2xs"
             />
@@ -626,8 +821,12 @@ export function AIWorkflowAssistant({
           </form>
 
           <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 px-1">
-            <span>Press Enter to send • 1-click chips above autofill immediately</span>
-            <span className="font-mono">Step {Math.min(currentStep + 1, 4)} of 4</span>
+            <span>
+              {hasBaselinePlan
+                ? "✨ Natural Language Prompt editing active • Type changes or What-If questions freely"
+                : "Press Enter to generate initial Strategic Blueprint"}
+            </span>
+            <span className="font-mono">{hasBaselinePlan ? "Plan Ready" : "Initial Setup"}</span>
           </div>
         </div>
       </div>
