@@ -27,6 +27,7 @@ import {
 } from "@/lib/types";
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
 import { formatDate } from "@/lib/utils";
+import { CulturalRadarChart, RadarSeries } from "@/components/analytics/CulturalRadarChart";
 
 export default function ProjectHubPage() {
   const params = useParams();
@@ -273,21 +274,85 @@ export default function ProjectHubPage() {
             {/* Brand & Audience Context */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Brand & Product Profile
-                </h3>
-                <pre className="text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800 overflow-x-auto">
-                  {JSON.stringify(project.brand_profile_json || {}, null, 2)}
-                </pre>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Brand & Positioning Profile
+                  </h3>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-200 dark:border-indigo-800">
+                    {String((project.brand_profile_json as Record<string, any>)?.positioning || "Premium")}
+                  </span>
+                </div>
+                <div className="space-y-2 text-xs">
+                  <div>
+                    <span className="text-slate-400">Brand Name: </span>
+                    <strong className="text-slate-800 dark:text-slate-200">
+                      {String((project.brand_profile_json as Record<string, any>)?.name || project.name)}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Industry / Sector: </span>
+                    <span className="text-slate-700 dark:text-slate-300">
+                      {String((project.brand_profile_json as Record<string, any>)?.category || "Lifestyle & Apparel")}
+                    </span>
+                  </div>
+                  <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed pt-1">
+                    {String((project.brand_profile_json as Record<string, any>)?.description || project.objective || "Expansion strategy evaluation")}
+                  </p>
+                  {Array.isArray((project.brand_profile_json as Record<string, any>)?.tags) && (
+                    <div className="flex flex-wrap gap-1.5 pt-2">
+                      {((project.brand_profile_json as Record<string, any>).tags as string[]).map((tag, idx) => (
+                        <span key={idx} className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Audience Profile & Segments
-                </h3>
-                <pre className="text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800 overflow-x-auto">
-                  {JSON.stringify(project.audience_profile_json || {}, null, 2)}
-                </pre>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Audience & Cultural Persona
+                  </h3>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-semibold border border-emerald-200 dark:border-emerald-800">
+                    Target Cohort
+                  </span>
+                </div>
+                <div className="space-y-2 text-xs">
+                  <div>
+                    <span className="text-slate-400">Target Segment: </span>
+                    <strong className="text-slate-800 dark:text-slate-200">
+                      {String((project.audience_profile_json as Record<string, any>)?.name || (project.audience_profile_json as Record<string, any>)?.persona || "Gen Z & Urban Creatives")}
+                    </strong>
+                  </div>
+                  <div className="flex items-center space-x-4 text-slate-600 dark:text-slate-400">
+                    <span>
+                      Age: <strong className="text-slate-700 dark:text-slate-300">
+                        {Array.isArray((project.audience_profile_json as Record<string, any>)?.age_range)
+                          ? `${(project.audience_profile_json as Record<string, any>).age_range[0]} - ${(project.audience_profile_json as Record<string, any>).age_range[1]}`
+                          : "18 - 35"}
+                      </strong>
+                    </span>
+                    <span>
+                      Income: <strong className="text-slate-700 dark:text-slate-300">
+                        {String((project.audience_profile_json as Record<string, any>)?.income_level || "Medium-High")}
+                      </strong>
+                    </span>
+                  </div>
+                  {Array.isArray((project.audience_profile_json as Record<string, any>)?.interests) && (
+                    <div className="pt-2">
+                      <div className="text-[11px] text-slate-400 mb-1">Target Taste Affinities:</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {((project.audience_profile_json as Record<string, any>).interests as string[]).map((int, idx) => (
+                          <span key={idx} className="text-[10px] px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-medium border border-indigo-200 dark:border-indigo-800">
+                            {int}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

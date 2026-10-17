@@ -18,6 +18,9 @@ import { AnalysisRun, Project } from "@/lib/types";
 import { StatCard } from "@/components/ui/StatCard";
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { CulturalRadarChart, RadarSeries } from "@/components/analytics/CulturalRadarChart";
+import { MomentumTrajectoryChart } from "@/components/analytics/MomentumTrajectoryChart";
+import { Sparkles, Activity } from "lucide-react";
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -69,6 +72,37 @@ export default function DashboardPage() {
           recentRuns.length
         ).toFixed(3)
       : "—";
+
+  const dashboardRadarSeries: RadarSeries[] = [
+    {
+      id: "tokyo",
+      name: "Tokyo (East Asia Hub)",
+      color: "indigo",
+      fillColor: "rgba(99, 102, 241, 0.22)",
+      strokeColor: "#6366f1",
+      data: [
+        { key: "brand_affinity", label: "Brand Affinity", shortLabel: "Brand", score: 0.91 },
+        { key: "audience_overlap", label: "Audience Overlap", shortLabel: "Audience", score: 0.88 },
+        { key: "category_ecosystem", label: "Category Density", shortLabel: "Density", score: 0.94 },
+        { key: "cultural_momentum", label: "Cultural Momentum", shortLabel: "Momentum", score: 0.86 },
+        { key: "evidence_coverage", label: "Evidence Grounding", shortLabel: "Evidence", score: 0.95 },
+      ],
+    },
+    {
+      id: "berlin",
+      name: "Berlin (Central Europe)",
+      color: "emerald",
+      fillColor: "rgba(16, 185, 129, 0.16)",
+      strokeColor: "#10b981",
+      data: [
+        { key: "brand_affinity", label: "Brand Affinity", shortLabel: "Brand", score: 0.82 },
+        { key: "audience_overlap", label: "Audience Overlap", shortLabel: "Audience", score: 0.79 },
+        { key: "category_ecosystem", label: "Category Density", shortLabel: "Density", score: 0.85 },
+        { key: "cultural_momentum", label: "Cultural Momentum", shortLabel: "Momentum", score: 0.90 },
+        { key: "evidence_coverage", label: "Evidence Grounding", shortLabel: "Evidence", score: 0.89 },
+      ],
+    },
+  ];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -133,6 +167,51 @@ export default function DashboardPage() {
           subtext={`${launchVerdicts} verified launch approvals`}
           icon={ShieldCheck}
         />
+      </div>
+
+      {/* Executive Cultural Taste & Market Radar Visualization */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Cultural Radar Comparison */}
+        <div className="lg:col-span-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center space-x-2">
+                <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Regional Cultural Resonance Radar
+                </h3>
+              </div>
+              <span className="text-[11px] font-mono font-medium text-slate-400">
+                5-Axis Spider
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+              Comparative multi-market taste alignment across East Asia and European flagship epicenters.
+            </p>
+            <div className="flex justify-center py-4">
+              <CulturalRadarChart series={dashboardRadarSeries} size={300} />
+            </div>
+          </div>
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
+            <span>Deterministic fixed-point scoring</span>
+            <Link
+              href="/runs"
+              className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center space-x-1"
+            >
+              <span>Explore all runs</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+        </div>
+
+        {/* Global Cultural Momentum Velocity */}
+        <div className="lg:col-span-6 flex flex-col">
+          <MomentumTrajectoryChart
+            marketName="Tokyo & Global Hubs"
+            category="Cross-Market Velocity"
+            className="h-full flex flex-col justify-between"
+          />
+        </div>
       </div>
 
       {/* Main Grid: Projects & Decision Feed */}
