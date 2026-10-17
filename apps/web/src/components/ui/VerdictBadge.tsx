@@ -20,19 +20,19 @@ export function VerdictBadge({
   const config = {
     launch: {
       label: "LAUNCH",
-      bg: "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800/80 text-emerald-800 dark:text-emerald-300",
+      bg: "bg-emerald-500/10 dark:bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 shadow-sm shadow-emerald-500/10",
       icon: CheckCircle2,
       dotColor: "bg-emerald-500",
     },
     adapt: {
       label: "ADAPT",
-      bg: "bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800/80 text-amber-800 dark:text-amber-300",
+      bg: "bg-amber-500/10 dark:bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-300 shadow-sm shadow-amber-500/10",
       icon: AlertTriangle,
       dotColor: "bg-amber-500",
     },
     avoid: {
       label: "AVOID",
-      bg: "bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800/80 text-rose-800 dark:text-rose-300",
+      bg: "bg-rose-500/10 dark:bg-rose-500/15 border-rose-500/30 text-rose-700 dark:text-rose-300 shadow-sm shadow-rose-500/10",
       icon: XCircle,
       dotColor: "bg-rose-500",
     },

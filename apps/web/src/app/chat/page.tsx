@@ -39,6 +39,17 @@ export default function AnalystChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const initStarterMessages = useCallback((proj: Project) => {
+    const markets = (proj.candidate_markets || proj.markets || []).map((m) => m.name);
+    const primaryMarkets = markets.length > 0 ? markets : ["Paris", "Tokyo"];
+    const catScores: Record<string, number> = {};
+    const audScores: Record<string, number> = {};
+    const sentScores: Record<string, number> = {};
+    primaryMarkets.forEach((m, idx) => {
+      catScores[m] = Math.max(50, 85 - idx * 4);
+      audScores[m] = Math.max(45, 82 - idx * 5);
+      sentScores[m] = Math.max(40, 79 - idx * 3);
+    });
+
     setMessages([
       {
         id: "msg-1",
@@ -49,7 +60,7 @@ export default function AnalystChatPage() {
       {
         id: "msg-2",
         sender: "analyst",
-        text: `Based on deterministic evaluation of **${proj.name}**, the top market exhibits strong cultural alignment across verified Qloo taste vectors:
+        text: `Based on deterministic evaluation of **${proj.name}**, ${primaryMarkets[0]} exhibits strong cultural alignment across verified Qloo taste vectors:
 
 1. **Strong Category Resonance [1]**: Verified high index for your product category with active independent retail and boutique density.
 2. **Demographic & Audience Alignment [2]**: Your target consumer cohort matches local active urban demographics, showing receptive tone.
@@ -57,15 +68,15 @@ export default function AnalystChatPage() {
 4. **Favorable Channel Infrastructure [4]**: Low friction in distribution with strong lifestyle hub presence.`,
         timestamp: "10:25 AM",
         citations: [
-          { id: 1, label: "Category Taste Affinity", entity: "Retail Ecosystem", kind: "Category" },
-          { id: 2, label: "Youth Demographics Cohort", entity: "Gen Z Segment", kind: "Audience" },
-          { id: 3, label: "Sustained Lifestyle Trend", entity: "Urban Momentum", kind: "Trend" },
-          { id: 4, label: "Boutique & Cafe Channels", entity: "Channel Distribution", kind: "Context" },
+          { id: 1, label: `${primaryMarkets[0]} Category Affinity`, entity: "Retail Ecosystem", kind: "Category" },
+          { id: 2, label: `${primaryMarkets[0]} Audience Alignment`, entity: "Early Adopter Segment", kind: "Audience" },
+          { id: 3, label: "Cultural Momentum Velocity", entity: "Trend Trajectory", kind: "Trend" },
+          { id: 4, label: "Channel Infrastructure", entity: "Retail Hubs", kind: "Context" },
         ],
         chartData: [
-          { dimension: "Category Affinity", scores: { "Tokyo, Japan": 92, "Seoul, Korea": 87, "Singapore": 71, "Bangkok": 48 } },
-          { dimension: "Audience Overlap", scores: { "Tokyo, Japan": 88, "Seoul, Korea": 84, "Singapore": 68, "Bangkok": 42 } },
-          { dimension: "Sentiment Tone", scores: { "Tokyo, Japan": 85, "Seoul, Korea": 81, "Singapore": 74, "Bangkok": 52 } },
+          { dimension: "Category Affinity", scores: catScores },
+          { dimension: "Audience Overlap", scores: audScores },
+          { dimension: "Sentiment Tone", scores: sentScores },
         ],
       },
     ]);

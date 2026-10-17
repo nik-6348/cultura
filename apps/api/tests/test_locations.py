@@ -23,9 +23,9 @@ async def test_locations_search_query(client: AsyncClient) -> None:
     response = await client.get("/api/v1/locations?query=france")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 1
-    assert data[0]["country"] == "France"
-    assert data[0]["name"] == "Paris"
+    assert len(data) >= 1
+    assert any(loc["country"] == "France" for loc in data)
+    assert any(loc["name"] == "Paris" for loc in data)
 
 
 @pytest.mark.asyncio

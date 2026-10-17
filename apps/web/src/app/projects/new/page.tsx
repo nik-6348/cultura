@@ -26,13 +26,16 @@ import {
   Tv,
   ShoppingBag,
   Loader2,
+  SlidersHorizontal,
+  Bot,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Workspace } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { AIWorkflowAssistant } from "@/components/workflow/AIWorkflowAssistant";
 
 // --- Supported Qloo Metros (Pure CSS / Vectors, Zero External Images) ---
-interface MarketPreset {
+export interface MarketPreset {
   id: string;
   name: string;
   country: string;
@@ -334,6 +337,7 @@ const STRATEGIC_GOALS = [
 
 export default function NewProjectWizardPage() {
   const router = useRouter();
+  const [creationMode, setCreationMode] = useState<"ai" | "manual">("ai");
   const [step, setStep] = useState(1);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(false);
@@ -642,7 +646,7 @@ export default function NewProjectWizardPage() {
 
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300 pb-16">
+    <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300 pb-16">
       {/* Top Breadcrumb & Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800">
         <div>
@@ -660,67 +664,103 @@ export default function NewProjectWizardPage() {
             Create New Analysis
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-            {step === 1 && "Define your brand parameters and product attributes to cross-reference with Qloo cultural taste graphs."}
-            {step === 2 && "Define your target audience. This helps us find the right cultural signals and compare markets more accurately."}
-            {step === 3 && "Select the markets you want to analyze. We'll compare cultural signals, audience fit and opportunities across these markets using Qloo."}
-            {step === 4 && "Define your business goals and strategy. This helps us tailor the analysis and recommendations to your specific needs."}
-            {step === 5 && "Review your analysis settings below. Once everything looks good, run the analysis to get cultural insights and market recommendations from Qloo."}
+            Choose your preferred configuration method: let the interactive AI assistant guide you step-by-step with Qloo cultural taste graphs, or fill out the manual 5-step wizard.
           </p>
         </div>
 
-        {/* 5-Step Horizontal Stepper */}
-        <div className="flex items-center space-x-2 self-start sm:self-center">
-          {steps.map((s, idx) => {
-            const isCurrent = step === s.num;
-            const isDone = step > s.num;
-            return (
-              <div key={s.num} className="flex items-center">
-                <button
-                  type="button"
-                  onClick={() => s.num < step && setStep(s.num)}
-                  disabled={s.num > step}
-                  className={cn(
-                    "flex flex-col items-center space-y-1 group transition-all",
-                    s.num <= step ? "cursor-pointer" : "cursor-not-allowed opacity-70"
+        {/* 5-Step Horizontal Stepper (shown in manual mode) */}
+        {creationMode === "manual" && (
+          <div className="flex items-center space-x-2 self-start sm:self-center">
+            {steps.map((s, idx) => {
+              const isCurrent = step === s.num;
+              const isDone = step > s.num;
+              return (
+                <div key={s.num} className="flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => s.num < step && setStep(s.num)}
+                    disabled={s.num > step}
+                    className={cn(
+                      "flex flex-col items-center space-y-1 group transition-all",
+                      s.num <= step ? "cursor-pointer" : "cursor-not-allowed opacity-70"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all",
+                        isDone
+                          ? "bg-indigo-600 text-white"
+                          : isCurrent
+                          ? "bg-indigo-600 text-white ring-4 ring-indigo-500/20 shadow-xs"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+                      )}
+                    >
+                      {isDone ? <Check className="w-3.5 h-3.5 stroke-[2.5]" /> : s.num}
+                    </div>
+                    <span
+                      className={cn(
+                        "text-[10px] font-semibold hidden md:inline transition-colors",
+                        isCurrent
+                          ? "text-indigo-600 dark:text-indigo-400 font-bold"
+                          : isDone
+                          ? "text-slate-700 dark:text-slate-300"
+                          : "text-slate-400 dark:text-slate-500"
+                      )}
+                    >
+                      {s.title}
+                    </span>
+                  </button>
+                  {idx < steps.length - 1 && (
+                    <div
+                      className={cn(
+                        "w-6 lg:w-10 h-0.5 mx-1.5 rounded-full transition-colors",
+                        isDone ? "bg-indigo-600" : "bg-slate-200 dark:bg-slate-800"
+                      )}
+                    />
                   )}
-                >
-                  <div
-                    className={cn(
-                      "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all",
-                      isDone
-                        ? "bg-indigo-600 text-white"
-                        : isCurrent
-                        ? "bg-indigo-600 text-white ring-4 ring-indigo-500/20 shadow-xs"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
-                    )}
-                  >
-                    {isDone ? <Check className="w-3.5 h-3.5 stroke-[2.5]" /> : s.num}
-                  </div>
-                  <span
-                    className={cn(
-                      "text-[10px] font-semibold hidden md:inline transition-colors",
-                      isCurrent
-                        ? "text-indigo-600 dark:text-indigo-400 font-bold"
-                        : isDone
-                        ? "text-slate-700 dark:text-slate-300"
-                        : "text-slate-400 dark:text-slate-500"
-                    )}
-                  >
-                    {s.title}
-                  </span>
-                </button>
-                {idx < steps.length - 1 && (
-                  <div
-                    className={cn(
-                      "w-6 lg:w-10 h-0.5 mx-1.5 rounded-full transition-colors",
-                      isDone ? "bg-indigo-600" : "bg-slate-200 dark:bg-slate-800"
-                    )}
-                  />
-                )}
-              </div>
-            );
-          })}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Top Mode Selector: AI Guided Workflow vs Manual 5-Step Wizard */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-1.5 rounded-2xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+        <div className="flex items-center space-x-1.5 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setCreationMode("ai")}
+            className={cn(
+              "flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-2 cursor-pointer",
+              creationMode === "ai"
+                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs border border-slate-200/60 dark:border-slate-800"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            )}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Interactive AI Workflow</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setCreationMode("manual")}
+            className={cn(
+              "flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-2 cursor-pointer",
+              creationMode === "manual"
+                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs border border-slate-200/60 dark:border-slate-800"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            )}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>Create Manually (5-Step Wizard)</span>
+          </button>
         </div>
+
+        <span className="text-[11px] text-slate-500 dark:text-slate-400 px-2 hidden sm:inline">
+          {creationMode === "ai"
+            ? "Interactive conversational guidance with live Qloo data"
+            : "Standard structured form wizard with full manual control"}
+        </span>
       </div>
 
       {error && (
@@ -730,8 +770,46 @@ export default function NewProjectWizardPage() {
         </div>
       )}
 
-      {/* Main Single-Column Focused Form Layout (Zero Side Review Panel) */}
-      <div className="space-y-6">
+      {/* RENDER SELECTED WORKFLOW MODE */}
+      {creationMode === "ai" ? (
+        <AIWorkflowAssistant
+          projectName={projectName}
+          setProjectName={setProjectName}
+          brandName={brandName}
+          setBrandName={setBrandName}
+          category={category}
+          setCategory={setCategory}
+          description={description}
+          setDescription={setDescription}
+          tags={tags}
+          setTags={setTags}
+          audienceName={audienceName}
+          setAudienceName={setAudienceName}
+          ageRange={ageRange}
+          setAgeRange={setAgeRange}
+          gender={gender}
+          setGender={setGender}
+          incomeLevel={incomeLevel}
+          setIncomeLevel={setIncomeLevel}
+          selectedInterests={selectedInterests}
+          setSelectedInterests={setSelectedInterests}
+          selectedMarkets={selectedMarkets}
+          setSelectedMarkets={setSelectedMarkets}
+          primaryGoal={primaryGoal}
+          setPrimaryGoal={setPrimaryGoal}
+          launchTimeline={launchTimeline}
+          setLaunchTimeline={setLaunchTimeline}
+          productPositioning={productPositioning}
+          setProductPositioning={setProductPositioning}
+          additionalContext={additionalContext}
+          setAdditionalContext={setAdditionalContext}
+          onLaunch={handleLaunchAnalysis}
+          onSwitchToManual={() => setCreationMode("manual")}
+          loading={loading}
+        />
+      ) : (
+        /* Main Single-Column Focused Form Layout (Manual Wizard) */
+        <div className="space-y-6">
         {/* ========================================================================= */}
         {/* STEP 1: BRAND & PRODUCT */}
         {/* ========================================================================= */}
@@ -1960,6 +2038,7 @@ export default function NewProjectWizardPage() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -106,19 +106,20 @@ class AnalysisRunService:
 
         current_state = initial_state
         step_sequence = 0
+        step_start_perf = time.perf_counter()
+        step_start_ts = datetime.now(UTC)
 
         # Execute through graph stream
         async for output in graph.astream(initial_state, config=thread_config):
+            step_end_perf = time.perf_counter()
+            step_end_ts = datetime.now(UTC)
+            step_latency_ms = int((step_end_perf - step_start_perf) * 1000)
+
             for node_name, node_update in output.items():
                 step_sequence += 1
-                start_ts = datetime.now(UTC)
-                start_perf = time.perf_counter()
 
                 # Merge update into current state
                 current_state.update(node_update)
-
-                latency_ms = int((time.perf_counter() - start_perf) * 1000)
-                end_ts = datetime.now(UTC)
 
                 # Record step in run_steps
                 step_record = RunStep(
@@ -127,13 +128,17 @@ class AnalysisRunService:
                     agent_name=f"{node_name}_agent",
                     status="completed",
                     sequence=step_sequence,
-                    started_at=start_ts,
-                    completed_at=end_ts,
-                    latency_ms=max(1, latency_ms),
+                    started_at=step_start_ts,
+                    completed_at=step_end_ts,
+                    latency_ms=max(1, step_latency_ms),
                     output_ref=str(node_update.get("current_step", node_name)),
                 )
                 db.add(step_record)
                 await db.commit()
+
+            # Advance timestamp and timer for the next agent node execution
+            step_start_perf = time.perf_counter()
+            step_start_ts = datetime.now(UTC)
 
         # 5. Persist normalized evidence records into database
         normalized_ev = current_state.get("normalized_evidence", [])
@@ -396,15 +401,17 @@ class AnalysisRunService:
         thread_config = {"configurable": {"thread_id": str(sim_run.id)}}
         current_state = initial_state
         step_sequence = 0
+        step_start_perf = time.perf_counter()
+        step_start_ts = datetime.now(UTC)
 
         async for output in graph.astream(initial_state, config=thread_config):
+            step_end_perf = time.perf_counter()
+            step_end_ts = datetime.now(UTC)
+            step_latency_ms = int((step_end_perf - step_start_perf) * 1000)
+
             for node_name, node_update in output.items():
                 step_sequence += 1
-                start_ts = datetime.now(UTC)
-                start_perf = time.perf_counter()
                 current_state.update(node_update)
-                latency_ms = int((time.perf_counter() - start_perf) * 1000)
-                end_ts = datetime.now(UTC)
 
                 step_record = RunStep(
                     run_id=sim_run.id,
@@ -412,13 +419,16 @@ class AnalysisRunService:
                     agent_name=f"{node_name}_agent",
                     status="completed",
                     sequence=step_sequence,
-                    started_at=start_ts,
-                    completed_at=end_ts,
-                    latency_ms=max(1, latency_ms),
+                    started_at=step_start_ts,
+                    completed_at=step_end_ts,
+                    latency_ms=max(1, step_latency_ms),
                     output_ref=str(node_update.get("current_step", node_name)),
                 )
                 db.add(step_record)
                 await db.commit()
+
+            step_start_perf = time.perf_counter()
+            step_start_ts = datetime.now(UTC)
 
         # Persist normalized evidence
         for ev_data in current_state.get("normalized_evidence", []):
