@@ -26,21 +26,9 @@ function asString(v: unknown): string | null {
 function asStringArray(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 }
-function getMarketFlag(name: string): string {
-  const n = name?.toLowerCase() ?? "";
-  if (n.includes("tokyo") || n.includes("japan"))      return "🇯🇵";
-  if (n.includes("berlin") || n.includes("germany"))    return "🇩🇪";
-  if (n.includes("seoul") || n.includes("korea"))       return "🇰🇷";
-  if (n.includes("london") || n.includes("uk"))         return "🇬🇧";
-  if (n.includes("paris") || n.includes("france"))      return "🇫🇷";
-  if (n.includes("new york") || n.includes("usa"))      return "🇺🇸";
-  if (n.includes("singapore"))                          return "🇸🇬";
-  if (n.includes("bangkok") || n.includes("thailand"))  return "🇹🇭";
-  if (n.includes("jakarta") || n.includes("indonesia")) return "🇮🇩";
-  if (n.includes("sydney") || n.includes("australia"))  return "🇦🇺";
-  if (n.includes("dubai"))                               return "🇦🇪";
-  if (n.includes("mumbai") || n.includes("india"))      return "🇮🇳";
-  return "🌐";
+function marketInitials(name: string): string {
+  const city = (name ?? "").split(",")[0].trim();
+  return city.slice(0, 2).toUpperCase();
 }
 function scoreColor(v: number) {
   if (v >= 0.80) return { fg: "#A5B4FC", bg: "rgba(99,102,241,0.15)", bar: "#6366F1" };
@@ -178,7 +166,7 @@ export default function ProjectHubPage() {
             {
               icon: Globe2,
               label: "Top Market",
-              value: winnerMarket ? `${getMarketFlag(winnerMarket)} ${winnerMarket.split(",")[0]}` : "—",
+              value: winnerMarket ? winnerMarket.split(",")[0] : "—",
               color: "#A5B4FC",
             },
             {
@@ -260,9 +248,8 @@ export default function ProjectHubPage() {
                         className={cn("flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-[#111827]", isWinner && "bg-indigo-950/20")}>
                         {/* Rank */}
                         <span className="text-[11px] font-mono text-slate-600 w-4 flex-shrink-0">{idx + 1}</span>
-                        {/* Flag + name */}
+                        {/* Market name */}
                         <div className="flex items-center gap-2 w-36 flex-shrink-0">
-                          <span className="text-lg leading-none">{getMarketFlag(item.market)}</span>
                           <div>
                             <div className={cn("text-xs font-semibold truncate", isWinner ? "text-white" : "text-slate-200")}>
                               {item.market.split(",")[0]}
@@ -302,7 +289,9 @@ export default function ProjectHubPage() {
                     {project.candidate_markets.map(m => (
                       <div key={m.id ?? m.name}
                         className="flex items-center gap-3 p-3.5 rounded-xl border border-[#1A2338] bg-[#111827]">
-                        <span className="text-xl leading-none">{getMarketFlag(m.name)}</span>
+                        <div className="w-7 h-7 rounded-lg bg-[#1A2338] flex items-center justify-center flex-shrink-0">
+                          <span className="text-[10px] font-bold text-slate-400">{marketInitials(m.name)}</span>
+                        </div>
                         <div>
                           <div className="text-xs font-semibold text-white">{m.name}</div>
                           <div className="text-[10px] text-slate-500">{m.country ?? "Target Market"}</div>
@@ -315,6 +304,55 @@ export default function ProjectHubPage() {
                   <p className="text-xs text-slate-500">No candidate markets configured.</p>
                 )}
                 <p className="text-[11px] text-slate-600">Run Analysis to score these markets.</p>
+              </div>
+            )}
+
+            {/* Recent Runs — full width in left column */}
+            {runs.length > 0 && (
+              <div className="rounded-xl border border-[#1A2338] bg-[#0E1424] overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#1A2338]">
+                  <h3 className="text-xs font-bold text-white">Recent Runs</h3>
+                  <button onClick={() => setActiveTab("runs")}
+                    className="text-[10px] text-indigo-400 hover:text-indigo-300">View all →</button>
+                </div>
+                <div className="divide-y divide-[#111827]">
+                  {runs.slice(0, 5).map(r => {
+                    const winner = r.result_summary_json?.winner_market as string | undefined;
+                    return (
+                      <Link key={r.id} href={`/runs/${r.id}`}
+                        className="flex items-center gap-4 px-5 py-3 hover:bg-[#111827] transition-colors">
+                        <div className="flex-1 min-w-0 flex items-center gap-3">
+                          <div className="w-7 h-7 rounded-lg bg-[#1A2338] flex items-center justify-center flex-shrink-0">
+                            <span className="text-[9px] font-bold text-slate-500 font-mono">{r.id.slice(0, 4)}</span>
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-xs font-semibold text-slate-200 truncate block">
+                              {winner ?? (r.parent_run_id ? "Simulation" : "Baseline Analysis")}
+                            </span>
+                            <span className="text-[10px] text-slate-600">{timeAgo(r.created_at)}</span>
+                          </div>
+                        </div>
+                        {r.overall_score != null && (
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <div className="w-20 h-1.5 rounded-full bg-[#1A2338] overflow-hidden">
+                              <div className="h-full rounded-full"
+                                style={{ width: `${Math.round(r.overall_score * 100)}%`, background: scoreColor(r.overall_score).bar }} />
+                            </div>
+                            <span className="font-mono text-xs font-bold w-8 text-right" style={{ color: scoreColor(r.overall_score).fg }}>
+                              {Math.round(r.overall_score * 100)}%
+                            </span>
+                          </div>
+                        )}
+                        {r.decision_verdict && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
+                            style={{ color: verdictColor(r.decision_verdict), background: `${verdictColor(r.decision_verdict)}15` }}>
+                            {r.decision_verdict}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
@@ -405,7 +443,6 @@ export default function ProjectHubPage() {
 
                 {winnerMarket && (
                   <div className="flex items-center gap-2 rounded-lg bg-indigo-950/40 border border-indigo-900/40 px-3 py-2">
-                    <span className="text-xl">{getMarketFlag(winnerMarket)}</span>
                     <div>
                       <div className="text-[10px] text-indigo-400 font-semibold uppercase tracking-wider">Recommended Entry</div>
                       <div className="text-xs font-bold text-white">{winnerMarket}</div>
@@ -438,47 +475,6 @@ export default function ProjectHubPage() {
               </div>
             )}
 
-            {/* Recent runs mini-list */}
-            {runs.length > 0 && (
-              <div className="rounded-xl border border-[#1A2338] bg-[#0E1424] overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-[#1A2338]">
-                  <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Recent Runs</h3>
-                  <button onClick={() => setActiveTab("runs")}
-                    className="text-[10px] text-indigo-400 hover:text-indigo-300">View all</button>
-                </div>
-                <div className="divide-y divide-[#1A2338]">
-                  {runs.slice(0, 4).map(r => {
-                    const winner = r.result_summary_json?.winner_market as string | undefined;
-                    return (
-                      <Link key={r.id} href={`/runs/${r.id}`}
-                        className="flex items-center gap-3 px-4 py-3 hover:bg-[#111827] transition-colors">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            {winner && <span className="text-sm leading-none">{getMarketFlag(winner)}</span>}
-                            <span className="text-xs font-semibold text-slate-200 truncate">
-                              {winner ?? (r.parent_run_id ? "Simulation" : "Baseline")}
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-slate-600">{timeAgo(r.created_at)}</div>
-                        </div>
-                        {r.overall_score != null && (
-                          <span className="font-mono text-xs font-bold flex-shrink-0"
-                            style={{ color: scoreColor(r.overall_score).fg }}>
-                            {Math.round(r.overall_score * 100)}%
-                          </span>
-                        )}
-                        {r.decision_verdict && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
-                            style={{ color: verdictColor(r.decision_verdict), background: `${verdictColor(r.decision_verdict)}15` }}>
-                            {r.decision_verdict}
-                          </span>
-                        )}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -512,10 +508,7 @@ export default function ProjectHubPage() {
                         <td className="px-4 py-3 text-slate-300">{r.parent_run_id ? "Simulation" : "Baseline"}</td>
                         <td className="px-4 py-3">
                           {winner ? (
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-base leading-none">{getMarketFlag(winner)}</span>
-                              <span className="font-medium text-slate-200">{winner.split(",")[0]}</span>
-                            </div>
+                            <span className="font-medium text-slate-200">{winner.split(",")[0]}</span>
                           ) : <span className="text-slate-600">—</span>}
                         </td>
                         <td className="px-4 py-3">
