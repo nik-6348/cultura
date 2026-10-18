@@ -308,7 +308,7 @@ export function ChatPanel({
   const isEmpty = historyLoaded && messages.length === 0 && !isStreaming;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Optional header with reset button */}
       {showHeader && (
         <div className="flex items-center justify-between px-4 py-2 border-b border-[#1A2338] flex-shrink-0">

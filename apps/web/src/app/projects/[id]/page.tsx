@@ -520,12 +520,12 @@ export default function ProjectHubPage() {
 
       {/* TAB 3: ANALYST CHAT */}
       {activeTab === "chat" && project && (
-        <div className="rounded-xl bg-[#0E1424] border border-[#1A2338] overflow-hidden" style={{ height: "520px" }}>
+        <div className="rounded-xl bg-[#0E1424] border border-[#1A2338] overflow-hidden flex flex-col" style={{ height: "520px" }}>
           <ChatPanel
             key={chatPanelKey}
             projectId={project.id}
             startFresh={chatStartFresh}
-            scrollAreaClass="flex-1"
+            scrollAreaClass="flex-1 min-h-0"
             showHeader
             headerLabel={project.name}
             onReset={() => { setChatStartFresh(true); setChatPanelKey((k) => k + 1); }}

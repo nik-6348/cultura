@@ -85,12 +85,14 @@ export default function AnalystChatPage() {
 
       {/* Chat */}
       {selectedProject ? (
-        <ChatPanel
-          key={panelKey}
-          projectId={selectedProject.id}
-          startFresh={startFresh}
-          scrollAreaClass="flex-1"
-        />
+        <div className="flex-1 min-h-0 flex flex-col">
+          <ChatPanel
+            key={panelKey}
+            projectId={selectedProject.id}
+            startFresh={startFresh}
+            scrollAreaClass="flex-1 min-h-0"
+          />
+        </div>
       ) : (
         <div className="flex-1 flex items-center justify-center text-sm text-slate-500">
           Loading…
