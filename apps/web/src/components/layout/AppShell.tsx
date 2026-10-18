@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutGrid,
   Folder,
+  FileText,
   Sparkles,
   Activity,
   Settings,
@@ -69,6 +70,12 @@ export function AppShell({ children }: AppShellProps) {
       href: "/projects",
       icon: Folder,
       isActive: pathname.startsWith("/projects"),
+    },
+    {
+      label: "Reports",
+      href: "/reports",
+      icon: FileText,
+      isActive: pathname.startsWith("/reports"),
     },
     {
       label: "AI Assistant",

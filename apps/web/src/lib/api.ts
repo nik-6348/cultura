@@ -348,6 +348,12 @@ export const api = {
     return fetchJson<ReportRecord>(`/api/v1/reports/${reportId}`);
   },
 
+  async deleteReport(reportId: string): Promise<void> {
+    return fetchJson<void>(`/api/v1/reports/${reportId}`, {
+      method: "DELETE",
+    });
+  },
+
   // Analyst Chat
   async chatWithAnalyst(
     projectId: string,

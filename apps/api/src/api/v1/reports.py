@@ -133,3 +133,33 @@ async def get_raw_report(
         media_type=media_type,
         headers={"Content-Disposition": f'inline; filename="{filename}"'},
     )
+
+
+@router.delete(
+    "/reports/{report_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a report by ID",
+)
+async def delete_report(
+    report_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """Delete a report by unique ID."""
+    report = await ReportService.get_report_by_id(db, report_id)
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Report {report_id} not found",
+        )
+
+    run = await AnalysisRunService.get_run_by_id(db, report.run_id)
+    if not run:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Parent analysis run not found",
+        )
+
+    await verify_workspace_access(run.workspace_id, current_user, db)
+    await ReportService.delete_report(db, report_id)
+

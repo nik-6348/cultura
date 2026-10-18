@@ -22,6 +22,154 @@ class AnalysisRunService:
     persists step-by-step audit timelines in run_steps, and stores normalized evidence.
     """
 
+    # ── Token/cost profile per node ─────────────────────────────────────────
+    _NODE_PROFILE: dict[str, dict] = {
+        "supervisor": {
+            "model": "claude-3-haiku-20240307",
+            "est_input_tokens": 1_200, "est_output_tokens": 350,
+            "cost_per_m_in": 0.25, "cost_per_m_out": 1.25,
+        },
+        "brand_analyst": {
+            "model": "claude-sonnet-4-5",
+            "est_input_tokens": 2_500, "est_output_tokens": 900,
+            "cost_per_m_in": 3.0, "cost_per_m_out": 15.0,
+        },
+        "market_analyst": {
+            "model": "claude-sonnet-4-5",
+            "est_input_tokens": 2_800, "est_output_tokens": 1_100,
+            "cost_per_m_in": 3.0, "cost_per_m_out": 15.0,
+        },
+        "audience_matcher": {
+            "model": "claude-sonnet-4-5",
+            "est_input_tokens": 2_200, "est_output_tokens": 800,
+            "cost_per_m_in": 3.0, "cost_per_m_out": 15.0,
+        },
+        "qloo_researcher": {
+            "model": "qloo-taste-graph-v2",
+            "est_input_tokens": 0, "est_output_tokens": 0,
+            "cost_per_m_in": 0, "cost_per_m_out": 0,
+        },
+        "evidence_normalizer": {
+            "model": "claude-3-haiku-20240307",
+            "est_input_tokens": 3_500, "est_output_tokens": 1_500,
+            "cost_per_m_in": 0.25, "cost_per_m_out": 1.25,
+        },
+        "deterministic_scorer": {
+            "model": "scorer-v1.0-deterministic",
+            "est_input_tokens": 0, "est_output_tokens": 0,
+            "cost_per_m_in": 0, "cost_per_m_out": 0,
+        },
+        "jev_decision_gate": {
+            "model": "typesafe-jev-1.13",
+            "est_input_tokens": 0, "est_output_tokens": 0,
+            "cost_per_m_in": 0, "cost_per_m_out": 0,
+        },
+        "strategy_synthesizer": {
+            "model": "claude-sonnet-4-5",
+            "est_input_tokens": 4_000, "est_output_tokens": 2_000,
+            "cost_per_m_in": 3.0, "cost_per_m_out": 15.0,
+        },
+        "guardrail_validator": {
+            "model": "claude-sonnet-4-5",
+            "est_input_tokens": 3_200, "est_output_tokens": 1_200,
+            "cost_per_m_in": 3.0, "cost_per_m_out": 15.0,
+        },
+    }
+
+    @classmethod
+    def _build_trace_meta(
+        cls,
+        node_name: str,
+        node_update: dict[str, Any],
+        current_state: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Build rich trace metadata for a node execution step."""
+        profile = cls._NODE_PROFILE.get(node_name, {
+            "model": "claude-3-haiku-20240307",
+            "est_input_tokens": 800, "est_output_tokens": 300,
+            "cost_per_m_in": 0.25, "cost_per_m_out": 1.25,
+        })
+
+        i_tok = profile["est_input_tokens"]
+        o_tok = profile["est_output_tokens"]
+        cost = round(
+            (i_tok * profile["cost_per_m_in"] + o_tok * profile["cost_per_m_out"]) / 1_000_000,
+            6,
+        )
+
+        brand_name = current_state.get("brand_name") or "Brand"
+        markets = current_state.get("candidate_markets", []) or []
+        market_names = ", ".join(
+            (m.get("name") or m.get("market", "")) for m in markets[:3]
+        ) or "Target Markets"
+        raw_ev_count = len(current_state.get("raw_evidence", []) or [])
+        ev_count = len(current_state.get("normalized_evidence", []) or [])
+
+        input_summaries: dict[str, str] = {
+            "supervisor": f"Brand: {brand_name} | Markets: {market_names}",
+            "brand_analyst": f"Brand profile and strategic expansion objective for {brand_name}",
+            "market_analyst": f"Territory demographics, retail landscape, and cultural vibrancy for {market_names}",
+            "audience_matcher": f"Audience psychographics and consumer affinity profile for {brand_name}",
+            "audience_analyst": f"Audience psychographics and consumer affinity profile for {brand_name}",
+            "qloo_researcher": f"Qloo taste graph API queries across categories for {market_names}",
+            "evidence_normalizer": f"{raw_ev_count} raw cultural taste signals → score calibration pipeline",
+            "deterministic_scorer": f"{ev_count} normalized evidence records → 5-dimension cultural fit model",
+            "scorer": f"{ev_count} normalized evidence records → 5-dimension cultural fit model",
+            "jev_decision_gate": f"Compatibility rankings and risk thresholds across {len(markets)} candidate markets",
+            "strategy_synthesizer": f"Market rankings and decision gate posture → localised go-to-market playbook",
+            "strategy": f"Market rankings and decision gate posture → localised go-to-market playbook",
+            "guardrail_validator": f"Strategic directives and claims → empirical grounding and risk audit",
+            "final_review_guard": f"Strategic directives and claims → empirical grounding and risk audit",
+        }
+
+        if node_name == "supervisor":
+            out_summary = f"Pipeline initialized for {len(markets)} target market(s): {market_names}"
+        elif node_name == "brand_analyst":
+            out_summary = f"Brand voice, identity anchors, and cultural positioning synthesized"
+        elif node_name == "market_analyst":
+            out_summary = f"Territory landscape, demographic dynamics, and market readiness evaluated"
+        elif node_name in ("audience_analyst", "audience_matcher"):
+            out_summary = f"Target consumer personas and affinity profiles mapped"
+        elif node_name == "qloo_researcher":
+            raw = node_update.get("raw_evidence", []) or []
+            out_summary = f"Collected {len(raw)} raw affinity signals from Qloo taste graph"
+        elif node_name == "evidence_normalizer":
+            normed = node_update.get("normalized_evidence", []) or []
+            out_summary = f"Normalized {len(normed)} evidence records with confidence scores"
+        elif node_name in ("scorer", "deterministic_scorer"):
+            ms = node_update.get("market_scores", {}) or {}
+            top = sorted(
+                ms.items(), key=lambda kv: (kv[1] or {}).get("overall_score", 0), reverse=True
+            )[:2]
+            parts = [f"{m}: {(d or {}).get('overall_score', 0):.0%}" for m, d in top]
+            out_summary = f"Scored {len(ms)} markets — {', '.join(parts)}" if parts else f"Scored {len(ms)} candidate markets across 5 dimensions"
+        elif node_name == "jev_decision_gate":
+            decs = (node_update.get("decisions", {}) or {})
+            posture = decs.get("winner_posture", "—").upper()
+            winner = decs.get("winner_market", "—")
+            out_summary = f"Gate decision: {posture} → {winner}"
+        elif node_name in ("strategy", "strategy_synthesizer"):
+            recs = node_update.get("recommendations", []) or []
+            out_summary = f"{len(recs)} strategic directives generated" if recs else "Market entry playbook and directives generated"
+        elif node_name in ("final_review_guard", "guardrail_validator"):
+            audit = (node_update.get("audit_report", {}) or {})
+            status = "PASSED ✓" if audit.get("is_verified") else "FLAGGED ⚠"
+            out_summary = f"Audit {status} | {audit.get('total_recommendations', 0)} recs reviewed"
+        else:
+            out_summary = "Pipeline step completed successfully"
+
+        return {
+            "node": node_name,
+            "current_step": node_update.get("current_step", node_name),
+            "markets_processed": node_update.get("markets_evaluated"),
+            "model": profile["model"],
+            "est_input_tokens": i_tok,
+            "est_output_tokens": o_tok,
+            "est_cost_usd": cost,
+            "input_summary": input_summaries.get(node_name, f"State context for {node_name}"),
+            "output_summary": out_summary,
+        }
+
     @staticmethod
     async def create_and_execute_run(
         db: AsyncSession,
@@ -126,14 +274,12 @@ class AnalysisRunService:
                     node_errors: list = node_update.get("errors", []) or []
                     node_status = "failed" if node_errors else "completed"
 
-                    # Build lightweight trace metadata for in-app timeline
-                    trace_meta: dict[str, Any] = {
-                        "node": node_name,
-                        "current_step": node_update.get("current_step", node_name),
-                        "markets_processed": node_update.get("markets_evaluated"),
-                    }
+                    # Build rich trace metadata for in-app timeline
+                    trace_meta: dict[str, Any] = AnalysisRunService._build_trace_meta(
+                        node_name, node_update, current_state
+                    )
                     if node_errors:
-                        trace_meta["errors"] = node_errors[:3]  # cap to avoid bloat
+                        trace_meta["errors"] = node_errors[:3]
 
                     step_record = RunStep(
                         run_id=run.id,
@@ -488,7 +634,9 @@ class AnalysisRunService:
                     latency_ms=max(1, step_latency_ms),
                     output_ref=str(node_update.get("current_step", node_name)),
                     error_json={"messages": node_errors[:3]} if node_errors else None,
-                    metadata_json={"node": node_name, "current_step": node_update.get("current_step", node_name)},
+                    metadata_json=AnalysisRunService._build_trace_meta(
+                        node_name, node_update, current_state
+                    ),
                 ))
                 await db.commit()
 

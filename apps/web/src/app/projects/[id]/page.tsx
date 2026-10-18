@@ -574,13 +574,17 @@ export default function ProjectHubPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {reports.map(rep => (
-                <div key={rep.id} className="p-4 rounded-xl border border-[#1A2338] bg-[#0E1424] space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-bold text-xs text-white truncate">{rep.title}</h4>
-                    <span className="text-[10px] font-bold uppercase bg-[#1A2338] px-1.5 py-0.5 rounded text-slate-400">{rep.format}</span>
+                <Link key={rep.id} href={`/runs/${rep.run_id}?tab=report`}
+                  className="block p-4 rounded-xl border border-[#1A2338] bg-[#0E1424] space-y-3 hover:border-indigo-700 transition-all group">
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="font-bold text-xs text-white leading-tight">{rep.title}</h4>
+                    <span className="text-[10px] font-bold uppercase bg-[#1A2338] px-1.5 py-0.5 rounded text-slate-400 flex-shrink-0">{rep.format}</span>
                   </div>
                   <div className="text-[11px] text-slate-500">{formatDate(rep.created_at)}</div>
-                </div>
+                  <div className="flex items-center gap-1 text-[11px] text-indigo-400 group-hover:text-indigo-300 font-semibold">
+                    <FileText className="w-3 h-3" /> Open Report →
+                  </div>
+                </Link>
               ))}
             </div>
           )}

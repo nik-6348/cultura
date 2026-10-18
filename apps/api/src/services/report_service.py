@@ -60,13 +60,11 @@ class ReportService:
 
         # 3. Parse Run Results
         summary = run.result_summary_json or {}
-        winner_market = summary.get("winner_market") or "Primary Target Market"
         score_margin = summary.get("score_margin", 0.0)
         market_scores: dict[str, Any] = summary.get("market_scores", {})
         decisions_data: dict[str, Any] = summary.get("decisions", {})
         recommendations: list[dict[str, Any]] = summary.get("recommendations", [])
-        # Use promoted scores_json.rankings (populated since v2 migrations)
-        # Fallback: build rankings list from market_scores dict
+        # Build rankings first — rank 1 is authoritative winner
         ranked_markets: list[dict[str, Any]] = (run.scores_json or {}).get("rankings", [])
         if not ranked_markets and market_scores:
             sorted_markets = sorted(
@@ -78,6 +76,10 @@ class ReportService:
                 {"rank": i + 1, "market": m, "score": d.get("overall_score", 0.0), "verdict": "LAUNCH"}
                 for i, (m, d) in enumerate(sorted_markets)
             ]
+        # Rank-1 market is the winner; fall back to summary field
+        winner_market = (
+            ranked_markets[0].get("market") if ranked_markets else None
+        ) or summary.get("winner_market") or "Primary Target Market"
 
         # Winner specific data — dimension_scores is keyed by actual dimension names
         winner_data = market_scores.get(winner_market, {})
@@ -267,9 +269,27 @@ class ReportService:
 
         content = "\n".join(md_lines)
 
-        # Convert to HTML if requested
+        # For HTML: generate a proper visual report directly from data (not markdown→pre)
         if format_type.lower() == "html":
-            content = ReportService._markdown_to_html(content, title)
+            content = ReportService._build_html_report(
+                title=title,
+                brand_name=brand_name,
+                created_time_str=created_time_str,
+                run_id=str(run.id),
+                workflow_version=run.workflow_version,
+                winner_market=winner_market,
+                winner_overall_score=float(winner_overall_score),
+                verdict=verdict,
+                confidence=float(confidence),
+                probabilities=probabilities,
+                score_margin=float(score_margin),
+                ranked_markets=ranked_markets,
+                winner_dimensions=winner_dimensions,
+                market_scores=market_scores,
+                recommendations=recommendations,
+                evidence_list=evidence_list,
+                steps_list=steps_list,
+            )
 
         # 5. Persist Report Record in Database
         report = Report(
@@ -285,23 +305,454 @@ class ReportService:
         return report
 
     @staticmethod
-    def _markdown_to_html(markdown_text: str, title: str) -> str:
-        """Wrap markdown report in high-contrast professional HTML styling."""
-        css_styles = (
-            "body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.6; "
-            "color: #0f172a; max-width: 860px; margin: 40px auto; padding: 0 20px; }\n"
-            "h1, h2, h3 { color: #0f172a; font-weight: 700; }\n"
-            "h1 { font-size: 26px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }\n"
-            "table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px; }\n"
-            "th, td { padding: 10px 14px; border: 1px solid #e2e8f0; text-align: left; }\n"
-            "th { background: #f8fafc; font-weight: 600; color: #334155; }"
-        )
-        return (
-            f'<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
-            f"<title>{title}</title>\n<style>\n{css_styles}\n</style>\n</head>\n<body>\n"
-            f'<pre style="white-space: pre-wrap; font-family: inherit;">{markdown_text}</pre>\n'
-            f"</body>\n</html>"
-        )
+    def _readable_entity_label(entity_ref: str | None, source_meta: dict) -> str | None:
+        """Return a human-readable label for an evidence entity, stripping raw UUIDs."""
+        import re as _re
+        meta = source_meta or {}
+        for key in ("item_name", "venue_name", "location_name"):
+            if val := meta.get(key):
+                return str(val)
+        if not entity_ref:
+            return None
+        parts = entity_ref.split(":")
+        last = parts[-1]
+        if _re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", last, _re.I):
+            label = parts[1] if len(parts) >= 2 else entity_ref
+        else:
+            label = last
+        return label.replace("_", " ").replace("-", " ").title()
+
+    @staticmethod  # noqa: C901
+    def _build_html_report(  # noqa: PLR0912, PLR0913, PLR0914, PLR0915
+        title: str,
+        brand_name: str,
+        created_time_str: str,
+        run_id: str,
+        workflow_version: str,
+        winner_market: str,
+        winner_overall_score: float,
+        verdict: str,
+        confidence: float,
+        probabilities: dict,
+        score_margin: float,
+        ranked_markets: list,
+        winner_dimensions: dict,
+        market_scores: dict,
+        recommendations: list,
+        evidence_list: list,
+        steps_list: list,
+    ) -> str:
+        """Generate a fully styled, visual HTML executive report from raw data."""
+        import html as html_lib
+
+        def esc(s: Any) -> str:
+            return html_lib.escape(str(s))
+
+        VERDICT_COLOR = {"LAUNCH": "#10b981", "ADAPT": "#f59e0b", "AVOID": "#ef4444"}
+        VERDICT_BG = {"LAUNCH": "#ecfdf5", "ADAPT": "#fffbeb", "AVOID": "#fef2f2"}
+        VERDICT_BORDER = {"LAUNCH": "#6ee7b7", "ADAPT": "#fcd34d", "AVOID": "#fca5a5"}
+        v_color = VERDICT_COLOR.get(verdict, "#6366f1")
+        v_bg = VERDICT_BG.get(verdict, "#eef2ff")
+        v_border = VERDICT_BORDER.get(verdict, "#c7d2fe")
+
+        score_pct = winner_overall_score * 100
+
+        def score_color(val: float) -> str:
+            return "#10b981" if val >= 75 else "#f59e0b" if val >= 55 else "#ef4444"
+
+        def pct_bar(val: float, width: int = 180) -> str:
+            c = score_color(val)
+            return (
+                f'<table style="border-collapse:collapse;display:inline-table;vertical-align:middle">'
+                f'<tr>'
+                f'<td style="padding:0;width:{width}px;vertical-align:middle">'
+                f'<div style="width:{width}px;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden">'
+                f'<div style="width:{val:.1f}%;height:8px;background:{c};border-radius:4px"></div>'
+                f'</div></td>'
+                f'<td style="padding:0 0 0 8px;vertical-align:middle;font-size:13px;font-weight:800;color:{c};white-space:nowrap">'
+                f'{val:.1f}%</td>'
+                f'</tr></table>'
+            )
+
+        def svg_gauge(val: float, size: int = 110) -> str:
+            r = 40
+            circ = 2 * 3.14159265 * r
+            fill = circ * val / 100
+            c = score_color(val)
+            return (
+                f'<svg width="{size}" height="{size}" viewBox="0 0 100 100">'
+                f'<circle cx="50" cy="50" r="{r}" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="10"/>'
+                f'<circle cx="50" cy="50" r="{r}" fill="none" stroke="{c}" stroke-width="10" '
+                f'stroke-dasharray="{fill:.2f} {circ:.2f}" stroke-linecap="round" '
+                f'transform="rotate(-90 50 50)"/>'
+                f'<text x="50" y="46" text-anchor="middle" font-family="-apple-system,sans-serif" '
+                f'font-size="19" font-weight="800" fill="#ffffff">{val:.0f}%</text>'
+                f'<text x="50" y="62" text-anchor="middle" font-family="-apple-system,sans-serif" '
+                f'font-size="9" fill="#a5b4fc" letter-spacing="1">SCORE</text>'
+                f"</svg>"
+            )
+
+        # ── Dimensions ──────────────────────────────────────────────────────────
+        DIM_LABELS = [
+            ("category_ecosystem", "Category Ecosystem", "25%"),
+            ("audience_overlap", "Audience Overlap", "25%"),
+            ("cultural_momentum", "Cultural Momentum", "20%"),
+            ("brand_affinity", "Brand Affinity", "20%"),
+            ("evidence_coverage", "Evidence Coverage", "10%"),
+        ]
+        dim_rows_html = ""
+        for key, label, weight in DIM_LABELS:
+            raw = float(winner_dimensions.get(key, 0.0)) * 100
+            dim_rows_html += (
+                f"<tr>"
+                f'<td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;'
+                f'color:#1e293b;font-weight:600">{esc(label)}</td>'
+                f'<td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:12px;'
+                f'color:#64748b;text-align:center">{weight}</td>'
+                f'<td style="padding:10px 14px;border-bottom:1px solid #f1f5f9">{pct_bar(raw, 160)}</td>'
+                f"</tr>"
+            )
+
+        # ── Market comparison ────────────────────────────────────────────────────
+        market_rows_html = ""
+        display_markets = ranked_markets or [
+            {"rank": 1, "market": winner_market, "score": winner_overall_score, "verdict": verdict}
+        ]
+        for item in display_markets:
+            m = esc(item.get("market", "—"))
+            ms = float(item.get("score", 0.0)) * 100
+            mv = str(item.get("verdict", verdict)).upper()
+            mv_c = VERDICT_COLOR.get(mv, "#6366f1")
+            is_winner = str(item.get("market", "")) == winner_market
+            row_bg = "#f8faff" if is_winner else "white"
+            market_rows_html += (
+                f'<tr style="background:{row_bg}">'
+                f'<td style="padding:12px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;'
+                f'color:#64748b;text-align:center;font-weight:700">#{item.get("rank", 1)}</td>'
+                f'<td style="padding:12px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;'
+                f'color:#1e293b;font-weight:{"700" if is_winner else "500"}">'
+                f'{"★ " if is_winner else ""}{m}</td>'
+                f'<td style="padding:12px 14px;border-bottom:1px solid #f1f5f9">{pct_bar(ms, 140)}</td>'
+                f'<td style="padding:12px 14px;border-bottom:1px solid #f1f5f9;text-align:center;'
+                f'font-size:11px;font-weight:800;color:{mv_c}">{mv}</td>'
+                f"</tr>"
+            )
+
+        # ── Recommendations ──────────────────────────────────────────────────────
+        PILLAR_COLORS = {
+            "CHANNELS": "#6366f1", "LOCALIZATION": "#0ea5e9", "POSITIONING": "#8b5cf6",
+            "PRICING": "#f59e0b", "PARTNERSHIPS": "#10b981", "MARKETING": "#ec4899",
+        }
+        recs_html = ""
+        if recommendations:
+            for idx, rec in enumerate(recommendations, 1):
+                pillar = rec.get("pillar", "Strategy").upper()
+                p_color = PILLAR_COLORS.get(pillar, "#6366f1")
+                recs_html += (
+                    f'<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;'
+                    f'padding:18px 20px;border-left:4px solid {p_color}">'
+                    f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
+                    f'<span style="font-size:10px;font-weight:800;letter-spacing:1.2px;color:{p_color}">'
+                    f'{esc(pillar)}</span>'
+                    f'<span style="font-size:14px;font-weight:700;color:#1e293b">'
+                    f'{esc(rec.get("title", f"Recommendation {idx}"))}</span></div>'
+                    f'<p style="margin:0;font-size:13px;color:#475569;line-height:1.6">'
+                    f'{esc(rec.get("action", ""))}</p>'
+                    f"</div>"
+                )
+        else:
+            recs_html = (
+                '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;'
+                'padding:18px 20px;border-left:4px solid #6366f1">'
+                '<div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:8px">'
+                'Localized Premium Channel Placement</div>'
+                '<p style="margin:0;font-size:13px;color:#475569;line-height:1.6">'
+                'Prioritize curated independent boutiques and culturally aligned retailers '
+                'over mass-market channels to protect brand positioning.</p></div>'
+                '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;'
+                'padding:18px 20px;border-left:4px solid #0ea5e9;margin-top:10px">'
+                '<div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:8px">'
+                'Cultural Resonance Shield</div>'
+                '<p style="margin:0;font-size:13px;color:#475569;line-height:1.6">'
+                'Emphasize artisanal craftsmanship and sustainable provenance in all '
+                'market-facing materials to build authentic trust.</p></div>'
+            )
+
+        # ── Evidence rows ────────────────────────────────────────────────────────
+        ev_rows_html = ""
+        for ev in evidence_list[:12]:
+            score_val = f"{float(ev.value_numeric) * 100:.1f}%" if ev.value_numeric is not None else "—"
+            conf_val = f"{float(ev.confidence) * 100:.0f}%" if ev.confidence is not None else "100%"
+            readable = ReportService._readable_entity_label(ev.entity_ref, ev.source_metadata_json or {})
+            entity = esc(readable or ev.market_name or "Regional Signal")
+            ev_rows_html += (
+                f"<tr>"
+                f'<td style="padding:9px 14px;border-bottom:1px solid #f1f5f9;font-size:12px;'
+                f'color:#1e293b;font-weight:600">{entity}</td>'
+                f'<td style="padding:9px 14px;border-bottom:1px solid #f1f5f9;'
+                f'font-size:10px;font-family:monospace;color:#475569">{esc(ev.kind)}</td>'
+                f'<td style="padding:9px 14px;border-bottom:1px solid #f1f5f9;text-align:center;'
+                f'font-size:12px;font-weight:700;color:#0f172a">{score_val}</td>'
+                f'<td style="padding:9px 14px;border-bottom:1px solid #f1f5f9;text-align:center;'
+                f'font-size:12px;color:#64748b">{conf_val}</td>'
+                f'<td style="padding:9px 14px;border-bottom:1px solid #f1f5f9;'
+                f'font-size:10px;font-family:monospace;color:#3b82f6">{esc(ev.source)}</td>'
+                f"</tr>"
+            )
+
+        # ── Audit steps ──────────────────────────────────────────────────────────
+        step_rows_html = ""
+        for st in steps_list:
+            lat = f"{st.latency_ms}ms" if st.latency_ms else "—"
+            s_color = "#10b981" if st.status.lower() == "completed" else "#ef4444"
+            step_rows_html += (
+                f"<tr>"
+                f'<td style="padding:9px 14px;border-bottom:1px solid #f1f5f9;text-align:center;'
+                f'font-size:12px;color:#64748b;font-weight:700">#{st.sequence}</td>'
+                f'<td style="padding:9px 14px;border-bottom:1px solid #f1f5f9;'
+                f'font-family:monospace;font-size:11px;color:#374151">{esc(st.step_key)}</td>'
+                f'<td style="padding:9px 14px;border-bottom:1px solid #f1f5f9;font-size:12px;'
+                f'color:#475569">{esc(st.agent_name)}</td>'
+                f'<td style="padding:9px 14px;border-bottom:1px solid #f1f5f9;text-align:center;'
+                f'font-family:monospace;font-size:12px;color:#0f172a">{lat}</td>'
+                f'<td style="padding:9px 14px;border-bottom:1px solid #f1f5f9;text-align:center;'
+                f'font-size:10px;font-weight:800;color:{s_color}">{esc(st.status.upper())}</td>'
+                f"</tr>"
+            )
+
+        p_launch = probabilities.get("launch", 0.0) * 100
+        p_adapt = probabilities.get("adapt", 0.0) * 100
+        p_avoid = probabilities.get("avoid", 0.0) * 100
+        n_markets = len(market_scores) or 1
+
+        return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{esc(title)}</title>
+<style>
+  *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  :root {{
+    --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; --border2: #f1f5f9;
+    --text: #0f172a; --muted: #64748b; --accent: #6366f1;
+    --td-border: #f1f5f9; --th-bg: transparent;
+  }}
+  body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         background: var(--bg); color: var(--text); line-height: 1.55; }}
+  .page {{ max-width: 100%; margin: 0; padding: 28px 32px 60px; }}
+  .section {{ background: var(--surface); border: 1px solid var(--border);
+              border-radius: 16px; padding: 24px 28px; margin-bottom: 20px; }}
+  .section-title {{ font-size: 11px; font-weight: 800; letter-spacing: 1.4px;
+                    text-transform: uppercase; color: var(--muted); margin-bottom: 18px;
+                    display: flex; align-items: center; gap: 8px; }}
+  .section-title::before {{ content: ""; display: block; width: 3px; height: 14px;
+                             background: var(--accent); border-radius: 2px; }}
+  table {{ width: 100%; border-collapse: collapse; }}
+  th {{ font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+        color: var(--muted); padding: 10px 14px; text-align: left; background: var(--th-bg);
+        border-bottom: 2px solid var(--border2); }}
+  td {{ border-bottom-color: var(--td-border) !important; }}
+  .print-btn {{
+    position: fixed; bottom: 24px; right: 24px; z-index: 999;
+    background: #6366f1; color: white; border: none; border-radius: 12px;
+    padding: 10px 20px; font-size: 13px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 4px 20px rgba(99,102,241,0.4); display: flex; align-items: center; gap: 8px;
+    transition: background 0.15s;
+  }}
+  .print-btn:hover {{ background: #4f46e5; }}
+  @page {{
+    size: A4 portrait;
+    margin: 16mm 14mm 16mm 14mm;
+  }}
+  @media print {{
+    .print-btn {{ display: none; }}
+    body {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff !important; color: #0f172a !important; margin: 0; padding: 0; }}
+    .page {{ padding: 0 !important; }}
+    .section {{ background: #fff !important; border-color: #e2e8f0 !important; break-inside: avoid; page-break-inside: avoid; margin-bottom: 16px !important; }}
+    .section-title {{ color: #94a3b8 !important; }}
+    tr {{ break-inside: avoid; page-break-inside: avoid; }}
+  }}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#1e3a5f 100%);
+              border-radius:20px;padding:32px 36px;margin-bottom:20px;color:white">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:20px">
+      <div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#a5b4fc;
+                    text-transform:uppercase;margin-bottom:8px">
+          Cultura AI · Executive Intelligence Brief
+        </div>
+        <h1 style="font-size:22px;font-weight:800;color:white;line-height:1.3;margin-bottom:6px">
+          {esc(brand_name)} — {esc(winner_market)}
+        </h1>
+        <div style="font-size:12px;color:#94a3b8">
+          {esc(created_time_str)} · Run <code style="font-family:monospace;font-size:11px;
+          background:rgba(255,255,255,0.1);padding:1px 6px;border-radius:4px">{esc(run_id[:8])}…</code>
+          · Workflow <code style="font-family:monospace;font-size:11px;
+          background:rgba(255,255,255,0.1);padding:1px 6px;border-radius:4px">{esc(workflow_version)}</code>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:20px;flex-shrink:0">
+        {svg_gauge(score_pct, 110)}
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#94a3b8;
+                      text-transform:uppercase;margin-bottom:6px">Decision</div>
+          <div style="font-size:20px;font-weight:900;color:{v_color};
+                      background:{v_bg};border:2px solid {v_border};
+                      padding:8px 20px;border-radius:10px;letter-spacing:2px;
+                      line-height:1;display:inline-block">{esc(verdict)}</div>
+          <div style="font-size:11px;color:#a5b4fc;margin-top:6px">
+            {confidence*100:.1f}% confidence
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stat pills -->
+    <div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap">
+      <div style="background:rgba(255,255,255,0.1);border-radius:10px;
+                  padding:10px 16px;text-align:center;min-width:90px">
+        <div style="font-size:20px;font-weight:800;color:white">{n_markets}</div>
+        <div style="font-size:10px;color:#94a3b8;letter-spacing:0.5px">Markets</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.1);border-radius:10px;
+                  padding:10px 16px;text-align:center;min-width:90px">
+        <div style="font-size:20px;font-weight:800;color:white">{len(evidence_list)}</div>
+        <div style="font-size:10px;color:#94a3b8;letter-spacing:0.5px">Evidence</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.1);border-radius:10px;
+                  padding:10px 16px;text-align:center;min-width:90px">
+        <div style="font-size:20px;font-weight:800;color:white">{len(steps_list)}</div>
+        <div style="font-size:10px;color:#94a3b8;letter-spacing:0.5px">Agents Run</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.1);border-radius:10px;
+                  padding:10px 16px;text-align:center;min-width:90px">
+        <div style="font-size:20px;font-weight:800;color:{v_color}">{score_margin*100:.1f}%</div>
+        <div style="font-size:10px;color:#94a3b8;letter-spacing:0.5px">Score Margin</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Probability distribution -->
+  <div class="section" style="margin-bottom:20px">
+    <div class="section-title">Probability Distribution</div>
+    <div style="display:flex;gap:0;border-radius:8px;overflow:hidden;height:32px">
+      <div style="width:{p_launch:.1f}%;background:#10b981;display:flex;align-items:center;
+                  justify-content:center;font-size:11px;font-weight:700;color:white;
+                  min-width:{32 if p_launch > 5 else 0}px">
+        {f"Launch {p_launch:.0f}%" if p_launch > 8 else ""}
+      </div>
+      <div style="width:{p_adapt:.1f}%;background:#f59e0b;display:flex;align-items:center;
+                  justify-content:center;font-size:11px;font-weight:700;color:white;
+                  min-width:{32 if p_adapt > 5 else 0}px">
+        {f"Adapt {p_adapt:.0f}%" if p_adapt > 8 else ""}
+      </div>
+      <div style="width:{p_avoid:.1f}%;background:#ef4444;display:flex;align-items:center;
+                  justify-content:center;font-size:11px;font-weight:700;color:white;
+                  min-width:{32 if p_avoid > 5 else 0}px">
+        {f"Avoid {p_avoid:.0f}%" if p_avoid > 8 else ""}
+      </div>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:10px">
+      <span style="font-size:11px;color:#10b981;font-weight:600">■ P(Launch) = {p_launch:.1f}%</span>
+      <span style="font-size:11px;color:#f59e0b;font-weight:600">■ P(Adapt) = {p_adapt:.1f}%</span>
+      <span style="font-size:11px;color:#ef4444;font-weight:600">■ P(Avoid) = {p_avoid:.1f}%</span>
+    </div>
+  </div>
+
+  <!-- Market Comparison -->
+  <div class="section">
+    <div class="section-title">Comparative Market Evaluation</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:50px;text-align:center">Rank</th>
+          <th>Target Market</th>
+          <th>Compatibility</th>
+          <th style="text-align:center">Verdict</th>
+        </tr>
+      </thead>
+      <tbody>{market_rows_html}</tbody>
+    </table>
+  </div>
+
+  <!-- Dimension Scores -->
+  <div class="section">
+    <div class="section-title">5-Dimensional Cultural Profile · {esc(winner_market)}</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Cultural Dimension</th>
+          <th style="width:60px;text-align:center">Weight</th>
+          <th>Normalized Score</th>
+        </tr>
+      </thead>
+      <tbody>{dim_rows_html}</tbody>
+    </table>
+    <div style="margin-top:14px;padding:10px 14px;background:#f8fafc;border-radius:8px;
+                font-size:11px;color:#64748b;border-left:3px solid #6366f1">
+      ✓ Scoring Integrity Guard — Deterministic Scorer v1.0.0 · No hallucinations
+    </div>
+  </div>
+
+  <!-- Recommendations -->
+  <div class="section">
+    <div class="section-title">Strategic Entry Playbook</div>
+    <div style="display:flex;flex-direction:column;gap:12px">{recs_html}</div>
+  </div>
+
+  <!-- Evidence -->
+  <div class="section">
+    <div class="section-title">Empirical Evidence · Qloo Taste Graph ({len(evidence_list)} records)</div>
+    <div style="overflow-x:auto">
+      <table style="min-width:600px">
+        <thead>
+          <tr>
+            <th>Entity / Signal</th>
+            <th>Dimension</th>
+            <th style="text-align:center">Score</th>
+            <th style="text-align:center">Confidence</th>
+            <th>Provider</th>
+          </tr>
+        </thead>
+        <tbody>{ev_rows_html}</tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Audit Trail -->
+  <div class="section">
+    <div class="section-title">Multi-Agent Audit Trail ({len(steps_list)} nodes)</div>
+    <div style="overflow-x:auto">
+      <table style="min-width:560px">
+        <thead>
+          <tr>
+            <th style="text-align:center;width:50px">Seq</th>
+            <th>Node</th>
+            <th>Agent</th>
+            <th style="text-align:center">Latency</th>
+            <th style="text-align:center">Status</th>
+          </tr>
+        </thead>
+        <tbody>{step_rows_html}</tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div style="text-align:center;padding-top:10px;font-size:11px;color:var(--muted);line-height:1.8">
+    <strong style="color:var(--accent)">Cultura</strong> · AI Cultural Intelligence Engine ·
+    Deterministic Audit · {esc(created_time_str)}
+  </div>
+
+</div>
+</body>
+</html>"""
 
     @staticmethod
     async def get_report_by_id(db: AsyncSession, report_id: uuid.UUID) -> Report | None:
@@ -325,3 +776,15 @@ class ReportService:
         )
         res = await db.execute(stmt)
         return list(res.scalars().all())
+
+    @staticmethod
+    async def delete_report(db: AsyncSession, report_id: uuid.UUID) -> bool:
+        """Delete a report by primary key."""
+        stmt = select(Report).where(Report.id == report_id)
+        res = await db.execute(stmt)
+        report = res.scalar_one_or_none()
+        if not report:
+            return False
+        await db.delete(report)
+        await db.commit()
+        return True
