@@ -267,16 +267,43 @@ class AnalysisRunService:
 
         # 6. Finalize Run summary
         ranking_data = current_state.get("market_ranking", {})
+        decisions_state = current_state.get("decisions", {})
+        recs = current_state.get("strategy_recommendations", [])
         final_status = current_state.get("status", "completed")
 
+        # Build promoted scalar fields for fast reads
+        ranked_markets_raw: list[dict] = ranking_data.get("ranked_markets", [])
+        winner_score = ranked_markets_raw[0].get("overall_score") if ranked_markets_raw else None
+        winner_posture: str = decisions_state.get("winner_posture") or "launch"
+        strategy_summary: str | None = recs[0].get("action") if recs else (
+            ranking_data.get("recommendation_summary")
+        )
+
+        # Build scores_json rankings list consumed by Project Hub and Run Details
+        market_decisions_map: dict = decisions_state.get("market_decisions", {})
+        rankings_list = [
+            {
+                "rank": i + 1,
+                "market": m.get("market_name", ""),
+                "score": m.get("overall_score", 0.0),
+                "verdict": market_decisions_map.get(m.get("market_name", ""), {}).get("posture", winner_posture),
+                "confidence": m.get("confidence_score", 0.8),
+            }
+            for i, m in enumerate(ranked_markets_raw)
+        ]
+
         run.status = final_status
+        run.overall_score = float(winner_score) if winner_score is not None else None
+        run.decision_verdict = winner_posture
+        run.strategy_summary = strategy_summary
+        run.scores_json = {"rankings": rankings_list}
         run.result_summary_json = {
             "winner_market": ranking_data.get("winner_market"),
             "score_margin": ranking_data.get("score_margin"),
             "market_scores": current_state.get("market_scores", {}),
             "comparative_matrix": ranking_data.get("comparative_matrix", {}),
-            "decisions": current_state.get("decisions", {}),
-            "recommendations": current_state.get("strategy_recommendations", []),
+            "decisions": decisions_state,
+            "recommendations": recs,
             "audit_report": current_state.get("audit_report", {}),
         }
 
@@ -449,19 +476,20 @@ class AnalysisRunService:
             for node_name, node_update in output.items():
                 step_sequence += 1
                 current_state.update(node_update)
-
-                step_record = RunStep(
+                node_errors: list = node_update.get("errors", []) or []
+                db.add(RunStep(
                     run_id=sim_run.id,
                     step_key=node_name,
                     agent_name=f"{node_name}_agent",
-                    status="completed",
+                    status="failed" if node_errors else "completed",
                     sequence=step_sequence,
                     started_at=step_start_ts,
                     completed_at=step_end_ts,
                     latency_ms=max(1, step_latency_ms),
                     output_ref=str(node_update.get("current_step", node_name)),
-                )
-                db.add(step_record)
+                    error_json={"messages": node_errors[:3]} if node_errors else None,
+                    metadata_json={"node": node_name, "current_step": node_update.get("current_step", node_name)},
+                ))
                 await db.commit()
 
             step_start_perf = time.perf_counter()
@@ -527,14 +555,37 @@ class AnalysisRunService:
             score_deltas[m_name] = round(sim_val - parent_val, 4)
 
         ranking_data = current_state.get("market_ranking", {})
+        sim_decisions_state = current_state.get("decisions", {})
+        sim_recs = current_state.get("strategy_recommendations", [])
+
+        sim_ranked_raw: list[dict] = ranking_data.get("ranked_markets", [])
+        sim_winner_score = sim_ranked_raw[0].get("overall_score") if sim_ranked_raw else None
+        sim_winner_posture: str = sim_decisions_state.get("winner_posture") or "launch"
+        sim_strategy = sim_recs[0].get("action") if sim_recs else ranking_data.get("recommendation_summary")
+        sim_market_decisions_map: dict = sim_decisions_state.get("market_decisions", {})
+        sim_rankings_list = [
+            {
+                "rank": i + 1,
+                "market": m.get("market_name", ""),
+                "score": m.get("overall_score", 0.0),
+                "verdict": sim_market_decisions_map.get(m.get("market_name", ""), {}).get("posture", sim_winner_posture),
+                "confidence": m.get("confidence_score", 0.8),
+            }
+            for i, m in enumerate(sim_ranked_raw)
+        ]
+
         sim_run.status = current_state.get("status", "completed")
+        sim_run.overall_score = float(sim_winner_score) if sim_winner_score is not None else None
+        sim_run.decision_verdict = sim_winner_posture
+        sim_run.strategy_summary = sim_strategy
+        sim_run.scores_json = {"rankings": sim_rankings_list}
         sim_run.result_summary_json = {
             "winner_market": ranking_data.get("winner_market"),
             "score_margin": ranking_data.get("score_margin"),
             "market_scores": sim_scores,
             "comparative_matrix": ranking_data.get("comparative_matrix", {}),
-            "decisions": current_state.get("decisions", {}),
-            "recommendations": current_state.get("strategy_recommendations", []),
+            "decisions": sim_decisions_state,
+            "recommendations": sim_recs,
             "audit_report": current_state.get("audit_report", {}),
             "simulation_delta": {
                 "parent_run_id": str(parent_run.id),

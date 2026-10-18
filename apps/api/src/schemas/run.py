@@ -48,6 +48,7 @@ class AnalysisRunRead(BaseModel):
     id: uuid.UUID
     project_id: uuid.UUID
     workspace_id: uuid.UUID
+    parent_run_id: uuid.UUID | None = None
     type: str
     status: str
     workflow_version: str
@@ -55,8 +56,16 @@ class AnalysisRunRead(BaseModel):
     created_by: uuid.UUID
     created_at: datetime
     updated_at: datetime
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    error_code: str | None = None
     input_snapshot_json: dict[str, Any]
     result_summary_json: dict[str, Any] | None = None
+    # Promoted scalar fields — populated after run completes
+    overall_score: float | None = None
+    decision_verdict: str | None = None
+    strategy_summary: str | None = None
+    scores_json: dict[str, Any] | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
