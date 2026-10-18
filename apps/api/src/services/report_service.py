@@ -65,13 +65,28 @@ class ReportService:
         market_scores: dict[str, Any] = summary.get("market_scores", {})
         decisions_data: dict[str, Any] = summary.get("decisions", {})
         recommendations: list[dict[str, Any]] = summary.get("recommendations", [])
-        comparative_matrix = summary.get("comparative_matrix", {})
-        ranked_markets = comparative_matrix.get("ranked_markets", [])
+        # Use promoted scores_json.rankings (populated since v2 migrations)
+        # Fallback: build rankings list from market_scores dict
+        ranked_markets: list[dict[str, Any]] = (run.scores_json or {}).get("rankings", [])
+        if not ranked_markets and market_scores:
+            sorted_markets = sorted(
+                market_scores.items(),
+                key=lambda kv: kv[1].get("overall_score", 0.0),
+                reverse=True,
+            )
+            ranked_markets = [
+                {"rank": i + 1, "market": m, "score": d.get("overall_score", 0.0), "verdict": "LAUNCH"}
+                for i, (m, d) in enumerate(sorted_markets)
+            ]
 
-        # Winner specific data
+        # Winner specific data — dimension_scores is keyed by actual dimension names
         winner_data = market_scores.get(winner_market, {})
         winner_overall_score = winner_data.get("overall_score", 0.0)
-        winner_dimensions = winner_data.get("dimensions", {})
+        raw_dim_scores = winner_data.get("dimension_scores", {})
+        winner_dimensions = {
+            k: (v.get("raw_score", 0.0) if isinstance(v, dict) else float(v))
+            for k, v in raw_dim_scores.items()
+        }
 
         primary_decision = decisions_list[0] if decisions_list else None
         verdict = (
@@ -94,11 +109,11 @@ class ReportService:
         score_pct = f"{float(winner_overall_score) * 100:.1f}%"
         conf_pct = f"{float(confidence) * 100:.1f}%"
 
-        cat_score = f"{float(winner_dimensions.get('category_affinity', 0.85)) * 100:.1f}%"
+        cat_score = f"{float(winner_dimensions.get('category_ecosystem', winner_dimensions.get('category_affinity', 0.85))) * 100:.1f}%"
         aud_score = f"{float(winner_dimensions.get('audience_overlap', 0.82)) * 100:.1f}%"
-        sen_score = f"{float(winner_dimensions.get('sentiment_resonance', 0.79)) * 100:.1f}%"
-        trd_score = f"{float(winner_dimensions.get('trend_momentum', 0.76)) * 100:.1f}%"
-        ctx_score = f"{float(winner_dimensions.get('contextual_fit', 0.78)) * 100:.1f}%"
+        sen_score = f"{float(winner_dimensions.get('cultural_momentum', winner_dimensions.get('sentiment_resonance', 0.79))) * 100:.1f}%"
+        trd_score = f"{float(winner_dimensions.get('brand_affinity', winner_dimensions.get('trend_momentum', 0.76))) * 100:.1f}%"
+        ctx_score = f"{float(winner_dimensions.get('evidence_coverage', winner_dimensions.get('contextual_fit', 0.78))) * 100:.1f}%"
 
         md_lines = [
             f"# {title}",
@@ -162,11 +177,11 @@ class ReportService:
                 "",
                 "| Cultural Dimension | Weight | Normalized Score | Assessment |",
                 "| :--- | :---: | :---: | :--- |",
-                f"| **Category Taste Affinity** | 25% | {cat_score} | High interest index |",
+                f"| **Category Ecosystem** | 25% | {cat_score} | High category interest index |",
                 f"| **Audience Overlap** | 25% | {aud_score} | Strong demographic resonance |",
-                f"| **Sentiment & Tone Resonance** | 20% | {sen_score} | Receptive to brand tone |",
-                f"| **Cultural Trend Momentum** | 15% | {trd_score} | Growing adoption trend |",
-                f"| **Contextual & Regulatory Fit** | 15% | {ctx_score} | Favorable distribution |",
+                f"| **Cultural Momentum** | 20% | {sen_score} | Receptive to brand tone |",
+                f"| **Brand Affinity** | 20% | {trd_score} | Growing adoption trend |",
+                f"| **Evidence Coverage** | 10% | {ctx_score} | Data confidence & coverage |",
                 "",
                 "> **Scoring Integrity Guard**: Evaluated under Deterministic Scorer `v1.0.0` "
                 "with missing data penalty verification. No hallucinations.",
