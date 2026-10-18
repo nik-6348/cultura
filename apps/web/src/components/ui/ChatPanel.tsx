@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Send, Sparkles, ExternalLink, BarChart2, ChevronRight } from "lucide-react";
+import { Send, Sparkles, ExternalLink, BarChart2, ChevronRight, RotateCcw } from "lucide-react";
 import { api } from "@/lib/api";
 import { DimensionChartPoint, EvidenceCard } from "@/lib/types";
 
@@ -167,18 +167,22 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 
 interface ChatPanelProps {
   projectId: string;
-  /** Optional: start in a specific conversation. If omitted, sends create a new one. */
-  conversationId?: string;
+  /** When true, shows empty state instead of loading history (after a reset) */
+  startFresh?: boolean;
   scrollAreaClass?: string;
-  /** Called when a new conversation is created (so parent can add it to sidebar) */
-  onConversationCreated?: (id: string, title: string) => void;
+  /** Show the header bar with Reset button */
+  showHeader?: boolean;
+  headerLabel?: string;
+  onReset?: () => void;
 }
 
 export function ChatPanel({
   projectId,
-  conversationId: initialConversationId,
+  startFresh = false,
   scrollAreaClass = "flex-1",
-  onConversationCreated,
+  showHeader = false,
+  headerLabel,
+  onReset,
 }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
@@ -186,27 +190,28 @@ export function ChatPanel({
   const [streamingText, setStreamingText] = useState("");
   const [streamingMeta, setStreamingMeta] = useState<StreamMeta | null>(null);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
-  const [activeConversationId, setActiveConversationId] = useState<string | undefined>(initialConversationId);
+  const [activeConversationId, setActiveConversationId] = useState<string | undefined>();
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Load history when conversationId changes (or on first mount)
+  // Load history (or skip if startFresh)
   useEffect(() => {
     let cancelled = false;
     setMessages([]);
     setSuggestedQuestions([]);
+    setActiveConversationId(undefined);
     setHistoryLoaded(false);
 
-    // If no conversationId provided, start fresh (don't load most-recent)
-    if (!initialConversationId) {
+    if (startFresh) {
       setHistoryLoaded(true);
       return;
     }
 
     async function load() {
       try {
-        const history = await api.getConversationHistory(projectId, initialConversationId);
+        // No conversationId → backend returns most-recent conversation for this project
+        const history = await api.getConversationHistory(projectId);
         if (cancelled) return;
         if (history.conversation_id) setActiveConversationId(history.conversation_id);
         const msgs: ChatMessage[] = history.messages
@@ -233,7 +238,7 @@ export function ChatPanel({
     }
     load();
     return () => { cancelled = true; };
-  }, [projectId, initialConversationId]);
+  }, [projectId, startFresh]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -257,14 +262,14 @@ export function ChatPanel({
 
     let accText = "";
     let finalMeta: StreamMeta = { citations: [], chartData: null, suggestedQuestions };
-    let newConvId: string | undefined;
 
     try {
       for await (const event of api.chatWithAnalystStream(projectId, text, {
         conversationId: activeConversationId,
       })) {
         if (event.type === "meta") {
-          newConvId = (event.conversation_id as string) || undefined;
+          const newConvId = event.conversation_id as string | undefined;
+          if (newConvId) setActiveConversationId(newConvId);
           finalMeta = {
             citations: (event.citations as Citation[]) ?? [],
             chartData: (event.chart_data as DimensionChartPoint[]) ?? null,
@@ -272,11 +277,6 @@ export function ChatPanel({
           };
           setStreamingMeta(finalMeta);
           if (finalMeta.suggestedQuestions?.length) setSuggestedQuestions(finalMeta.suggestedQuestions);
-          // Register new conversation with parent
-          if (newConvId && newConvId !== activeConversationId) {
-            setActiveConversationId(newConvId);
-            onConversationCreated?.(newConvId, text.slice(0, 80));
-          }
         } else if (event.type === "token") {
           accText += (event.text as string) ?? "";
           setStreamingText(accText);
@@ -303,12 +303,28 @@ export function ChatPanel({
     setStreamingMeta(null);
     setIsStreaming(false);
     inputRef.current?.focus();
-  }, [inputValue, isStreaming, projectId, activeConversationId, suggestedQuestions, onConversationCreated]);
+  }, [inputValue, isStreaming, projectId, activeConversationId, suggestedQuestions]);
 
   const isEmpty = historyLoaded && messages.length === 0 && !isStreaming;
 
   return (
     <div className="flex flex-col h-full">
+      {/* Optional header with reset button */}
+      {showHeader && (
+        <div className="flex items-center justify-between px-4 py-2 border-b border-[#1A2338] flex-shrink-0">
+          <span className="text-[11px] font-semibold text-slate-400">{headerLabel ?? "Analyst Chat"}</span>
+          {onReset && (
+            <button
+              onClick={onReset}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[#1A2338] text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Reset chat
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Messages */}
       <div className={`${scrollAreaClass} overflow-y-auto p-4 space-y-4`}>
         {isEmpty && (

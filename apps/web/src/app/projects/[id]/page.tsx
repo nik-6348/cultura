@@ -13,6 +13,7 @@ import {
   Database,
   Layers,
   ChevronRight,
+  RotateCcw,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import {
@@ -51,6 +52,8 @@ export default function ProjectHubPage() {
   const [loading, setLoading] = useState(true);
   const [runningNew, setRunningNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [chatStartFresh, setChatStartFresh] = useState(false);
+  const [chatPanelKey, setChatPanelKey] = useState(0);
 
 
   useEffect(() => {
@@ -518,7 +521,15 @@ export default function ProjectHubPage() {
       {/* TAB 3: ANALYST CHAT */}
       {activeTab === "chat" && project && (
         <div className="rounded-xl bg-[#0E1424] border border-[#1A2338] overflow-hidden" style={{ height: "520px" }}>
-          <ChatPanel projectId={project.id} scrollAreaClass="flex-1" />
+          <ChatPanel
+            key={chatPanelKey}
+            projectId={project.id}
+            startFresh={chatStartFresh}
+            scrollAreaClass="flex-1"
+            showHeader
+            headerLabel={project.name}
+            onReset={() => { setChatStartFresh(true); setChatPanelKey((k) => k + 1); }}
+          />
         </div>
       )}
 
