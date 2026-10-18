@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Send, Sparkles, ExternalLink, BarChart2, ChevronRight, RotateCcw } from "lucide-react";
+import { Send, Sparkles, ExternalLink, BarChart2, ChevronRight, RotateCcw, ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
 import { DimensionChartPoint, EvidenceCard } from "@/lib/types";
 
@@ -86,33 +86,45 @@ function TypingDots() {
   );
 }
 
-// ─── Dimension chart ──────────────────────────────────────────────────────────
+// ─── Dimension chart (collapsible) ────────────────────────────────────────────
 
 function DimensionChart({ data }: { data: DimensionChartPoint[] }) {
+  const [open, setOpen] = React.useState(false);
   const markets = Object.keys(data[0]?.scores ?? {});
   const colors = ["text-indigo-400", "text-violet-400", "text-cyan-400", "text-emerald-400"];
   return (
-    <div className="mt-3 p-3 rounded-xl bg-[#0E1424] border border-[#1A2338] space-y-2.5">
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
-        <BarChart2 className="w-3.5 h-3.5 text-indigo-400" />Cultural fit by dimension
-      </div>
-      {data.map((d) => (
-        <div key={d.dimension}>
-          <div className="text-[10px] text-slate-500 mb-1">{d.dimension}</div>
-          <div className="flex gap-3 flex-wrap">
-            {markets.map((m, mi) => {
-              const score = d.scores[m] ?? 0;
-              const pct = score > 1 ? score : Math.round(score * 100);
-              return (
-                <span key={m} className="text-[11px]">
-                  <span className={`font-bold ${colors[mi % colors.length]}`}>{pct}%</span>
-                  <span className="text-slate-500 ml-1">{m.split(",")[0]}</span>
-                </span>
-              );
-            })}
-          </div>
+    <div className="mt-2 rounded-xl border border-[#1A2338] overflow-hidden">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-3 py-2 bg-[#0E1424] hover:bg-[#111827] transition-colors"
+      >
+        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+          <BarChart2 className="w-3.5 h-3.5 text-indigo-400" />
+          Cultural fit by dimension
+        </span>
+        <ChevronDown className={`w-3 h-3 text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="px-3 pb-3 pt-2 bg-[#0E1424] space-y-2.5 border-t border-[#1A2338]">
+          {data.map((d) => (
+            <div key={d.dimension}>
+              <div className="text-[10px] text-slate-500 mb-1">{d.dimension}</div>
+              <div className="flex gap-3 flex-wrap">
+                {markets.map((m, mi) => {
+                  const score = d.scores[m] ?? 0;
+                  const pct = score > 1 ? score : Math.round(score * 100);
+                  return (
+                    <span key={m} className="text-[11px]">
+                      <span className={`font-bold ${colors[mi % colors.length]}`}>{pct}%</span>
+                      <span className="text-slate-500 ml-1">{m.split(",")[0]}</span>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
