@@ -122,6 +122,7 @@ class RunStep(Base):
     input_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
     output_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
     error_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    metadata_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
     # Relationships
     run: Mapped["AnalysisRun"] = relationship("AnalysisRun", back_populates="steps")

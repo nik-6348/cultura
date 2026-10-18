@@ -4,16 +4,18 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  LayoutGrid,
+  Folder,
+  Sparkles,
+  Activity,
+  Settings,
+  Search,
   Bell,
-  HelpCircle,
-  ChevronRight,
-  Sun,
-  Moon,
+  ChevronDown,
 } from "lucide-react";
-import { Sidebar } from "./Sidebar";
 import { api } from "@/lib/api";
 import { Workspace } from "@/lib/types";
-import { useTheme } from "@/components/theme/ThemeProvider";
+import { CulturaLogo } from "@/components/ui/CulturaLogo";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -22,34 +24,14 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(null);
-  const { theme, resolvedTheme, setTheme } = useTheme();
-  const mounted = React.useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false
-  );
-  const isDark = (mounted ? (resolvedTheme || theme) : "light") === "dark";
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const toggleTheme = () => {
-    const nextTheme = isDark ? "light" : "dark";
-    setTheme(nextTheme);
-    if (typeof document !== "undefined") {
-      if (nextTheme === "dark") {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-    }
-  };
-
-  // If this is the landing page or auth routes, do not wrap with the internal SaaS sidebar layout
-  const isPublicRoute =
-    pathname === "/" ||
-    pathname.startsWith("/login") ||
-    pathname.startsWith("/signup");
+  // Auth routes do not use the internal top navigation
+  const isAuthRoute =
+    pathname.startsWith("/login") || pathname.startsWith("/signup");
 
   useEffect(() => {
-    if (isPublicRoute) return;
+    if (isAuthRoute) return;
 
     async function loadWorkspace() {
       try {
@@ -68,115 +50,141 @@ export function AppShell({ children }: AppShellProps) {
       }
     }
     loadWorkspace();
-  }, [isPublicRoute]);
+  }, [isAuthRoute]);
 
-  if (isPublicRoute) {
+  if (isAuthRoute) {
     return <>{children}</>;
   }
 
-  // Generate readable breadcrumbs from pathname
-  const pathParts = pathname.split("/").filter(Boolean);
-  const breadcrumbLabels: Record<string, string> = {
-    dashboard: "Dashboard",
-    projects: "Projects",
-    new: "New Project",
-    runs: "Analysis Runs",
-    reports: "Executive Reports",
-    chat: "Analyst Chat",
-    memory: "Knowledge Hub",
-    observability: "Observability",
-    settings: "Settings",
-  };
+  // Top navigation items matching mockup exactly
+  const navItems = [
+    {
+      label: "Overview",
+      href: "/dashboard",
+      icon: LayoutGrid,
+      isActive: pathname === "/dashboard" || pathname === "/",
+    },
+    {
+      label: "Projects",
+      href: "/projects",
+      icon: Folder,
+      isActive: pathname.startsWith("/projects"),
+    },
+    {
+      label: "AI Assistant",
+      href: "/chat",
+      icon: Sparkles,
+      isActive: pathname.startsWith("/chat"),
+    },
+    {
+      label: "Observability",
+      href: "/observability",
+      icon: Activity,
+      isActive: pathname.startsWith("/observability"),
+    },
+    {
+      label: "Settings",
+      href: "/settings",
+      icon: Settings,
+      isActive: pathname.startsWith("/settings"),
+    },
+  ];
 
   return (
-    <div className="h-screen flex bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans antialiased overflow-hidden">
-      {/* Enterprise Left Sidebar (Fixed on left, h-screen) */}
-      <Sidebar activeWorkspace={activeWorkspace} />
+    <div className="min-h-screen flex flex-col bg-[#070A12] text-slate-100 font-sans antialiased selection:bg-indigo-500/30 selection:text-indigo-200">
+      {/* 
+        Unified Top Navigation Bar:
+        - Fixed on top
+        - Logo with 'Powered by Qloo'
+        - Navigation pills: Overview, Projects, AI Assistant, Observability, Settings
+        - Search bar with ⌘K
+        - Notification bell with indicator
+        - User Profile: Nikhil Rajput
+        - NOTE: '+ New Project' omitted per user instruction: "or isme nav me create rpoject ni aaye navbar me top me"
+      */}
+      <header className="sticky top-0 z-50 h-16 w-full bg-[#0B0F19] border-b border-[#161D2E] px-4 sm:px-6 flex items-center justify-between shadow-sm">
+        {/* Left: Brand Logo & Main Navigation Links */}
+        <div className="flex items-center space-x-6 lg:space-x-8">
+          {/* Brand Logo with exact 'C' glyph */}
+          <Link
+            href="/dashboard"
+            className="group cursor-pointer focus:outline-none"
+          >
+            <CulturaLogo size={32} />
+          </Link>
 
-      {/* Main App Body (Full height container, inner content scrolls) */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        {/* Top Header & Breadcrumb Utility Bar (Strictly fixed at top, never scrolls) */}
-        <header className="h-16 px-6 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 flex-shrink-0 z-20 flex items-center justify-between shadow-2xs">
-          {/* Breadcrumbs */}
-          <nav className="flex items-center space-x-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-            <Link
-              href="/dashboard"
-              className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors font-semibold"
-            >
-              {activeWorkspace?.name || "Acme Brands"}
-            </Link>
-            {pathParts.map((part, index) => {
-              const isLast = index === pathParts.length - 1;
-              const label =
-                breadcrumbLabels[part] ||
-                (part.length > 12 ? `${part.slice(0, 8)}...` : part);
-              const href = "/" + pathParts.slice(0, index + 1).join("/");
-
+          {/* Nav Items */}
+          <nav className="hidden md:flex items-center space-x-1 sm:space-x-1.5">
+            {navItems.map((item) => {
+              const Icon = item.icon;
               return (
-                <React.Fragment key={href}>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                  {isLast ? (
-                    <span className="text-slate-900 dark:text-slate-100 font-semibold">{label}</span>
-                  ) : (
-                    <Link
-                      href={href}
-                      className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
-                    >
-                      {label}
-                    </Link>
-                  )}
-                </React.Fragment>
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    item.isActive
+                      ? "bg-[#161D30] text-white border border-[#25324D] shadow-inner"
+                      : "text-slate-400 hover:text-slate-200 hover:bg-[#121828]"
+                  }`}
+                >
+                  <Icon
+                    className={`w-3.5 h-3.5 ${
+                      item.isActive ? "text-indigo-400" : "text-slate-400"
+                    }`}
+                  />
+                  <span>{item.label}</span>
+                </Link>
               );
             })}
           </nav>
+        </div>
 
-          {/* Right Action Tools: Single Theme Toggle, Notifications, Help, Profile */}
-          <div className="flex items-center space-x-2">
-            {/* Single Theme Toggle Icon */}
-            <button
-              type="button"
-              suppressHydrationWarning
-              onClick={toggleTheme}
-              title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-              className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-            >
-              {isDark ? (
-                <Sun className="w-4 h-4 text-amber-500 hover:rotate-45 transition-transform" />
-              ) : (
-                <Moon className="w-4 h-4 text-slate-600 dark:text-slate-300 hover:-rotate-12 transition-transform" />
-              )}
-            </button>
+        {/* Right: Search, Notifications, Profile (no New Project button) */}
+        <div className="flex items-center space-x-3 sm:space-x-4">
+          {/* Search bar */}
+          <div className="relative hidden lg:flex items-center">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search projects, markets, or ask anything..."
+              className="w-64 xl:w-72 h-8.5 bg-[#101626] border border-[#1E293B] rounded-lg pl-8.5 pr-9 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all"
+            />
+            <kbd className="absolute right-2 px-1.5 py-0.5 text-[9px] font-mono text-slate-400 bg-[#161D2E] border border-slate-700/50 rounded pointer-events-none">
+              ⌘ K
+            </kbd>
+          </div>
 
-            <button
-              title="Notifications"
-              className="relative p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900" />
-            </button>
+          {/* Notifications Bell */}
+          <button
+            type="button"
+            title="Notifications"
+            className="relative p-2 text-slate-400 hover:text-white hover:bg-[#121828] rounded-lg transition-colors cursor-pointer"
+          >
+            <Bell className="w-4 h-4" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-[#0B0F19]" />
+          </button>
 
-            <button
-              title="Documentation"
-              className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-            >
-              <HelpCircle className="w-4 h-4" />
-            </button>
-
-            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 ml-1" />
-
-            <div className="w-8 h-8 rounded-full bg-slate-900 dark:bg-slate-700 text-white font-bold text-xs flex items-center justify-center ring-2 ring-slate-100 dark:ring-slate-800 shadow-2xs">
-              NR
+          {/* User Profile */}
+          <div className="flex items-center space-x-2.5 pl-1 cursor-pointer group">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-600 text-white font-semibold text-xs flex items-center justify-center ring-2 ring-slate-800 shadow-xs overflow-hidden flex-shrink-0">
+              <span className="font-semibold text-xs text-white">NR</span>
+            </div>
+            <div className="hidden sm:flex items-center space-x-1.5">
+              <span className="text-xs font-medium text-slate-200 group-hover:text-white transition-colors">
+                Nikhil Rajput
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-transform group-hover:translate-y-0.5" />
             </div>
           </div>
-        </header>
+        </div>
+      </header>
 
-        {/* Dynamic Page Content: ONLY INNER SCROLL */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
-          <div className="max-w-7xl w-full mx-auto">
-            {children}
-          </div>
-        </main>
-      </div>
+      {/* Main Page Viewport (renders child pages with smooth scrolling) */}
+      <main className="flex-1 overflow-y-auto">
+        {children}
+      </main>
     </div>
   );
 }
