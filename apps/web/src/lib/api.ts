@@ -359,4 +359,68 @@ export const api = {
       body: JSON.stringify({ message, run_id: runId }),
     });
   },
+
+  async getConversationHistory(projectId: string): Promise<{
+    conversation_id: string | null;
+    messages: Array<{
+      id: string;
+      role: "user" | "assistant" | "system";
+      content: string;
+      metadata: Record<string, unknown>;
+      created_at: string;
+    }>;
+  }> {
+    return fetchJson(`/api/v1/projects/${projectId}/conversation`);
+  },
+
+  chatWithAnalystStream(
+    projectId: string,
+    message: string,
+    runId?: string
+  ): AsyncGenerator<Record<string, unknown>> {
+    async function* gen() {
+      const response = await fetch(`/api/v1/projects/${projectId}/chat/stream`, {
+        method: "POST",
+        headers: {
+          Authorization: DEV_AUTH_HEADER,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message, run_id: runId }),
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith("data: ")) {
+              const data = trimmed.slice(6);
+              if (data && data !== "[DONE]") {
+                try {
+                  yield JSON.parse(data) as Record<string, unknown>;
+                } catch {
+                  // skip malformed
+                }
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    }
+    return gen();
+  },
 };

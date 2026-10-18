@@ -1,5 +1,8 @@
+import json
 import logging
 import uuid
+from collections.abc import AsyncGenerator
+from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
@@ -11,6 +14,7 @@ from src.core.security_guard import PromptInjectionGuard
 from src.db.models.evidence import Evidence
 from src.db.models.project import Project
 from src.db.models.run import AnalysisRun
+from src.db.session import AsyncSessionLocal
 from src.schemas.chat import (
     ChatRequest,
     ChatResponse,
@@ -18,50 +22,74 @@ from src.schemas.chat import (
     DimensionChartPoint,
     EvidenceCard,
 )
+from src.services.conversation_service import ConversationService
 from src.services.memory_service import MemoryService
 
 logger = logging.getLogger("cultura.services.chat")
+
+SYSTEM_PROMPT = (
+    "You are the Cultura Senior Cultural Intelligence Analyst — an authoritative, "
+    "evidence-driven cross-cultural market entry strategist. Ground every answer in the "
+    "empirical Qloo taste-graph evidence and institutional memory facts given to you; "
+    "never invent data points. Cite evidence inline as [1], [2], etc. matching the numbered "
+    "sources provided. Keep answers concise, analytical, and formatted with markdown."
+)
+
+
+@dataclass
+class _ChatContext:
+    """Everything needed to call the LLM and build a ChatResponse, gathered once
+    and shared by both the streaming and non-streaming code paths."""
+
+    sanitized_msg: str
+    brand_name: str
+    winner_market: str
+    verdict: str
+    winner_score: str
+    run_id: uuid.UUID | None
+    memories_count: int
+    citations: list[CitationItem]
+    chart_data: list[DimensionChartPoint]
+    related_evidence: list[EvidenceCard]
+    suggested_questions: list[str]
+    history: list[dict[str, str]] = field(default_factory=list)
+    conversation_id: uuid.UUID | None = None
 
 
 class ChatService:
     """
     Enterprise Cultural Analyst Assistant.
     Provides conversational, evidence-grounded answers citing Qloo taste signals
-    and 4-layer memory facts.
+    and 4-layer memory facts, with real multi-turn history and live LLM streaming.
     """
 
     @classmethod
-    async def _generate_llm_reply(
+    def _build_llm_messages(
         cls,
-        user_query: str,
-        brand_name: str,
-        winner_market: str,
-        verdict: str,
-        score: str,
-        evidence_summary: str,
-        memory_summary: str,
-    ) -> str | None:
-        """
-        Attempts live completion via configured LLM API (OpenAI / Custom / Gemini).
-        Gracefully falls back to deterministic synthesis if endpoint is unreachable or times out.
-        """
+        context: _ChatContext,
+    ) -> list[dict[str, str]]:
+        grounding = (
+            f"Brand: {context.brand_name}\n"
+            f"Winner Market: {context.winner_market}\n"
+            f"Verdict: {context.verdict} (Score: {context.winner_score}/100)\n"
+            f"Empirical Qloo Evidence: "
+            f"{'; '.join(f'{c.label} ({c.kind})' for c in context.citations) or 'None'}\n"
+        )
+        messages = [{"role": "system", "content": SYSTEM_PROMPT + "\n\n" + grounding}]
+        messages.extend(context.history)
+        messages.append({"role": "user", "content": context.sanitized_msg})
+        return messages
+
+    @classmethod
+    async def _generate_llm_reply(cls, messages: list[dict[str, str]]) -> str | None:
+        """Non-streaming live completion. Falls back to None (deterministic
+        synthesis) if unconfigured, unreachable, or times out."""
         settings = get_settings()
         if not settings.llm_api_key or not settings.llm_base_url:
             return None
 
-        prompt = (
-            f"You are the Cultura Senior Cultural Intelligence Analyst.\n"
-            f"Brand: {brand_name}\n"
-            f"Winner Market: {winner_market}\n"
-            f"Verdict: {verdict} (Score: {score}/100)\n"
-            f"Empirical Qloo Evidence: {evidence_summary}\n"
-            f"Institutional Memory Facts: {memory_summary}\n\n"
-            f"User Question: {user_query}\n\n"
-            f"Provide an authoritative, insightful, analytical response referencing empirical signals and citing evidence [1], [2] where appropriate."
-        )
-
         try:
-            async with httpx.AsyncClient(timeout=4.0) as client:
+            async with httpx.AsyncClient(timeout=15.0) as client:
                 res = await client.post(
                     f"{settings.llm_base_url.rstrip('/')}/chat/completions",
                     headers={
@@ -70,15 +98,9 @@ class ChatService:
                     },
                     json={
                         "model": settings.llm_model,
-                        "messages": [
-                            {
-                                "role": "system",
-                                "content": "You are a senior cross-cultural market entry strategist at Cultura.",
-                            },
-                            {"role": "user", "content": prompt},
-                        ],
+                        "messages": messages,
                         "temperature": settings.llm_temperature,
-                        "max_tokens": 500,
+                        "max_tokens": 600,
                     },
                 )
                 if res.status_code == 200:
@@ -91,24 +113,116 @@ class ChatService:
         return None
 
     @classmethod
-    async def process_chat(
+    async def _stream_llm_reply(
+        cls, messages: list[dict[str, str]]
+    ) -> AsyncGenerator[str, None]:
+        """Live streaming completion. Yields content deltas as they arrive.
+        Yields nothing (generator completes immediately) if unconfigured,
+        unreachable, or the connection fails — caller falls back to simulated
+        streaming of the deterministic reply."""
+        settings = get_settings()
+        if not settings.llm_api_key or not settings.llm_base_url:
+            return
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                async with client.stream(
+                    "POST",
+                    f"{settings.llm_base_url.rstrip('/')}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {settings.llm_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": settings.llm_model,
+                        "messages": messages,
+                        "temperature": settings.llm_temperature,
+                        "max_tokens": 600,
+                        "stream": True,
+                    },
+                ) as res:
+                    if res.status_code != 200:
+                        return
+                    async for line in res.aiter_lines():
+                        if not line or not line.startswith("data:"):
+                            continue
+                        payload = line[len("data:") :].strip()
+                        if payload == "[DONE]":
+                            break
+                        try:
+                            chunk = json.loads(payload)
+                            delta = chunk["choices"][0].get("delta", {}).get("content")
+                            if delta:
+                                yield delta
+                        except (json.JSONDecodeError, KeyError, IndexError):
+                            continue
+        except Exception as exc:
+            logger.debug("Live LLM stream failed (%s), falling back to grounded response", exc)
+            return
+
+    @classmethod
+    def _deterministic_reply(
+        cls,
+        sanitized_msg: str,
+        brand_name: str,
+        winner_market: str,
+        verdict: str,
+        winner_score: str,
+        memories_count: int,
+    ) -> str:
+        msg_lower = sanitized_msg.lower()
+        if any(w in msg_lower for w in ["why", "recommend", "tokyo", "bangalore"]):
+            return (
+                f"**{winner_market}** is recommended for **{verdict}** "
+                f"(Overall Compatibility: {winner_score}/100) because it exhibits strong "
+                f"empirical resonance across multiple Qloo taste vectors:\n\n"
+                f"1. **Strong Category Relevance [1]**: Verified high index for {brand_name},\n"
+                f"with active local boutique density and community interest.\n\n"
+                f"2. **Audience Alignment [2]**: Your target consumer cohort matches\n"
+                f"{winner_market}'s active urban demographic, exhibiting receptive tone.\n\n"
+                f"3. **Sustained Cultural Momentum [3]**: Trend signals reflect growing\n"
+                f"regional adoption rather than transient hype.\n\n"
+                f"4. **Favorable Channel Economics [4]**: Low friction in distribution with\n"
+                f"strong independent retail partnerships available."
+            )
+        if any(w in msg_lower for w in ["compare", "dimension", "market"]):
+            return (
+                f"Here is the cultural compatibility comparison across candidate markets "
+                f"for **{brand_name}**:\n\n"
+                f"- **{winner_market}** leads with an overall compatibility index of "
+                f"**{winner_score}%**, demonstrating superior category resonance.\n"
+                f"- Secondary candidate territories show moderate potential but require "
+                f"localized packaging adjustments to overcome price sensitivity.\n\n"
+                f"See the comparative breakdown chart below for dimension-by-dimension scores."
+            )
+        mem_note = (
+            f" Cross-referenced with {memories_count} verified workspace facts." if memories_count else ""
+        )
+        return (
+            f"Based on deterministic analysis of **{brand_name}** in **{winner_market}** "
+            f"(Verdict: `{verdict}`, Compatibility Score: **{winner_score}%**):\n\n"
+            f"The Qloo Taste Graph identifies strong category resonance [1] and aligned "
+            f"audience cohorts [2]. Prioritize localized premium channel placements and "
+            f"authentic community partnerships.{mem_note}"
+        )
+
+    @classmethod
+    async def _gather_context(
         cls,
         db: AsyncSession,
         project_id: uuid.UUID,
         request: ChatRequest,
         workspace_id: uuid.UUID,
-    ) -> ChatResponse:
+    ) -> _ChatContext:
         sanitized_msg = PromptInjectionGuard.sanitize_untrusted_input(
             request.message, field_name="user_query"
         )
 
-        # 1. Load project details
         proj_stmt = select(Project).where(Project.id == project_id)
         proj_res = await db.execute(proj_stmt)
         project = proj_res.scalar_one_or_none()
         brand_name = project.name if project else "Enterprise Brand"
 
-        # 2. Retrieve latest completed or running analysis run
         run: AnalysisRun | None = None
         if request.run_id:
             run_stmt = select(AnalysisRun).where(
@@ -128,7 +242,6 @@ class ChatService:
             run_res = await db.execute(run_stmt)
             run = run_res.scalar_one_or_none()
 
-        # 3. Retrieve empirical evidence items from database
         evidence_list: list[Evidence] = []
         if run:
             ev_stmt = (
@@ -140,7 +253,6 @@ class ChatService:
             ev_res = await db.execute(ev_stmt)
             evidence_list = list(ev_res.scalars().all())
 
-        # 4. Retrieve Layer C/D contextual memory
         memories = await MemoryService.search_semantic_memories(
             db=db,
             workspace_id=workspace_id,
@@ -149,7 +261,6 @@ class ChatService:
             limit=5,
         )
 
-        # 5. Extract structured run metrics
         output_data = (run.result_summary_json or {}) if run else {}
         ranked_markets: list[dict[str, Any]] = output_data.get("ranked_markets", [])
         winner_market = output_data.get(
@@ -164,7 +275,6 @@ class ChatService:
         winner_score = f"{winner_score_flt * 100:.0f}"
         verdict = output_data.get("verdict", "LAUNCH")
 
-        # 6. Build Grounded Citations from real DB evidence
         citations: list[CitationItem] = []
         for idx, ev in enumerate(evidence_list[:4], 1):
             label = ev.entity_ref or f"{ev.market_name or 'Regional'} {ev.kind.capitalize()} Signal"
@@ -177,7 +287,6 @@ class ChatService:
                     source="Qloo Taste Graph",
                 )
             )
-
         if not citations:
             citations = [
                 CitationItem(
@@ -196,7 +305,6 @@ class ChatService:
                 ),
             ]
 
-        # 7. Build Dimension Comparison Chart Points
         def _extract_scores(dim_key: str, default_val: float) -> dict[str, float]:
             if ranked_markets:
                 return {
@@ -212,29 +320,13 @@ class ChatService:
             }
 
         chart_data: list[DimensionChartPoint] = [
-            DimensionChartPoint(
-                dimension="Category Affinity",
-                scores=_extract_scores("category_affinity", 0.92),
-            ),
-            DimensionChartPoint(
-                dimension="Audience Overlap",
-                scores=_extract_scores("audience_overlap", 0.88),
-            ),
-            DimensionChartPoint(
-                dimension="Sentiment Tone",
-                scores=_extract_scores("sentiment_resonance", 0.85),
-            ),
-            DimensionChartPoint(
-                dimension="Cultural Momentum",
-                scores=_extract_scores("trend_momentum", 0.90),
-            ),
-            DimensionChartPoint(
-                dimension="Contextual Fit",
-                scores=_extract_scores("contextual_fit", 0.86),
-            ),
+            DimensionChartPoint(dimension="Category Affinity", scores=_extract_scores("category_affinity", 0.92)),
+            DimensionChartPoint(dimension="Audience Overlap", scores=_extract_scores("audience_overlap", 0.88)),
+            DimensionChartPoint(dimension="Sentiment Tone", scores=_extract_scores("sentiment_resonance", 0.85)),
+            DimensionChartPoint(dimension="Cultural Momentum", scores=_extract_scores("trend_momentum", 0.90)),
+            DimensionChartPoint(dimension="Contextual Fit", scores=_extract_scores("contextual_fit", 0.86)),
         ]
 
-        # 8. Build Related Evidence Cards
         related_evidence: list[EvidenceCard] = []
         for ev in evidence_list[:3]:
             score_num = float(ev.value_numeric) if ev.value_numeric is not None else 0.88
@@ -247,7 +339,6 @@ class ChatService:
                     score=score_num,
                 )
             )
-
         if not related_evidence:
             related_evidence = [
                 EvidenceCard(
@@ -270,64 +361,6 @@ class ChatService:
                 ),
             ]
 
-        # 9. Formulate High-Grade Response (Live LLM with Grounded Fallback)
-        evidence_summary = "; ".join(
-            [f"{c.label} ({c.kind})" for c in citations]
-        )
-        memory_summary = "; ".join([m.content for m in memories]) if memories else "None"
-
-        llm_reply = await cls._generate_llm_reply(
-            user_query=sanitized_msg,
-            brand_name=brand_name,
-            winner_market=winner_market,
-            verdict=verdict,
-            score=winner_score,
-            evidence_summary=evidence_summary,
-            memory_summary=memory_summary,
-        )
-
-        if llm_reply:
-            reply = llm_reply
-        else:
-            msg_lower = sanitized_msg.lower()
-            if any(w in msg_lower for w in ["why", "recommend", "tokyo", "bangalore"]):
-                reply = (
-                    f"**{winner_market}** is recommended for **{verdict}** "
-                    f"(Overall Compatibility: {winner_score}/100) because it exhibits strong "
-                    f"empirical resonance across multiple Qloo taste vectors:\n\n"
-                    f"1. **Strong Category Relevance [1]**: Verified high index for {brand_name},\n"
-                    f"with active local boutique density and community interest.\n\n"
-                    f"2. **Audience Alignment [2]**: Your target consumer cohort matches\n"
-                    f"{winner_market}'s active urban demographic, exhibiting receptive tone.\n\n"
-                    f"3. **Sustained Cultural Momentum [3]**: Trend signals reflect growing\n"
-                    f"regional adoption rather than transient hype.\n\n"
-                    f"4. **Favorable Channel Economics [4]**: Low friction in distribution with\n"
-                    f"strong independent retail partnerships available."
-                )
-            elif any(w in msg_lower for w in ["compare", "dimension", "market"]):
-                reply = (
-                    f"Here is the cultural compatibility comparison across candidate markets "
-                    f"for **{brand_name}**:\n\n"
-                    f"- **{winner_market}** leads with an overall compatibility index of "
-                    f"**{winner_score}%**, demonstrating superior category resonance.\n"
-                    f"- Secondary candidate territories show moderate potential but require "
-                    f"localized packaging adjustments to overcome price sensitivity.\n\n"
-                    f"See the comparative breakdown chart below for dimension-by-dimension scores."
-                )
-            else:
-                mem_note = (
-                    f" Cross-referenced with {len(memories)} verified workspace facts."
-                    if memories
-                    else ""
-                )
-                reply = (
-                    f"Based on deterministic analysis of **{brand_name}** in **{winner_market}** "
-                    f"(Verdict: `{verdict}`, Compatibility Score: **{winner_score}%**):\n\n"
-                    f"The Qloo Taste Graph identifies strong category resonance [1] and aligned "
-                    f"audience cohorts [2]. Prioritize localized premium channel placements and "
-                    f"authentic community partnerships.{mem_note}"
-                )
-
         suggested_questions = [
             f"What are the top cultural categories in {winner_market}?",
             f"How does {winner_market} compare on youth audience resonance?",
@@ -336,18 +369,169 @@ class ChatService:
             "Show me the key risk factors and mitigation strategies.",
         ]
 
-        return ChatResponse(
-            reply=reply,
+        return _ChatContext(
+            sanitized_msg=sanitized_msg,
+            brand_name=brand_name,
+            winner_market=winner_market,
+            verdict=verdict,
+            winner_score=winner_score,
+            run_id=run.id if run else None,
+            memories_count=len(memories),
             citations=citations,
             chart_data=chart_data,
-            suggested_questions=suggested_questions,
             related_evidence=related_evidence,
-            run_id=run.id if run else None,
-            project_id=project_id,
-            context_meta={
-                "brand_name": brand_name,
-                "winner_market": winner_market,
-                "verdict": verdict,
-                "score": winner_score,
+            suggested_questions=suggested_questions,
+        )
+
+    @classmethod
+    async def process_chat(
+        cls,
+        db: AsyncSession,
+        project_id: uuid.UUID,
+        request: ChatRequest,
+        workspace_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> ChatResponse:
+        context = await cls._gather_context(db, project_id, request, workspace_id)
+
+        conversation = await ConversationService.get_or_create_conversation(db, project_id, user_id)
+        history_msgs = await ConversationService.get_history(db, conversation.id, limit=20)
+        context.history = [{"role": m.role, "content": m.content} for m in history_msgs]
+
+        llm_messages = cls._build_llm_messages(context)
+        llm_reply = await cls._generate_llm_reply(llm_messages)
+        reply = llm_reply or cls._deterministic_reply(
+            context.sanitized_msg,
+            context.brand_name,
+            context.winner_market,
+            context.verdict,
+            context.winner_score,
+            context.memories_count,
+        )
+
+        await ConversationService.add_message(db, conversation.id, "user", context.sanitized_msg)
+        await ConversationService.add_message(
+            db,
+            conversation.id,
+            "assistant",
+            reply,
+            metadata={
+                "citations": [c.model_dump() for c in context.citations],
+                "chart_data": [d.model_dump() for d in context.chart_data],
+                "suggested_questions": context.suggested_questions,
+                "related_evidence": [e.model_dump() for e in context.related_evidence],
             },
         )
+
+        return ChatResponse(
+            reply=reply,
+            citations=context.citations,
+            chart_data=context.chart_data,
+            suggested_questions=context.suggested_questions,
+            related_evidence=context.related_evidence,
+            run_id=context.run_id,
+            project_id=project_id,
+            context_meta={
+                "brand_name": context.brand_name,
+                "winner_market": context.winner_market,
+                "verdict": context.verdict,
+                "score": context.winner_score,
+            },
+        )
+
+    @classmethod
+    async def prepare_stream(
+        cls,
+        db: AsyncSession,
+        project_id: uuid.UUID,
+        request: ChatRequest,
+        workspace_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> _ChatContext:
+        """Runs inside the request's own DB session (before the response starts
+        streaming) — gathers context, loads history, and persists the user's
+        message. The returned context carries no live session reference, so it's
+        safe to use from the generator after this session has been torn down."""
+        context = await cls._gather_context(db, project_id, request, workspace_id)
+        conversation = await ConversationService.get_or_create_conversation(db, project_id, user_id)
+        history_msgs = await ConversationService.get_history(db, conversation.id, limit=20)
+        context.history = [{"role": m.role, "content": m.content} for m in history_msgs]
+        context.conversation_id = conversation.id
+        await ConversationService.add_message(db, conversation.id, "user", context.sanitized_msg)
+        return context
+
+    @classmethod
+    async def stream_reply(cls, context: _ChatContext) -> AsyncGenerator[str, None]:
+        """SSE event generator. Streams live LLM tokens if available, otherwise
+        simulates a typing effect over the deterministic reply — either way the
+        UI sees real incremental progress, never a silent wait. Persists the
+        final assistant message via its own fresh DB session once streaming
+        completes (the request-scoped session is already closed by then)."""
+
+        def sse(payload: dict[str, Any]) -> str:
+            return f"data: {json.dumps(payload)}\n\n"
+
+        yield sse(
+            {
+                "type": "meta",
+                "citations": [c.model_dump() for c in context.citations],
+                "chart_data": [d.model_dump() for d in context.chart_data],
+                "suggested_questions": context.suggested_questions,
+                "related_evidence": [e.model_dump() for e in context.related_evidence],
+                "run_id": str(context.run_id) if context.run_id else None,
+                "conversation_id": str(context.conversation_id) if context.conversation_id else None,
+            }
+        )
+
+        llm_messages = cls._build_llm_messages(context)
+        full_reply_parts: list[str] = []
+        try:
+            async for chunk in cls._stream_llm_reply(llm_messages):
+                full_reply_parts.append(chunk)
+                yield sse({"type": "token", "text": chunk})
+        except Exception as exc:
+            logger.debug("Stream interrupted (%s), falling back", exc)
+
+        full_reply = "".join(full_reply_parts)
+
+        if not full_reply:
+            # Live LLM unavailable — simulate streaming over the grounded fallback
+            # so the UI still shows real incremental "processing" either way.
+            import asyncio
+
+            fallback = cls._deterministic_reply(
+                context.sanitized_msg,
+                context.brand_name,
+                context.winner_market,
+                context.verdict,
+                context.winner_score,
+                context.memories_count,
+            )
+            words = fallback.split(" ")
+            for i, word in enumerate(words):
+                piece = word if i == 0 else " " + word
+                full_reply_parts.append(piece)
+                yield sse({"type": "token", "text": piece})
+                await asyncio.sleep(0.015)
+            full_reply = "".join(full_reply_parts)
+
+        if context.conversation_id:
+            try:
+                async with AsyncSessionLocal() as session:
+                    await ConversationService.add_message(
+                        session,
+                        context.conversation_id,
+                        "assistant",
+                        full_reply,
+                        metadata={
+                            "citations": [c.model_dump() for c in context.citations],
+                            "chart_data": [d.model_dump() for d in context.chart_data],
+                            "suggested_questions": context.suggested_questions,
+                            "related_evidence": [e.model_dump() for e in context.related_evidence],
+                        },
+                    )
+                    await session.commit()
+            except Exception as exc:
+                logger.error("Failed to persist streamed assistant reply: %s", exc)
+
+        yield sse({"type": "done"})
