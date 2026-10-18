@@ -109,36 +109,73 @@ class AnalysisRunService:
         step_start_perf = time.perf_counter()
         step_start_ts = datetime.now(UTC)
 
-        # Execute through graph stream
-        async for output in graph.astream(initial_state, config=thread_config):
-            step_end_perf = time.perf_counter()
+        # Execute through graph stream — each yielded chunk is one completed node
+        try:
+            async for output in graph.astream(initial_state, config=thread_config):
+                step_end_perf = time.perf_counter()
+                step_end_ts = datetime.now(UTC)
+                step_latency_ms = int((step_end_perf - step_start_perf) * 1000)
+
+                for node_name, node_update in output.items():
+                    step_sequence += 1
+
+                    # Merge update into current state
+                    current_state.update(node_update)
+
+                    # Determine step status from state — nodes may signal partial failure
+                    node_errors: list = node_update.get("errors", []) or []
+                    node_status = "failed" if node_errors else "completed"
+
+                    # Build lightweight trace metadata for in-app timeline
+                    trace_meta: dict[str, Any] = {
+                        "node": node_name,
+                        "current_step": node_update.get("current_step", node_name),
+                        "markets_processed": node_update.get("markets_evaluated"),
+                    }
+                    if node_errors:
+                        trace_meta["errors"] = node_errors[:3]  # cap to avoid bloat
+
+                    step_record = RunStep(
+                        run_id=run.id,
+                        step_key=node_name,
+                        agent_name=f"{node_name}_agent",
+                        status=node_status,
+                        sequence=step_sequence,
+                        started_at=step_start_ts,
+                        completed_at=step_end_ts,
+                        latency_ms=max(1, step_latency_ms),
+                        output_ref=str(node_update.get("current_step", node_name)),
+                        error_json={"messages": node_errors} if node_errors else None,
+                        metadata_json=trace_meta,
+                    )
+                    db.add(step_record)
+                    await db.commit()
+
+                # Advance timestamp and perf counter for the next node
+                step_start_perf = time.perf_counter()
+                step_start_ts = datetime.now(UTC)
+
+        except Exception as graph_exc:
+            # Record the failing step so the timeline shows exactly where it broke
             step_end_ts = datetime.now(UTC)
-            step_latency_ms = int((step_end_perf - step_start_perf) * 1000)
-
-            for node_name, node_update in output.items():
-                step_sequence += 1
-
-                # Merge update into current state
-                current_state.update(node_update)
-
-                # Record step in run_steps
-                step_record = RunStep(
-                    run_id=run.id,
-                    step_key=node_name,
-                    agent_name=f"{node_name}_agent",
-                    status="completed",
-                    sequence=step_sequence,
-                    started_at=step_start_ts,
-                    completed_at=step_end_ts,
-                    latency_ms=max(1, step_latency_ms),
-                    output_ref=str(node_update.get("current_step", node_name)),
-                )
-                db.add(step_record)
-                await db.commit()
-
-            # Advance timestamp and timer for the next agent node execution
-            step_start_perf = time.perf_counter()
-            step_start_ts = datetime.now(UTC)
+            step_latency_ms = int((time.perf_counter() - step_start_perf) * 1000)
+            step_sequence += 1
+            db.add(RunStep(
+                run_id=run.id,
+                step_key="graph_error",
+                agent_name="graph_error_agent",
+                status="failed",
+                sequence=step_sequence,
+                started_at=step_start_ts,
+                completed_at=step_end_ts,
+                latency_ms=max(1, step_latency_ms),
+                error_json={"type": type(graph_exc).__name__, "message": str(graph_exc)[:500]},
+                metadata_json={"node": "graph_error"},
+            ))
+            run.status = "failed"
+            run.error_code = type(graph_exc).__name__[:100]
+            await db.commit()
+            raise
 
         # 5. Persist normalized evidence records into database
         normalized_ev = current_state.get("normalized_evidence", [])

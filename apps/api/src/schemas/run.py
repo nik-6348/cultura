@@ -36,6 +36,8 @@ class RunStepRead(BaseModel):
     completed_at: datetime | None = None
     latency_ms: int | None = None
     output_ref: str | None = None
+    error_json: dict[str, Any] | None = None
+    metadata_json: dict[str, Any] | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

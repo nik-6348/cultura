@@ -1,40 +1,613 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft,
-  ShieldCheck,
-  Database,
-  CheckCircle2,
-  Clock,
-  Sparkles,
-  BarChart3,
-  Sliders,
-  ExternalLink,
-  Cpu,
-  FileText,
-  Download,
-  Copy,
-  Check,
+  ArrowLeft, ShieldCheck, Database, CheckCircle2, Clock, Sparkles,
+  BarChart3, Sliders, Cpu, FileText, Download, Copy, Check,
+  TrendingUp, XCircle, ChevronRight, MapPin,
+  Activity, Zap,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import {
-  AnalysisRun,
-  DecisionRecord,
-  EvidenceRecord,
-  RankedMarketItem,
-  ReportRecord,
-  RunStep,
-  StrategyRecommendation,
+  AnalysisRun, DecisionRecord, EvidenceRecord,
+  RankedMarketItem, ReportRecord, RunStep, StrategyRecommendation,
 } from "@/lib/types";
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
 import { cn, formatDate } from "@/lib/utils";
-import { CulturalRadarChart, RadarSeries } from "@/components/analytics/CulturalRadarChart";
-import { CompatibilityMatrixChart, MarketRankingData } from "@/components/analytics/CompatibilityMatrixChart";
-import { MomentumTrajectoryChart } from "@/components/analytics/MomentumTrajectoryChart";
-import { SubcultureDistrictGrid } from "@/components/analytics/SubcultureDistrictGrid";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface DimScore {
+  raw_score: number;
+  weighted_score: number;
+  weight: number;
+  explanation?: string;
+  evidence_ids?: string[];
+}
+
+interface MarketDecision {
+  posture: string;
+  posture_confidence: number;
+  posture_probabilities?: { launch?: number; adapt?: number; avoid?: number };
+  evidence_sufficiency?: string;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function pct(v: number | undefined, decimals = 0) {
+  if (v === undefined || v === null) return "—";
+  const n = v > 1 ? v : v * 100;
+  return `${n.toFixed(decimals)}%`;
+}
+
+function scoreColor(v: number): string {
+  if (v >= 0.80) return "#6366F1";
+  if (v >= 0.65) return "#F59E0B";
+  return "#EF4444";
+}
+
+function verdictColor(v: string): string {
+  const lv = v?.toLowerCase();
+  if (lv === "launch") return "#10B981";
+  if (lv === "adapt")  return "#F59E0B";
+  return "#EF4444";
+}
+
+function getMarketFlag(name: string): string {
+  const n = name?.toLowerCase() ?? "";
+  if (n.includes("tokyo") || n.includes("japan"))      return "🇯🇵";
+  if (n.includes("berlin") || n.includes("germany"))    return "🇩🇪";
+  if (n.includes("seoul") || n.includes("korea"))       return "🇰🇷";
+  if (n.includes("london") || n.includes("uk"))         return "🇬🇧";
+  if (n.includes("paris") || n.includes("france"))      return "🇫🇷";
+  if (n.includes("new york") || n.includes("usa"))      return "🇺🇸";
+  if (n.includes("singapore"))                          return "🇸🇬";
+  if (n.includes("bangkok") || n.includes("thailand"))  return "🇹🇭";
+  if (n.includes("jakarta") || n.includes("indonesia")) return "🇮🇩";
+  if (n.includes("sydney") || n.includes("australia"))  return "🇦🇺";
+  if (n.includes("dubai"))                               return "🇦🇪";
+  return "🌐";
+}
+
+const DIM_LABELS: Record<string, { label: string; uiLabel: string; color: string }> = {
+  brand_affinity:     { label: "Brand Affinity",       uiLabel: "Brand Affinity",     color: "#6366F1" },
+  category_ecosystem: { label: "Category Ecosystem",   uiLabel: "Market Opportunity", color: "#22D3EE" },
+  audience_overlap:   { label: "Audience Overlap",     uiLabel: "Consumer Interest",  color: "#8B5CF6" },
+  cultural_momentum:  { label: "Cultural Momentum",    uiLabel: "Trend Velocity",     color: "#F59E0B" },
+  evidence_coverage:  { label: "Evidence Coverage",    uiLabel: "Data Confidence",    color: "#10B981" },
+};
+
+const AGENT_META: Record<string, { title: string; role: string }> = {
+  supervisor:            { title: "Strategic Orchestrator",       role: "Scopes objectives & directs agent routing" },
+  brand_analyst:         { title: "Brand Identity Agent",         role: "Extracts brand voice, positioning & identity anchors" },
+  market_analyst:        { title: "Territory Intelligence Agent", role: "Assesses retail landscape, urban dynamics" },
+  audience_matcher:      { title: "Audience Persona Agent",       role: "Profiles consumer cohorts & psychographics" },
+  qloo_researcher:       { title: "Qloo Taste Graph Agent",       role: "Queries cross-affinity signals — music, fashion, culture" },
+  evidence_normalizer:   { title: "Signal Calibration Agent",     role: "Normalises scores & confidence intervals" },
+  deterministic_scorer:  { title: "Cultural Compatibility Scorer",role: "Computes 5-dimension resonance index" },
+  jev_decision_gate:     { title: "Decision Gate Agent",          role: "Evaluates launch threshold & risk gates" },
+  strategy_synthesizer:  { title: "Playbook Director Agent",      role: "Synthesises localised entry directives" },
+  guardrail_validator:   { title: "Governance Guard Agent",       role: "Verifies empirical backing & flags assumptions" },
+};
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function ScoreChip({ label, value, color, sub }: { label: string; value: string; color: string; sub?: string }) {
+  return (
+    <div className="flex-1 min-w-[110px] rounded-xl bg-[#111827] border border-[#1A2338] p-3.5 space-y-0.5">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</div>
+      <div className="text-2xl font-bold font-mono" style={{ color }}>{value}</div>
+      {sub && <div className="text-[10px] text-slate-600">{sub}</div>}
+    </div>
+  );
+}
+
+function DimBar({ dim, score, weight, explanation, evidenceCount }: {
+  dim: string; score: number; weight: number; explanation?: string; evidenceCount?: number;
+}) {
+  const meta = DIM_LABELS[dim] ?? { uiLabel: dim, color: "#6366F1" };
+  const p = Math.round(score * 100);
+  return (
+    <div className="p-3.5 rounded-xl bg-[#111827] border border-[#1A2338] space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-slate-200">{meta.uiLabel}</span>
+          {evidenceCount !== undefined && (
+            <span className="text-[10px] px-1.5 py-px rounded bg-[#0E1424] border border-[#1A2338] text-slate-500 font-mono">
+              {evidenceCount} signals
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-slate-600">weight {Math.round(weight * 100)}%</span>
+          <span className="text-sm font-bold font-mono" style={{ color: meta.color }}>{p}%</span>
+        </div>
+      </div>
+      <div className="h-1.5 rounded-full bg-[#1A2338] overflow-hidden">
+        <div className="h-full rounded-full transition-all" style={{ width: `${p}%`, background: meta.color }} />
+      </div>
+      {explanation && (
+        <p className="text-[11px] text-slate-500 leading-relaxed">{explanation}</p>
+      )}
+    </div>
+  );
+}
+
+function ProbabilityBar({ label, probs }: { label: string; probs: { launch?: number; adapt?: number; avoid?: number } }) {
+  const launch = (probs.launch ?? 0) * 100;
+  const adapt  = (probs.adapt  ?? 0) * 100;
+  const avoid  = (probs.avoid  ?? 0) * 100;
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-[10px]">
+        <span className="text-slate-400 font-medium">{label}</span>
+        <div className="flex items-center gap-2 text-slate-500">
+          <span className="text-emerald-400">{launch.toFixed(0)}% Launch</span>
+          <span className="text-amber-400">{adapt.toFixed(0)}% Adapt</span>
+          <span className="text-rose-400">{avoid.toFixed(0)}% Avoid</span>
+        </div>
+      </div>
+      <div className="h-2.5 rounded-full bg-[#1A2338] overflow-hidden flex">
+        <div style={{ width: `${launch}%` }} className="h-full bg-emerald-500" />
+        <div style={{ width: `${adapt}%`  }} className="h-full bg-amber-400"  />
+        <div style={{ width: `${avoid}%`  }} className="h-full bg-rose-500"   />
+      </div>
+    </div>
+  );
+}
+
+// ─── Heatmap component ────────────────────────────────────────────────────────
+
+function DimensionHeatmap({ matrix, rankings }: {
+  matrix: Record<string, Record<string, number>>;
+  rankings: RankedMarketItem[];
+}) {
+  const markets = rankings.map(r => r.market);
+  const dims = ["brand_affinity","category_ecosystem","audience_overlap","cultural_momentum","evidence_coverage"];
+
+  function cellBg(v: number) {
+    const opacity = 0.15 + v * 0.65;
+    return v >= 0.75
+      ? `rgba(99,102,241,${opacity})`
+      : v >= 0.60
+      ? `rgba(245,158,11,${opacity})`
+      : `rgba(239,68,68,${opacity})`;
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full" style={{ borderCollapse: "separate", borderSpacing: "3px" }}>
+        <thead>
+          <tr>
+            <th className="text-left text-[10px] text-slate-600 font-mono pb-1 pr-3 w-36" />
+            {markets.map(m => (
+              <th key={m} className="text-center text-[10px] text-slate-500 font-medium pb-1 px-1">
+                <div>{getMarketFlag(m)}</div>
+                <div className="truncate max-w-[60px]">{m.split(",")[0]}</div>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {dims.map(dim => {
+            const meta = DIM_LABELS[dim];
+            return (
+              <tr key={dim}>
+                <td className="text-right text-[10px] text-slate-500 pr-3 py-0.5 font-medium">{meta?.uiLabel ?? dim}</td>
+                {markets.map(m => {
+                  const v = matrix[m]?.[dim] ?? 0;
+                  const p = Math.round(v * 100);
+                  return (
+                    <td key={m} className="py-0.5">
+                      <div
+                        className="rounded text-center font-mono font-semibold text-[11px] py-1.5"
+                        style={{ background: cellBg(v), color: "rgba(255,255,255,0.85)" }}
+                      >
+                        {p}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+          {/* Overall row */}
+          <tr>
+            <td className="text-right text-[10px] text-slate-400 pr-3 py-0.5 font-semibold">Overall</td>
+            {markets.map((m, i) => {
+              const s = rankings[i]?.score ?? 0;
+              const p = Math.round(s * 100);
+              return (
+                <td key={m} className="py-0.5">
+                  <div className="rounded text-center font-mono font-bold text-[11px] py-1.5 border"
+                    style={{
+                      background: `rgba(${s >= 0.75 ? "99,102,241" : s >= 0.60 ? "245,158,11" : "239,68,68"},0.2)`,
+                      borderColor: `rgba(${s >= 0.75 ? "99,102,241" : s >= 0.60 ? "245,158,11" : "239,68,68"},0.4)`,
+                      color: s >= 0.75 ? "#A5B4FC" : s >= 0.60 ? "#FCD34D" : "#FCA5A5",
+                    }}>
+                    {p}
+                  </div>
+                </td>
+              );
+            })}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ─── Radar SVG ────────────────────────────────────────────────────────────────
+
+function RadarChart({ markets, matrix }: {
+  markets: RankedMarketItem[];
+  matrix: Record<string, Record<string, number>>;
+}) {
+  const dims = ["brand_affinity","category_ecosystem","audience_overlap","cultural_momentum","evidence_coverage"];
+  const labels = ["Brand", "Mkt Opp", "Consumer", "Momentum", "Data Conf"];
+  const size = 200;
+  const cx = size / 2, cy = size / 2, r = 72;
+  const colors = ["#6366F1","#10B981","#F59E0B","#EF4444","#22D3EE"];
+
+  function toXY(dimIdx: number, score: number) {
+    const angle = (Math.PI * 2 * dimIdx) / dims.length - Math.PI / 2;
+    return { x: cx + r * score * Math.cos(angle), y: cy + r * score * Math.sin(angle) };
+  }
+
+  function ringPoints(scale: number) {
+    return dims.map((_, i) => {
+      const p = toXY(i, scale);
+      return `${p.x},${p.y}`;
+    }).join(" ");
+  }
+
+  function marketPoints(market: string) {
+    return dims.map((dim, i) => {
+      const v = matrix[market]?.[dim] ?? 0;
+      const p = toXY(i, v);
+      return `${p.x},${p.y}`;
+    }).join(" ");
+  }
+
+  const labelPositions = dims.map((_, i) => {
+    const angle = (Math.PI * 2 * i) / dims.length - Math.PI / 2;
+    return {
+      x: cx + (r + 18) * Math.cos(angle),
+      y: cy + (r + 18) * Math.sin(angle),
+      label: labels[i],
+    };
+  });
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
+        {/* Rings */}
+        {[0.25, 0.5, 0.75, 1].map(scale => (
+          <polygon key={scale} points={ringPoints(scale)}
+            fill="none" stroke="#1A2338" strokeWidth={scale === 1 ? 1 : 0.5} />
+        ))}
+        {/* Axes */}
+        {dims.map((_, i) => {
+          const p = toXY(i, 1);
+          return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="#252f45" strokeWidth={0.5} />;
+        })}
+        {/* Labels */}
+        {labelPositions.map(({ x, y, label }) => (
+          <text key={label} x={x} y={y} textAnchor="middle" dominantBaseline="middle"
+            fontSize={8} fill="#4B5A72" fontFamily="ui-monospace,monospace">{label}</text>
+        ))}
+        {/* Market polygons */}
+        {markets.slice(0, 3).map((m, mi) => (
+          <polygon key={m.market} points={marketPoints(m.market)}
+            fill={`${colors[mi]}22`} stroke={colors[mi]} strokeWidth={mi === 0 ? 1.5 : 1}
+            strokeDasharray={mi === 0 ? undefined : "3,2"} />
+        ))}
+      </svg>
+      {/* Legend */}
+      <div className="flex flex-wrap gap-3 justify-center">
+        {markets.slice(0, 3).map((m, mi) => (
+          <div key={m.market} className="flex items-center gap-1.5">
+            <div className="w-3 h-px" style={{ background: colors[mi] }} />
+            <span className="text-[10px] text-slate-400">{m.market.split(",")[0]}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Evidence donut ───────────────────────────────────────────────────────────
+
+function EvidenceDonut({ evidence, market }: { evidence: EvidenceRecord[]; market: string }) {
+  const filtered = market ? evidence.filter(e => e.market_name === market) : evidence;
+  const counts: Record<string, number> = {};
+  filtered.forEach(e => { counts[e.kind] = (counts[e.kind] ?? 0) + 1; });
+  const total = filtered.length;
+
+  const kinds = [
+    { key: "brand_affinity",    color: "#6366F1", label: "Brand Affinity" },
+    { key: "locality_density",  color: "#10B981", label: "Locality Density" },
+    { key: "venue_anchor",      color: "#22D3EE", label: "Venue Anchors" },
+    { key: "audience_overlap",  color: "#8B5CF6", label: "Audience Overlap" },
+    { key: "cultural_momentum", color: "#F59E0B", label: "Cultural Momentum" },
+  ].filter(k => (counts[k.key] ?? 0) > 0);
+
+  if (total === 0) return (
+    <div className="text-xs text-slate-600 text-center py-4">No evidence for this market</div>
+  );
+
+  const r = 28, circ = 2 * Math.PI * r;
+  let offset = 0;
+  const segments = kinds.map(k => {
+    const frac = (counts[k.key] ?? 0) / total;
+    const dash = frac * circ;
+    const seg = { ...k, dash, gap: circ - dash, offset, count: counts[k.key] ?? 0 };
+    offset += dash;
+    return seg;
+  });
+
+  return (
+    <div className="flex items-center gap-4">
+      <svg viewBox="0 0 80 80" width={72} height={72} style={{ flexShrink: 0 }}>
+        <circle cx={40} cy={40} r={r} fill="none" stroke="#1A2338" strokeWidth={10} />
+        {segments.map(s => (
+          <circle key={s.key} cx={40} cy={40} r={r} fill="none"
+            stroke={s.color} strokeWidth={10}
+            strokeDasharray={`${s.dash} ${s.gap}`}
+            strokeDashoffset={-s.offset}
+            transform="rotate(-90 40 40)" />
+        ))}
+        <text x={40} y={40} textAnchor="middle" dominantBaseline="middle"
+          fontSize={13} fontWeight={700} fill="#F1F5F9" fontFamily="ui-monospace,monospace">
+          {total}
+        </text>
+      </svg>
+      <div className="flex flex-col gap-1.5">
+        {segments.map(s => (
+          <div key={s.key} className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: s.color }} />
+            <span className="text-[10px] text-slate-400">{s.label}</span>
+            <span className="text-[10px] font-mono text-slate-500 ml-auto pl-2">{s.count}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Agent timeline ───────────────────────────────────────────────────────────
+
+function AgentTimeline({ steps }: { steps: RunStep[] }) {
+  const sorted = [...steps].sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
+  const maxLatency = Math.max(...sorted.map(s => s.latency_ms ?? s.duration_ms ?? 0), 1);
+  const totalMs = sorted.reduce((sum, s) => sum + (s.latency_ms ?? s.duration_ms ?? 0), 0);
+
+  const phaseColors: Record<string, string> = {
+    qloo_researcher: "#6366F1",
+    deterministic_scorer: "#F59E0B",
+    strategy_synthesizer: "#8B5CF6",
+    jev_decision_gate: "#10B981",
+    guardrail_validator: "#EF4444",
+    brand_analyst: "#22D3EE",
+    market_analyst: "#22D3EE",
+    audience_matcher: "#22D3EE",
+    evidence_normalizer: "#22D3EE",
+    supervisor: "#94A3B8",
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Summary */}
+      <div className="flex items-center gap-4 text-xs text-slate-500 border-b border-[#1A2338] pb-3">
+        <div className="flex items-center gap-1.5">
+          <Activity className="w-3.5 h-3.5 text-indigo-400" />
+          <span>{sorted.length} steps completed</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Clock className="w-3.5 h-3.5 text-slate-500" />
+          <span className="font-mono">{(totalMs / 1000).toFixed(1)}s total</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Zap className="w-3.5 h-3.5 text-amber-400" />
+          <span>Longest: {sorted.reduce((a, b) =>
+            (a.latency_ms ?? 0) > (b.latency_ms ?? 0) ? a : b
+          ).node_name?.replace(/_/g, " ") ?? "—"}</span>
+        </div>
+      </div>
+
+      {/* Gantt bars */}
+      <div className="space-y-1 mb-2">
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-600 mb-2">
+          Pipeline Gantt — proportional duration
+        </div>
+        {sorted.map((s, idx) => {
+          const ms = s.latency_ms ?? s.duration_ms ?? 0;
+          const pct = Math.max(4, (ms / maxLatency) * 100);
+          const key = s.node_name ?? s.step_key;
+          const color = phaseColors[key] ?? "#4B5A72";
+          return (
+            <div key={s.id ?? idx} className="flex items-center gap-2">
+              <span className="text-[10px] text-slate-600 font-mono w-28 truncate text-right flex-shrink-0">
+                {(AGENT_META[key]?.title ?? key).split(" ").slice(0, 2).join(" ")}
+              </span>
+              <div className="flex-1 h-5 rounded-sm bg-[#111827] overflow-hidden">
+                <div className="h-full rounded-sm flex items-center"
+                  style={{ width: `${pct}%`, background: `${color}55`, borderRight: `2px solid ${color}` }}>
+                  {pct > 20 && (
+                    <span className="text-[9px] font-mono px-1.5" style={{ color }}>
+                      {ms > 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {pct <= 20 && (
+                <span className="text-[9px] font-mono w-8" style={{ color }}>
+                  {ms > 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Step list */}
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-600 mt-4 mb-2">
+        Trace Steps
+      </div>
+      <div className="space-y-0 divide-y divide-[#1A2338]">
+        {sorted.map((s, idx) => {
+          const key = s.node_name ?? s.step_key;
+          const meta = AGENT_META[key] ?? { title: key.replace(/_/g, " "), role: s.agent_role ?? "" };
+          const ms = s.latency_ms ?? s.duration_ms ?? 0;
+          const color = phaseColors[key] ?? "#4B5A72";
+          const isHeavy = ms > 2000;
+          const isFailed = s.status === "failed" || s.status === "error";
+
+          return (
+            <div key={s.id ?? idx}
+              className="py-3 px-2 flex items-center justify-between gap-3 hover:bg-[#0E1424] rounded-lg transition-colors">
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Sequence dot */}
+                <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[9px] font-bold"
+                  style={{ background: `${color}22`, color, border: `1px solid ${color}44` }}>
+                  {idx + 1}
+                </div>
+                {/* Status icon */}
+                {isFailed
+                  ? <XCircle className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />
+                  : <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                }
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-200 truncate">{meta.title}</span>
+                    <span className="text-[10px] text-slate-600 truncate hidden sm:block">{meta.role}</span>
+                  </div>
+                  <div className="text-[10px] text-slate-600 font-mono">{key}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                {s.started_at && (
+                  <span className="text-[10px] text-slate-600 font-mono hidden md:block">
+                    {new Date(s.started_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                  </span>
+                )}
+                <span className={cn(
+                  "font-mono text-[11px] font-semibold px-2 py-0.5 rounded",
+                  isHeavy ? "bg-indigo-950/60 text-indigo-300 border border-indigo-800/40" : "text-slate-500"
+                )}>
+                  {ms > 1000 ? `${(ms / 1000).toFixed(2)}s` : `${ms}ms`}
+                </span>
+                <span className={cn(
+                  "text-[10px] font-bold uppercase px-1.5 py-0.5 rounded",
+                  isFailed ? "text-rose-400 bg-rose-950/40" : "text-emerald-400 bg-emerald-950/40"
+                )}>
+                  {s.status}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Score margin chart ───────────────────────────────────────────────────────
+
+function ScoreMarginChart({ rankings }: { rankings: RankedMarketItem[] }) {
+  const winner = rankings[0]?.score ?? 0;
+  return (
+    <div className="space-y-2.5">
+      {rankings.map((r, i) => {
+        const s = r.score;
+        const pct = Math.round(s * 100);
+        const delta = i === 0 ? null : Math.round((winner - s) * 100);
+        const vc = verdictColor(r.verdict);
+        return (
+          <div key={r.market} className="flex items-center gap-3">
+            <div className="w-24 flex-shrink-0 flex items-center gap-1.5">
+              <span className="text-sm">{getMarketFlag(r.market)}</span>
+              <span className="text-[11px] text-slate-300 truncate font-medium">{r.market.split(",")[0]}</span>
+            </div>
+            <div className="flex-1 h-6 rounded-lg bg-[#111827] overflow-hidden relative">
+              <div className="h-full rounded-lg transition-all"
+                style={{ width: `${pct}%`, background: `${vc}33`, borderRight: `2px solid ${vc}` }} />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono font-bold text-slate-400">
+                {pct}
+              </span>
+            </div>
+            <div className="w-20 flex-shrink-0 flex items-center justify-end gap-1">
+              {delta !== null && (
+                <span className="text-[10px] font-mono text-slate-600">-{delta}pts</span>
+              )}
+              <span className="text-[10px] font-bold px-1.5 py-px rounded"
+                style={{ color: vc, background: `${vc}15` }}>
+                {r.verdict}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Taste entities from source_metadata_json ─────────────────────────────────
+
+function TasteEntities({ evidence, market }: { evidence: EvidenceRecord[]; market: string }) {
+  const affinities = useMemo(() => {
+    const entities: Array<{ name: string; category: string; score: number }> = [];
+    evidence
+      .filter(e => e.market_name === market && e.kind === "brand_affinity" && e.source_metadata_json)
+      .forEach(e => {
+        const meta = e.source_metadata_json as Record<string, unknown>;
+        const aff = meta?.affinities as Array<{ name: string; category?: string; affinity_score?: number }> | undefined;
+        if (aff) {
+          aff.slice(0, 6).forEach(a => {
+            entities.push({ name: a.name, category: a.category ?? "culture", score: a.affinity_score ?? 0.8 });
+          });
+        }
+      });
+    // Fallback: use entity_ref from evidence records
+    if (entities.length === 0) {
+      evidence
+        .filter(e => e.market_name === market && e.entity_ref)
+        .slice(0, 8)
+        .forEach(e => entities.push({ name: e.entity_ref!, category: e.kind, score: e.value_numeric ?? 0.7 }));
+    }
+    return entities.slice(0, 8);
+  }, [evidence, market]);
+
+  if (affinities.length === 0) return (
+    <p className="text-xs text-slate-600">No taste entity data for this market.</p>
+  );
+
+  const catColor = (cat: string) => {
+    const c = cat?.toLowerCase();
+    if (c?.includes("fashion") || c?.includes("brand_affinity")) return { bg: "rgba(99,102,241,0.12)", color: "#A5B4FC", border: "rgba(99,102,241,0.2)" };
+    if (c?.includes("music") || c?.includes("momentum"))          return { bg: "rgba(16,185,129,0.1)",  color: "#6EE7B7", border: "rgba(16,185,129,0.2)" };
+    if (c?.includes("venue") || c?.includes("locality"))          return { bg: "rgba(34,211,238,0.1)",  color: "#67E8F9", border: "rgba(34,211,238,0.2)" };
+    return { bg: "rgba(245,158,11,0.1)", color: "#FCD34D", border: "rgba(245,158,11,0.2)" };
+  };
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {affinities.map((a, i) => {
+        const { bg, color, border } = catColor(a.category);
+        return (
+          <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium"
+            style={{ background: bg, color, border: `1px solid ${border}` }}>
+            {a.name}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function RunIntelligencePage() {
   const params = useParams();
@@ -51,84 +624,47 @@ export default function RunIntelligencePage() {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Tab State
-  const [activeTab, setActiveTab] = useState<
-    "overview" | "timeline" | "evidence" | "simulation" | "report"
-  >("overview");
-
-  // Simulation Form State
-  const [simPersona, setSimPersona] = useState("");
-  const [simPositioning, setSimPositioning] = useState("");
+  const [activeTab, setActiveTab] = useState<"overview" | "market" | "timeline" | "evidence" | "simulation" | "report">("overview");
+  const [selectedMarket, setSelectedMarket] = useState<string>("");
+  const [simPersona, setSimPersona] = useState("Digital-first Gen Z conscious consumers");
+  const [simPositioning, setSimPositioning] = useState("Hyper-local sustainable functional packaging");
   const [runningSim, setRunningSim] = useState(false);
   const [simResult, setSimResult] = useState<AnalysisRun | null>(null);
 
   useEffect(() => {
-    async function loadRunData() {
-      if (!runId) return;
+    if (!runId) return;
+    (async () => {
       try {
         setLoading(true);
-        setError(null);
         const [r, sList, eList, dList, repList] = await Promise.all([
-          api.getRun(runId),
-          api.getRunSteps(runId),
-          api.getRunEvidence(runId),
-          api.getRunDecisions(runId),
+          api.getRun(runId), api.getRunSteps(runId),
+          api.getRunEvidence(runId), api.getRunDecisions(runId),
           api.getRunReports(runId),
         ]);
-        setRun(r);
-        setSteps(sList);
-        setEvidence(eList);
-        setDecisions(dList);
-        setReports(repList);
-        if (repList.length > 0) {
-          setActiveReport(repList[0]);
-        }
-
-        const currentPersona = r.input_snapshot_json?.audience_profile?.persona as string;
-        if (currentPersona) {
-          setSimPersona(currentPersona + " (Gen Z & Digital Natives)");
-        } else {
-          setSimPersona("Digital-first Gen Z conscious consumers");
-        }
-        setSimPositioning("Hyper-local sustainable functional packaging");
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Failed to load analysis run data";
-        setError(msg);
+        setRun(r); setSteps(sList); setEvidence(eList);
+        setDecisions(dList); setReports(repList);
+        if (repList.length > 0) setActiveReport(repList[0]);
+        const markets = r.scores_json?.rankings ?? [];
+        if (markets.length > 0) setSelectedMarket((markets[0] as RankedMarketItem).market);
+        const persona = r.input_snapshot_json?.audience_profile?.persona as string;
+        if (persona) setSimPersona(persona + " (Gen Z & Digital Natives)");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load run");
       } finally {
         setLoading(false);
       }
-    }
-    loadRunData();
+    })();
   }, [runId]);
-
-  const handleExecuteSimulation = async () => {
-    if (!run) return;
-    try {
-      setRunningSim(true);
-      const sim = await api.createSimulation(run.id, {
-        audience_persona: simPersona,
-        brand_positioning: simPositioning,
-      });
-      setSimResult(sim);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Simulation failed";
-      alert(msg);
-    } finally {
-      setRunningSim(false);
-    }
-  };
 
   const handleGenerateReport = async () => {
     if (!run) return;
     try {
       setGeneratingReport(true);
       const rep = await api.generateReport(run.id, reportFormat);
-      setReports([rep, ...reports]);
+      setReports(prev => [rep, ...prev]);
       setActiveReport(rep);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to compile report";
-      alert(msg);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed");
     } finally {
       setGeneratingReport(false);
     }
@@ -141,956 +677,594 @@ export default function RunIntelligencePage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (loading) {
-    return (
-      <div className="py-24 text-center text-sm text-slate-400 animate-pulse">
-        Fetching multi-agent intelligence data...
-      </div>
-    );
-  }
+  const handleExecuteSimulation = async () => {
+    if (!run) return;
+    try {
+      setRunningSim(true);
+      const sim = await api.createSimulation(run.id, { audience_persona: simPersona, brand_positioning: simPositioning });
+      setSimResult(sim);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Simulation failed");
+    } finally {
+      setRunningSim(false);
+    }
+  };
 
-  if (error || !run) {
-    return (
-      <div className="max-w-2xl mx-auto py-12 text-center space-y-4">
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-800">
-          <p className="font-semibold">Analysis Run Error</p>
-          <p className="mt-1 text-xs">{error}</p>
-        </div>
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center space-x-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Dashboard</span>
-        </Link>
-      </div>
-    );
-  }
+  // ── Derived data ────────────────────────────────────────────────────────────
 
+  const rankings: RankedMarketItem[] = useMemo(() => run?.scores_json?.rankings ?? [], [run]);
+  const brandName = run?.input_snapshot_json?.brand_name ?? "Brand";
+  const summary = run?.result_summary_json;
+  const winnerMarket = rankings[0]?.market ?? summary?.winner_market ?? "";
   const primaryDecision = decisions[0];
-  const candidateMarkets = run.input_snapshot_json?.candidate_markets || [];
-  const brandName = run.input_snapshot_json?.brand_name || "Enterprise Brand";
-  const scoresData = run.scores_json || {};
-  const rankings: RankedMarketItem[] = scoresData.rankings || [];
-  const dimensions = (scoresData.market_scores || {}) as Record<
-    string,
-    { dimensions?: Record<string, number> }
-  >;
 
-  // Winner market details
-  const winnerMarket = rankings[0]?.market || candidateMarkets[0]?.name || "Primary Market";
-  const winnerScore = rankings[0]?.score || run.overall_score || 0;
-  const winnerDimensions = dimensions[winnerMarket]?.dimensions || {};
-  const recommendations = (run.result_summary_json?.recommendations || []) as StrategyRecommendation[];
+  // comparative_matrix — flat dict { market: { dim: score } }
+  const rawMatrix = useMemo(() => {
+    const cm = summary?.comparative_matrix as Record<string, Record<string, number>> | undefined;
+    if (cm && typeof cm === "object") {
+      // Check if it's { market: { dim: val } } or nested differently
+      const firstKey = Object.keys(cm)[0];
+      if (firstKey && typeof cm[firstKey] === "object" && !Array.isArray(cm[firstKey])) {
+        return cm;
+      }
+    }
+    // Build from market_scores if comparative_matrix not usable
+    const ms = summary?.market_scores as Record<string, Record<string, unknown>> | undefined;
+    if (ms) {
+      const out: Record<string, Record<string, number>> = {};
+      Object.entries(ms).forEach(([market, data]) => {
+        const dims = data?.dimension_scores as Record<string, { raw_score?: number }> | undefined;
+        if (dims) {
+          out[market] = {};
+          Object.entries(dims).forEach(([k, v]) => {
+            out[market][k] = v?.raw_score ?? 0;
+          });
+        }
+        out[market] = { ...out[market], overall: data?.overall_score as number ?? 0 };
+      });
+      return out;
+    }
+    return {} as Record<string, Record<string, number>>;
+  }, [summary]);
 
-  // Radar series for pure SVG multi-dimensional chart
-  const radarSeries: RadarSeries[] = [
-    {
-      id: "winner",
-      name: `${winnerMarket} (Selected)`,
-      color: "indigo",
-      fillColor: "rgba(99, 102, 241, 0.22)",
-      strokeColor: "#6366f1",
-      data: [
-        {
-          key: "brand_affinity",
-          label: "Brand Proxy Affinity",
-          shortLabel: "Brand",
-          score: Number(winnerDimensions.brand_affinity ?? winnerDimensions.category_affinity ?? 0.85),
-        },
-        {
-          key: "audience_overlap",
-          label: "Audience Overlap & Taste",
-          shortLabel: "Audience",
-          score: Number(winnerDimensions.audience_overlap ?? 0.82),
-        },
-        {
-          key: "category_ecosystem",
-          label: "Category Ecosystem",
-          shortLabel: "Category",
-          score: Number(winnerDimensions.category_ecosystem ?? winnerDimensions.sentiment_resonance ?? 0.84),
-        },
-        {
-          key: "cultural_momentum",
-          label: "Cultural Trend Momentum",
-          shortLabel: "Momentum",
-          score: Number(winnerDimensions.cultural_momentum ?? winnerDimensions.trend_momentum ?? 0.78),
-        },
-        {
-          key: "evidence_coverage",
-          label: "Evidence Grounding",
-          shortLabel: "Evidence",
-          score: Number(winnerDimensions.evidence_coverage ?? winnerDimensions.contextual_fit ?? 0.95),
-        },
-      ],
-    },
-  ];
+  // Per-market dimension scores
+  const marketDimScores = useMemo((): Record<string, DimScore> => {
+    if (!selectedMarket) return {};
+    const ms = summary?.market_scores as Record<string, Record<string, unknown>> | undefined;
+    const mData = ms?.[selectedMarket];
+    const dims = mData?.dimension_scores as Record<string, DimScore> | undefined;
+    return dims ?? {};
+  }, [summary, selectedMarket]);
 
-  if (rankings.length > 1) {
-    const runnerUp = rankings[1];
-    radarSeries.push({
-      id: "runner-up",
-      name: `${runnerUp.market} (Runner-Up)`,
-      color: "emerald",
-      fillColor: "rgba(16, 185, 129, 0.15)",
-      strokeColor: "#10b981",
-      data: [
-        {
-          key: "brand_affinity",
-          label: "Brand Proxy Affinity",
-          shortLabel: "Brand",
-          score: Math.min(0.95, Math.max(0.4, Number(runnerUp.score) * 0.92)),
-        },
-        {
-          key: "audience_overlap",
-          label: "Audience Overlap & Taste",
-          shortLabel: "Audience",
-          score: Math.min(0.95, Math.max(0.35, Number(runnerUp.score) * 0.86)),
-        },
-        {
-          key: "category_ecosystem",
-          label: "Category Ecosystem",
-          shortLabel: "Category",
-          score: Math.min(0.95, Math.max(0.4, Number(runnerUp.score) * 0.9)),
-        },
-        {
-          key: "cultural_momentum",
-          label: "Cultural Trend Momentum",
-          shortLabel: "Momentum",
-          score: Math.min(0.95, Math.max(0.3, Number(runnerUp.score) * 0.84)),
-        },
-        {
-          key: "evidence_coverage",
-          label: "Evidence Grounding",
-          shortLabel: "Evidence",
-          score: Math.min(0.95, Math.max(0.5, Number(runnerUp.score) * 0.92)),
-        },
-      ],
-    });
-  }
+  const marketDecisions = useMemo(() => {
+    const d = summary?.decisions as { market_decisions?: Record<string, MarketDecision> } | undefined;
+    return d?.market_decisions ?? {};
+  }, [summary]);
 
-  // Compatibility matrix dataset
-  const matrixMarkets: MarketRankingData[] = (
-    rankings.length > 0
-      ? rankings
-      : [{ market: winnerMarket, score: winnerScore, rank: 1, verdict: run.decision_verdict || "LAUNCH" }]
-  ).map((r, i) => {
-    const isW = i === 0;
-    const mName = r.market;
-    const country = mName.includes("Tokyo")
-      ? "Japan"
-      : mName.includes("Berlin")
-      ? "Germany"
-      : mName.includes("Seoul")
-      ? "South Korea"
-      : mName.includes("London")
-      ? "United Kingdom"
-      : mName.includes("Paris")
-      ? "France"
-      : mName.includes("New York")
-      ? "United States"
-      : "International Hub";
+  const selectedDecision = marketDecisions[selectedMarket];
+  const selectedRanking = rankings.find(r => r.market === selectedMarket) ?? rankings[0];
+  const recommendations = (summary?.recommendations ?? []) as StrategyRecommendation[];
+  const auditReport = summary?.audit_report as Record<string, unknown> | undefined;
 
-    const flagEmoji = mName.includes("Tokyo")
-      ? "🇯🇵"
-      : mName.includes("Berlin")
-      ? "🇩🇪"
-      : mName.includes("Seoul")
-      ? "🇰🇷"
-      : mName.includes("London")
-      ? "🇬🇧"
-      : mName.includes("Paris")
-      ? "🇫🇷"
-      : mName.includes("New York")
-      ? "🇺🇸"
-      : "🌐";
+  const TABS = [
+    { id: "overview", label: "Overview", icon: BarChart3 },
+    { id: "market",   label: "Market Deep Dive", icon: MapPin },
+    { id: "timeline", label: `Agent Timeline (${steps.length})`, icon: Cpu },
+    { id: "evidence", label: `Evidence (${evidence.length})`, icon: Database },
+    { id: "simulation", label: "Scenario Lab", icon: Sliders },
+    { id: "report",   label: "Report", icon: FileText },
+  ] as const;
 
-    const s = Number(r.score);
-    const vStr = (r.verdict || "launch").toLowerCase();
-    const verdict = (vStr === "launch" ? "launch" : vStr === "avoid" ? "avoid" : "adapt") as
-      | "launch"
-      | "adapt"
-      | "avoid";
+  if (loading) return (
+    <div className="flex items-center justify-center py-32 gap-3 text-sm text-slate-500">
+      <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      Loading intelligence data…
+    </div>
+  );
 
-    return {
-      id: `${mName}-${i}`,
-      name: mName,
-      country,
-      flagEmoji,
-      score: s,
-      verdict,
-      dimensions: isW
-        ? {
-            brand_affinity: Number(winnerDimensions.brand_affinity ?? 0.85),
-            audience_overlap: Number(winnerDimensions.audience_overlap ?? 0.82),
-            category_ecosystem: Number(winnerDimensions.category_ecosystem ?? 0.84),
-            cultural_momentum: Number(winnerDimensions.cultural_momentum ?? 0.78),
-            evidence_coverage: Number(winnerDimensions.evidence_coverage ?? 0.95),
-          }
-        : {
-            brand_affinity: Math.min(0.95, Math.max(0.4, s * 0.92)),
-            audience_overlap: Math.min(0.95, Math.max(0.35, s * 0.86)),
-            category_ecosystem: Math.min(0.95, Math.max(0.4, s * 0.9)),
-            cultural_momentum: Math.min(0.95, Math.max(0.3, s * 0.84)),
-            evidence_coverage: Math.min(0.95, Math.max(0.5, s * 0.92)),
-          },
-      strengths: isW
-        ? [
-            "Dense Qloo taste overlap with target audience",
-            "High youth cultural momentum velocity",
-            "Favorable physical venue anchor concentration",
-          ]
-        : [
-            "Baseline demographic affinity established",
-            "Strong regional infrastructure",
-          ],
-      risks: isW
-        ? ["Competitive prime retail real estate landscape"]
-        : [
-            "Higher localized cultural messaging friction",
-            "Lower organic peer-to-peer category adoption",
-          ],
-    };
-  });
+  if (error || !run) return (
+    <div className="max-w-lg mx-auto py-16 text-center space-y-4">
+      <div className="p-5 rounded-xl border border-rose-900/60 bg-rose-950/30 text-sm text-rose-400">{error}</div>
+      <Link href="/projects" className="text-xs text-indigo-400 hover:text-indigo-300">← Back to Projects</Link>
+    </div>
+  );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
-      {/* Top Breadcrumb & Metadata */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
-        <div className="space-y-1">
-          <div className="flex items-center space-x-2 text-xs text-slate-500 dark:text-slate-400">
-            <Link href="/projects" className="hover:text-slate-800 dark:hover:text-slate-200 flex items-center space-x-1">
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Projects</span>
-            </Link>
-            <span>/</span>
-            <Link href={`/projects/${run.project_id}`} className="hover:text-slate-800 dark:hover:text-slate-200">
-              {brandName}
-            </Link>
-            <span>/</span>
-            <span className="text-slate-800 dark:text-slate-200 font-mono">Run {run.id.slice(0, 8)}</span>
-          </div>
+    <div className="space-y-6 animate-in fade-in duration-300">
 
-          <div className="flex items-center space-x-3 mt-1">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              {brandName} — Market Entry Intelligence
-            </h1>
-            <span
-              className={cn(
-                "text-xs font-bold uppercase px-2.5 py-0.5 rounded-full border",
-                run.status === "completed"
-                  ? "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
-                  : "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
-              )}
-            >
-              {run.status}
-            </span>
-            {run.parent_run_id && (
-              <span className="text-xs font-semibold uppercase px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800">
-                Simulation Child
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-3 self-start sm:self-auto text-xs text-slate-500 dark:text-slate-400">
-          <div className="flex items-center space-x-1">
-            <Clock className="w-3.5 h-3.5 text-slate-400" />
-            <span>{formatDate(run.created_at)}</span>
-          </div>
-          <span>•</span>
-          <span className="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-700 dark:text-slate-300">
-            v{run.score_version || "1.0.0"}
-          </span>
-        </div>
+      {/* ── Breadcrumb ────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-1.5 text-xs text-slate-500">
+        <Link href="/projects" className="hover:text-slate-300 flex items-center gap-1">
+          <ArrowLeft className="w-3 h-3" /> Projects
+        </Link>
+        <ChevronRight className="w-3 h-3" />
+        <Link href={`/projects/${run.project_id}`} className="hover:text-slate-300">{brandName}</Link>
+        <ChevronRight className="w-3 h-3" />
+        <span className="text-slate-300 font-mono">Run {run.id.slice(0, 8)}</span>
       </div>
 
-      {/* Hero Decision Card */}
-      <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-xs space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-100 dark:border-slate-800">
-          <div>
-            <div className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-              <ShieldCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <span>Market Entry Recommendation</span>
+      {/* ── Run header ────────────────────────────────────────────────────── */}
+      <div className="rounded-2xl border border-[#1A2338] bg-[#0E1424] p-5 sm:p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl font-bold text-white">{brandName} — Market Intelligence</h1>
+              <span className={cn(
+                "text-xs font-bold uppercase px-2 py-0.5 rounded-full border",
+                run.status === "completed"
+                  ? "text-emerald-300 bg-emerald-950/60 border-emerald-800"
+                  : "text-amber-300 bg-amber-950/60 border-amber-800"
+              )}>{run.status}</span>
+              {run.parent_run_id && (
+                <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-purple-950/60 text-purple-300 border border-purple-800">
+                  Simulation
+                </span>
+              )}
             </div>
-            <div className="flex items-baseline space-x-3 mt-2">
-              <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
-                Recommended Market: {winnerMarket}
-              </span>
+            <div className="flex flex-wrap gap-3 text-xs text-slate-500">
+              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDate(run.created_at)}</span>
+              <span className="flex items-center gap-1"><Database className="w-3 h-3" />{rankings.length} markets</span>
+              <span className="font-mono bg-[#111827] px-2 py-0.5 rounded border border-[#1A2338] text-slate-400">v{run.score_version || "1.0.0"}</span>
+              {!!auditReport?.is_verified && (
+                <span className="flex items-center gap-1 text-emerald-400">
+                  <ShieldCheck className="w-3 h-3" /> Verified
+                </span>
+              )}
             </div>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300 max-w-xl">
-              {run.strategy_summary ||
-                "Empirical cultural compatibility, category taste affinity, and contextual risk analysis."}
-            </p>
           </div>
 
-          <div className="flex flex-col items-start md:items-end gap-2 shrink-0">
-            {run.decision_verdict && (
-              <VerdictBadge verdict={run.decision_verdict} size="lg" />
-            )}
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              Confidence:{" "}
-              <strong className="text-slate-800 dark:text-slate-200">
-                {run.decision_confidence
-                  ? `${(run.decision_confidence * 100).toFixed(1)}%`
-                  : "High (Verified)"}
-              </strong>
+          {/* Winner chip */}
+          {winnerMarket && (
+            <div className="flex-shrink-0 rounded-xl border border-indigo-800/60 bg-indigo-950/30 px-4 py-3 text-center">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-indigo-400 mb-1">Recommended</div>
+              <div className="text-lg font-bold text-white">{getMarketFlag(winnerMarket)} {winnerMarket.split(",")[0]}</div>
+              {run.decision_verdict && <VerdictBadge verdict={run.decision_verdict} size="sm" />}
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Probabilities Distribution */}
+        {/* Probability bar */}
         {primaryDecision?.probabilities && (
-          <div className="space-y-2">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs text-slate-600 dark:text-slate-300 font-semibold">
-              <span>Readiness Breakdown:</span>
-              <div className="flex items-center space-x-3 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                <span className="flex items-center space-x-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span>Launch: {((primaryDecision.probabilities.launch || 0) * 100).toFixed(1)}%</span>
-                </span>
-                <span>•</span>
-                <span className="flex items-center space-x-1">
-                  <span className="w-2 h-2 rounded-full bg-amber-400" />
-                  <span>Adapt: {((primaryDecision.probabilities.adapt || 0) * 100).toFixed(1)}%</span>
-                </span>
-                <span>•</span>
-                <span className="flex items-center space-x-1">
-                  <span className="w-2 h-2 rounded-full bg-rose-500" />
-                  <span>Avoid: {((primaryDecision.probabilities.avoid || 0) * 100).toFixed(1)}%</span>
-                </span>
-              </div>
-            </div>
-            <div className="h-3 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
-              <div
-                style={{ width: `${(primaryDecision.probabilities.launch || 0) * 100}%` }}
-                className="bg-emerald-500 h-full"
-                title={`Launch: ${((primaryDecision.probabilities.launch || 0) * 100).toFixed(1)}%`}
-              />
-              <div
-                style={{ width: `${(primaryDecision.probabilities.adapt || 0) * 100}%` }}
-                className="bg-amber-400 h-full"
-                title={`Adapt: ${((primaryDecision.probabilities.adapt || 0) * 100).toFixed(1)}%`}
-              />
-              <div
-                style={{ width: `${(primaryDecision.probabilities.avoid || 0) * 100}%` }}
-                className="bg-rose-500 h-full"
-                title={`Avoid: ${((primaryDecision.probabilities.avoid || 0) * 100).toFixed(1)}%`}
-              />
-            </div>
+          <div className="pt-3 border-t border-[#1A2338]">
+            <ProbabilityBar label="Overall Launch Readiness" probs={primaryDecision.probabilities} />
           </div>
         )}
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 space-x-6 text-sm font-semibold overflow-x-auto">
-        <button
-          onClick={() => setActiveTab("overview")}
-          className={cn(
-            "pb-3 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap",
-            activeTab === "overview"
-              ? "border-indigo-600 text-indigo-700 dark:border-indigo-400 dark:text-indigo-400"
-              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-          )}
-        >
-          <BarChart3 className="w-4 h-4" />
-          <span>Strategic Overview</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("timeline")}
-          className={cn(
-            "pb-3 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap",
-            activeTab === "timeline"
-              ? "border-indigo-600 text-indigo-700 dark:border-indigo-400 dark:text-indigo-400"
-              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-          )}
-        >
-          <Cpu className="w-4 h-4" />
-          <span>Pipeline Audit ({steps.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("evidence")}
-          className={cn(
-            "pb-3 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap",
-            activeTab === "evidence"
-              ? "border-indigo-600 text-indigo-700 dark:border-indigo-400 dark:text-indigo-400"
-              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-          )}
-        >
-          <Database className="w-4 h-4" />
-          <span>Consumer Taste Signals ({evidence.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("simulation")}
-          className={cn(
-            "pb-3 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap",
-            activeTab === "simulation"
-              ? "border-indigo-600 text-indigo-700 dark:border-indigo-400 dark:text-indigo-400"
-              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-          )}
-        >
-          <Sliders className="w-4 h-4" />
-          <span>Scenario Lab</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("report")}
-          className={cn(
-            "pb-3 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap",
-            activeTab === "report"
-              ? "border-indigo-600 text-indigo-700 dark:border-indigo-400 dark:text-indigo-400"
-              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-          )}
-        >
-          <FileText className="w-4 h-4" />
-          <span>Executive Brief Report</span>
-        </button>
+      {/* ── Tabs ──────────────────────────────────────────────────────────── */}
+      <div className="flex gap-0.5 border-b border-[#1A2338] overflow-x-auto">
+        {TABS.map(tab => {
+          const Icon = tab.icon;
+          const active = activeTab === tab.id;
+          return (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "flex items-center gap-1.5 px-3.5 pb-3 text-xs font-semibold whitespace-nowrap transition-all border-b-2",
+                active
+                  ? "border-indigo-500 text-indigo-400"
+                  : "border-transparent text-slate-500 hover:text-slate-300"
+              )}>
+              <Icon className="w-3.5 h-3.5" />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Tab 1: Compatibility Matrix & Strategic Playbook */}
+      {/* ══════════════════════════════════════════════════════════════════════
+          TAB 1: OVERVIEW
+      ══════════════════════════════════════════════════════════════════════ */}
       {activeTab === "overview" && (
-        <div className="space-y-8 animate-in fade-in duration-200">
-          {/* Top Row: Pure SVG Cultural Radar & Comparative Ranking Matrix */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* 5-Dimension Radar & Score Decomposition */}
-            <div className="lg:col-span-7 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-2">
-                <div>
-                  <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
-                    <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                    <span>Multi-Dimensional Cultural Resonance Profile</span>
-                  </h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Multi-dimensional consumer taste alignment profile ({winnerMarket})
-                  </p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
-                    {(Number(winnerScore) * 100).toFixed(1)}% Alignment
-                  </span>
-                </div>
-              </div>
+        <div className="space-y-6 animate-in fade-in duration-200">
 
-              {/* Radar Chart Visualizer */}
-              <div className="flex justify-center py-2">
-                <CulturalRadarChart series={radarSeries} size={340} />
+          {/* Heatmap + Radar */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* Heatmap */}
+            <div className="lg:col-span-8 rounded-xl border border-[#1A2338] bg-[#0E1424] p-5 space-y-4">
+              <div>
+                <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-indigo-400" />
+                  Dimension × Market Intelligence Matrix
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">5 cultural dimensions across all candidate markets — direct from Qloo scoring engine</p>
               </div>
-
-              {/* Dimensional Breakdown Bars */}
-              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
-                <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Cultural Compatibility Dimensions:
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  {[
-                    {
-                      key: "brand_affinity",
-                      label: "Brand Identity Affinity",
-                      weight: "25%",
-                      score: winnerDimensions.brand_affinity ?? winnerDimensions.category_affinity ?? 0.85,
-                    },
-                    {
-                      key: "audience_overlap",
-                      label: "Audience Demographic Alignment",
-                      weight: "20%",
-                      score: winnerDimensions.audience_overlap ?? 0.82,
-                    },
-                    {
-                      key: "category_ecosystem",
-                      label: "Category Retail & Culture Density",
-                      weight: "20%",
-                      score: winnerDimensions.category_ecosystem ?? winnerDimensions.sentiment_resonance ?? 0.84,
-                    },
-                    {
-                      key: "cultural_momentum",
-                      label: "Local Trend & Subculture Velocity",
-                      weight: "15%",
-                      score: winnerDimensions.cultural_momentum ?? winnerDimensions.trend_momentum ?? 0.78,
-                    },
-                    {
-                      key: "evidence_coverage",
-                      label: "Signal Confidence & Validation",
-                      weight: "20%",
-                      score: winnerDimensions.evidence_coverage ?? winnerDimensions.contextual_fit ?? 0.95,
-                    },
-                  ].map((dim) => {
-                    const scoreVal = Number(dim.score);
-                    const pct = (scoreVal * 100).toFixed(1);
-                    return (
-                      <div
-                        key={dim.key}
-                        className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 space-y-1.5"
-                      >
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
-                            {dim.label}{" "}
-                            <span className="font-normal text-slate-400">({dim.weight})</span>
-                          </span>
-                          <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                            {pct}%
-                          </span>
-                        </div>
-                        <div className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                          <div
-                            style={{ width: `${pct}%` }}
-                            className="h-full rounded-full bg-indigo-600 dark:bg-indigo-500"
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              {Object.keys(rawMatrix).length > 0 && rankings.length > 0
+                ? <DimensionHeatmap matrix={rawMatrix} rankings={rankings} />
+                : <p className="text-xs text-slate-600 py-4">Run not yet scored or no market data available.</p>
+              }
             </div>
 
-            {/* Right Column: Comparative Ranking Matrix */}
-            <div className="lg:col-span-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs space-y-4 flex flex-col justify-between">
+            {/* Radar */}
+            <div className="lg:col-span-4 rounded-xl border border-[#1A2338] bg-[#0E1424] p-5 space-y-4">
               <div>
-                <div className="pb-3 border-b border-slate-100 dark:border-slate-800">
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Candidate Market Hierarchy
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Evaluated candidate markets ranked by consumer resonance and launch readiness
-                  </p>
-                </div>
-
-                <div className="mt-4">
-                  <CompatibilityMatrixChart markets={matrixMarkets} threshold={0.75} />
-                </div>
+                <h2 className="text-sm font-bold text-white">Cultural Profile Overlay</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Shape comparison across markets</p>
               </div>
+              {rankings.length > 0 && Object.keys(rawMatrix).length > 0
+                ? <RadarChart markets={rankings} matrix={rawMatrix} />
+                : <p className="text-xs text-slate-600 py-4">No scoring data.</p>
+              }
+            </div>
+          </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-xs text-slate-600 dark:text-slate-300 space-y-1">
-                <div className="font-semibold text-slate-900 dark:text-white flex items-center space-x-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Verified Consumer Taste Benchmark</span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Compatibility scores are synthesized directly from real-world consumer taste signals, category preferences, and urban anchor points.
-                </p>
+          {/* Score Margin + Probability breakdown */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Score ranking */}
+            <div className="rounded-xl border border-[#1A2338] bg-[#0E1424] p-5 space-y-4">
+              <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-emerald-400" />
+                Market Ranking — Score Margin
+              </h2>
+              {rankings.length > 0
+                ? <ScoreMarginChart rankings={rankings} />
+                : <p className="text-xs text-slate-600">No rankings available.</p>
+              }
+            </div>
+
+            {/* Per-market probabilities */}
+            <div className="rounded-xl border border-[#1A2338] bg-[#0E1424] p-5 space-y-4">
+              <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                <Activity className="w-4 h-4 text-violet-400" />
+                Launch Probability — All Markets
+              </h2>
+              <div className="space-y-3">
+                {rankings.map(r => {
+                  const md = marketDecisions[r.market];
+                  const probs = md?.posture_probabilities ?? {};
+                  return (
+                    <ProbabilityBar key={r.market}
+                      label={`${getMarketFlag(r.market)} ${r.market.split(",")[0]}`}
+                      probs={probs} />
+                  );
+                })}
+                {rankings.length === 0 && <p className="text-xs text-slate-600">No decision data.</p>}
               </div>
             </div>
           </div>
 
-          {/* Momentum Trajectory Curve */}
-          <MomentumTrajectoryChart
-            marketName={winnerMarket}
-            category={String(run.input_snapshot_json?.brand_category || "Cultural Fit")}
-          />
-
-          {/* Subculture District & Venue Density Grid */}
-          <SubcultureDistrictGrid cityName={winnerMarket} />
-
-          {/* Strategic Entry Playbook */}
-          <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div>
-                <h2 className="text-base font-semibold text-slate-900 dark:text-white">
-                  Strategic Market Entry Playbook
+          {/* Strategy Playbook */}
+          {recommendations.length > 0 && (
+            <div className="rounded-xl border border-[#1A2338] bg-[#0E1424] p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-indigo-400" />
+                  Strategic Entry Playbook
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Actionable localized directives compiled by Strategy Agent from empirical Qloo affinities
-                </p>
+                <span className="text-xs text-slate-500">{recommendations.length} directives</span>
               </div>
-              <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
-                {recommendations.length} Action Directives
-              </span>
-            </div>
-
-            {recommendations.length === 0 ? (
-              <div className="p-6 text-xs text-slate-500 dark:text-slate-400 text-center">
-                Strategy directives will be synthesized upon completion of the analysis run.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {recommendations.map((rec, i) => (
-                  <div
-                    key={rec.title || i}
-                    className="flex flex-col justify-between p-4 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800 space-y-3 hover:border-indigo-500/30 transition-colors"
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
-                          {rec.pillar?.replace(/_/g, " ") || `Pillar #${i + 1}`}
-                        </span>
-                        {rec.confidence && (
-                          <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 font-semibold">
-                            {(Number(rec.confidence) * 100).toFixed(0)}% Conf
-                          </span>
-                        )}
-                      </div>
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                        {rec.title}
-                      </h4>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                        {rec.action}
-                      </p>
+                  <div key={i} className="p-3.5 rounded-xl bg-[#111827] border border-[#1A2338] space-y-2 hover:border-indigo-800/60 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-indigo-950/60 text-indigo-400 border border-indigo-900">
+                        {rec.pillar?.replace(/_/g, " ") ?? `Pillar ${i + 1}`}
+                      </span>
+                      {rec.confidence && (
+                        <span className="text-[10px] font-mono text-slate-500">{Math.round(Number(rec.confidence) * 100)}%</span>
+                      )}
                     </div>
-
-                    {rec.supporting_evidence_ids && rec.supporting_evidence_ids.length > 0 && (
-                      <div className="pt-2 border-t border-slate-200/50 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500">
-                        <span>Grounded Citations:</span>
-                        <span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
-                          {rec.supporting_evidence_ids.length} Signals
-                        </span>
+                    <h4 className="text-xs font-semibold text-slate-200">{rec.title}</h4>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">{rec.action}</p>
+                    {rec.supporting_evidence_ids?.length ? (
+                      <div className="text-[10px] text-slate-600 pt-1 border-t border-[#1A2338]">
+                        {rec.supporting_evidence_ids.length} evidence signals
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Tab 2: Agent Timeline */}
-      {activeTab === "timeline" && (
-        <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs space-y-4 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div>
-              <h2 className="text-base font-semibold text-slate-900 dark:text-white">
-                Deep Market Evaluation Audit
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Step-by-step intelligence audit verifying consumer signals, local market fit, and strategic decision criteria
-              </p>
-            </div>
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-              {steps.length} Steps Completed
-            </span>
-          </div>
+      {/* ══════════════════════════════════════════════════════════════════════
+          TAB 2: MARKET DEEP DIVE
+      ══════════════════════════════════════════════════════════════════════ */}
+      {activeTab === "market" && (
+        <div className="space-y-5 animate-in fade-in duration-200">
 
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {steps.map((st, idx) => {
-              const dur = st.duration_ms ?? 0;
-              const isHeavy = dur > 1000;
-              const formattedDuration = isHeavy
-                ? `${(dur / 1000).toFixed(1)}s`
-                : `${dur}ms`;
-
-              const nodeDisplayMap: Record<string, { title: string; subtitle: string }> = {
-                supervisor: { title: "Strategic Orchestrator", subtitle: "Scoping analysis parameters and objective alignment" },
-                brand_analyst: { title: "Brand Identity & Positioning", subtitle: "Extracting brand voice, positioning constraints, and identity anchors" },
-                market_analyst: { title: "Territory & Market Infrastructure", subtitle: "Assessing local retail landscape, regulatory factors, and urban dynamics" },
-                audience_matcher: { title: "Audience Demographics & Persona", subtitle: "Profiling target consumer cohorts and psychographic characteristics" },
-                qloo_researcher: { title: "Regional Consumer Taste Graph", subtitle: "Querying empirical cross-affinity signals across music, fashion, and culture" },
-                evidence_normalizer: { title: "Empirical Signal Calibration", subtitle: "Normalizing multi-dimensional taste scores and confidence intervals" },
-                deterministic_scorer: { title: "Cultural Compatibility Scorer", subtitle: "Calculating 5-dimensional resonance index and weighted alignment" },
-                jev_decision_gate: { title: "Strategic Readiness Decision Gate", subtitle: "Evaluating launch threshold, posture verification, and risk gates" },
-                strategy_synthesizer: { title: "Market Entry Playbook Director", subtitle: "Synthesizing localized directives, positioning roadmap, and launch timing" },
-                guardrail_validator: { title: "Strategic Governance Guard", subtitle: "Verifying empirical backing and safeguarding against ungrounded assumptions" },
-              };
-
-              const nodeMeta = (st.node_name && nodeDisplayMap[st.node_name]) || {
-                title: (st.node_name || "Evaluation Step").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-                subtitle: st.agent_role || "Intelligence evaluation task",
-              };
-
+          {/* Market switcher */}
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {rankings.map(r => {
+              const isActive = r.market === selectedMarket;
               return (
-                <div
-                  key={st.id || idx}
-                  className="py-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/40 px-3 rounded-xl transition-colors text-xs"
-                >
-                  <div className="flex items-center space-x-3.5">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs border border-emerald-500/20">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-bold text-slate-900 dark:text-white">
-                          {nodeMeta.title}
-                        </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-                          {nodeMeta.subtitle}
-                        </span>
-                      </div>
+                <button key={r.market} onClick={() => setSelectedMarket(r.market)}
+                  className={cn(
+                    "flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-semibold whitespace-nowrap transition-all flex-shrink-0",
+                    isActive
+                      ? "bg-indigo-900/40 border-indigo-700 text-white"
+                      : "bg-[#0E1424] border-[#1A2338] text-slate-400 hover:border-[#252f45] hover:text-slate-200"
+                  )}>
+                  <span className="text-base">{getMarketFlag(r.market)}</span>
+                  <div className="text-left">
+                    <div>{r.market.split(",")[0]}</div>
+                    <div className="text-[10px] font-mono" style={{ color: scoreColor(r.score) }}>
+                      {Math.round(r.score * 100)}
                     </div>
                   </div>
-
-                  <div className="flex items-center space-x-4">
-                    <span
-                      className={cn(
-                        "font-mono font-bold text-xs px-2 py-0.5 rounded",
-                        isHeavy
-                          ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60"
-                          : "text-slate-500 dark:text-slate-400"
-                      )}
-                    >
-                      {formattedDuration}
-                    </span>
-                    <span className="text-emerald-700 dark:text-emerald-400 font-extrabold uppercase text-[10px] tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
-                      {st.status}
-                    </span>
-                  </div>
-                </div>
+                  {isActive && <VerdictBadge verdict={r.verdict} size="sm" />}
+                </button>
               );
             })}
           </div>
-        </div>
-      )}
 
-      {/* Tab 3: Empirical Evidence Explorer */}
-      {activeTab === "evidence" && (
-        <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs space-y-4 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div>
-              <h2 className="text-base font-semibold text-slate-900 dark:text-white">
-                Verified Consumer Taste Signals
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Real-world cultural affinity and consumer preference signals verified across global taste graphs
-              </p>
-            </div>
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-              {evidence.length} Verified Records
-            </span>
-          </div>
+          {selectedMarket && (
+            <>
+              {/* 4 score chips */}
+              <div className="flex flex-wrap gap-3">
+                <ScoreChip label="Cultural Fit" color="#6366F1"
+                  value={pct(selectedRanking?.score)}
+                  sub="overall score" />
+                <ScoreChip label="Consumer Interest" color="#8B5CF6"
+                  value={pct(marketDimScores.audience_overlap?.raw_score)}
+                  sub="audience_overlap dim" />
+                <ScoreChip label="Market Opportunity" color="#22D3EE"
+                  value={pct(marketDimScores.category_ecosystem?.raw_score)}
+                  sub="category_ecosystem dim" />
+                <ScoreChip label="Data Confidence" color="#10B981"
+                  value={pct(marketDimScores.evidence_coverage?.raw_score)}
+                  sub={`${marketDimScores.evidence_coverage?.raw_score ? marketDimScores.evidence_coverage.raw_score >= 0.8 ? "HIGH" : "MEDIUM" : "—"} tier`} />
+              </div>
 
-          {evidence.length === 0 ? (
-            <div className="py-12 text-center text-xs text-slate-400">
-              No evidence records found for this run.
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {evidence.map((ev) => (
-                <div
-                  key={ev.id}
-                  className="py-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 px-2 rounded-lg transition-colors space-y-1.5 text-xs"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <span className="font-semibold text-slate-900 dark:text-white">{ev.entity_name}</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
-                        {ev.signal_type}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center space-x-3 font-mono text-[11px]">
-                      {ev.score !== undefined && (
-                        <span className="text-slate-800 dark:text-slate-200 font-bold">
-                          Score: {(ev.score * 100).toFixed(1)}%
-                        </span>
-                      )}
-                      <span className="text-slate-400 dark:text-slate-500">
-                        Conf: {(ev.confidence * 100).toFixed(0)}%
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{ev.content}</p>
-
-                  <div className="flex items-center space-x-3 text-[10px] text-slate-400 dark:text-slate-500 font-mono pt-1">
-                    <span>Source: {ev.source_type}</span>
-                    <span>•</span>
-                    <span>Provider: {ev.provider}</span>
+              {/* Decision confidence */}
+              {selectedDecision?.posture_probabilities && (
+                <div className="rounded-xl border border-[#1A2338] bg-[#0E1424] p-4">
+                  <ProbabilityBar
+                    label={`${getMarketFlag(selectedMarket)} ${selectedMarket.split(",")[0]} — Launch Readiness`}
+                    probs={selectedDecision.posture_probabilities} />
+                  <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-500">
+                    <span>Confidence: <strong className="text-slate-300">{pct(selectedDecision.posture_confidence)}</strong></span>
+                    {selectedDecision.evidence_sufficiency && (
+                      <span>Evidence: <strong className="text-slate-300 capitalize">{selectedDecision.evidence_sufficiency}</strong></span>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
+              )}
+
+              {/* Dimension breakdown + Evidence donut */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                <div className="lg:col-span-7 space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">5-Dimension Breakdown</h3>
+                  {Object.entries(marketDimScores).length > 0
+                    ? Object.entries(marketDimScores).map(([dim, ds]) => (
+                        <DimBar key={dim} dim={dim}
+                          score={ds.raw_score} weight={ds.weight}
+                          explanation={ds.explanation}
+                          evidenceCount={ds.evidence_ids?.length} />
+                      ))
+                    : <p className="text-xs text-slate-600 py-4">No dimension data for this market.</p>
+                  }
+                </div>
+
+                <div className="lg:col-span-5 space-y-4">
+                  {/* Evidence donut */}
+                  <div className="rounded-xl border border-[#1A2338] bg-[#0E1424] p-4 space-y-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Evidence Signal Mix</h3>
+                    <EvidenceDonut evidence={evidence} market={selectedMarket} />
+                  </div>
+
+                  {/* Taste entities */}
+                  <div className="rounded-xl border border-[#1A2338] bg-[#0E1424] p-4 space-y-3">
+                    <div>
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Audience Taste DNA</h3>
+                      <p className="text-[10px] text-slate-600 mt-0.5">Real Qloo affinity entities for this market</p>
+                    </div>
+                    <TasteEntities evidence={evidence} market={selectedMarket} />
+                  </div>
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}
 
-      {/* Tab 4: Counterfactual What-If Simulation Panel */}
-      {activeTab === "simulation" && (
-        <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs space-y-6 animate-in fade-in duration-200">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900 dark:text-white">
-              Counterfactual What-If Simulation
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Hypothesize parameter shifts without corrupting the baseline analysis run. Evaluates parameter sensitivity and computes side-by-side score deltas.
-            </p>
+      {/* ══════════════════════════════════════════════════════════════════════
+          TAB 3: AGENT TIMELINE
+      ══════════════════════════════════════════════════════════════════════ */}
+      {activeTab === "timeline" && (
+        <div className="rounded-xl border border-[#1A2338] bg-[#0E1424] p-5 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between pb-4 border-b border-[#1A2338] mb-4">
+            <div>
+              <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                <Cpu className="w-4 h-4 text-indigo-400" />
+                Agent Pipeline Audit
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">Execution trace — each node, latency, and status</p>
+            </div>
+            {steps.length === 0 && (
+              <span className="text-xs text-slate-600">No step data recorded for this run</span>
+            )}
           </div>
+          {steps.length > 0
+            ? <AgentTimeline steps={steps} />
+            : <div className="py-10 text-center text-sm text-slate-600">No agent steps recorded.</div>
+          }
+        </div>
+      )}
 
+      {/* ══════════════════════════════════════════════════════════════════════
+          TAB 4: EVIDENCE
+      ══════════════════════════════════════════════════════════════════════ */}
+      {activeTab === "evidence" && (
+        <div className="rounded-xl border border-[#1A2338] bg-[#0E1424] p-5 animate-in fade-in duration-200 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-[#1A2338]">
+            <div>
+              <h2 className="text-sm font-bold text-white">Qloo Consumer Taste Signals</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Raw evidence from Qloo taste graph — feeds the 5-dimension scorer</p>
+            </div>
+            <span className="text-xs text-slate-500">{evidence.length} records</span>
+          </div>
+          {evidence.length === 0
+            ? <div className="py-10 text-center text-sm text-slate-600">No evidence records.</div>
+            : (
+              <div className="divide-y divide-[#1A2338]">
+                {evidence.map(ev => {
+                  const dimMeta = DIM_LABELS[ev.kind] ?? { color: "#94A3B8", uiLabel: ev.kind };
+                  return (
+                    <div key={ev.id} className="py-3.5 px-2 hover:bg-[#111827] rounded-lg transition-colors space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded flex-shrink-0"
+                            style={{ background: `${dimMeta.color}20`, color: dimMeta.color, border: `1px solid ${dimMeta.color}30` }}>
+                            {dimMeta.uiLabel}
+                          </span>
+                          <span className="text-xs font-semibold text-slate-200 truncate">{ev.entity_name ?? ev.entity_ref}</span>
+                          {ev.market_name && (
+                            <span className="text-[10px] text-slate-600 flex-shrink-0">{getMarketFlag(ev.market_name)} {ev.market_name}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 flex-shrink-0 font-mono text-[11px]">
+                          {ev.score !== undefined && (
+                            <span className="font-bold text-slate-300">{pct(ev.score)}</span>
+                          )}
+                          <span className="text-slate-600">conf {pct(ev.confidence, 0)}</span>
+                        </div>
+                      </div>
+                      {(ev.content ?? ev.explanation) && (
+                        <p className="text-[11px] text-slate-500 leading-relaxed">{ev.content ?? ev.explanation}</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          }
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          TAB 5: SIMULATION
+      ══════════════════════════════════════════════════════════════════════ */}
+      {activeTab === "simulation" && (
+        <div className="rounded-xl border border-[#1A2338] bg-[#0E1424] p-5 animate-in fade-in duration-200 space-y-5">
+          <div>
+            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+              <Sliders className="w-4 h-4 text-violet-400" />
+              Counterfactual Scenario Lab
+            </h2>
+            <p className="text-xs text-slate-500 mt-1">Hypothesise parameter shifts without corrupting the baseline run.</p>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
                 Modified Audience Persona
               </label>
-              <input
-                type="text"
-                value={simPersona}
-                onChange={(e) => setSimPersona(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
+              <input type="text" value={simPersona} onChange={e => setSimPersona(e.target.value)}
+                className="w-full rounded-xl border border-[#1A2338] bg-[#111827] px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:border-indigo-600 focus:outline-none" />
             </div>
-
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
                 Repositioning Hypothesis
               </label>
-              <input
-                type="text"
-                value={simPositioning}
-                onChange={(e) => setSimPositioning(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
+              <input type="text" value={simPositioning} onChange={e => setSimPositioning(e.target.value)}
+                className="w-full rounded-xl border border-[#1A2338] bg-[#111827] px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:border-indigo-600 focus:outline-none" />
             </div>
           </div>
-
-          <div>
-            <button
-              onClick={handleExecuteSimulation}
-              disabled={runningSim}
-              className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-lg bg-indigo-600 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>{runningSim ? "Computing Simulation..." : "Execute Simulation Run"}</span>
-            </button>
-          </div>
-
-          {/* Simulation Output Delta Comparison */}
+          <button onClick={handleExecuteSimulation} disabled={runningSim}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-xs font-bold text-white transition-colors">
+            <Sparkles className="w-3.5 h-3.5" />
+            {runningSim ? "Computing…" : "Run Simulation"}
+          </button>
           {simResult && (
-            <div className="mt-6 rounded-xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/40 dark:bg-indigo-950/30 p-5 space-y-4 animate-in fade-in">
-              <div className="flex items-center justify-between pb-3 border-b border-indigo-200/60 dark:border-indigo-900/60">
-                <div className="flex items-center space-x-2">
-                  <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span className="font-bold text-sm text-slate-900 dark:text-white">
-                    Simulation Outcome Generated
-                  </span>
-                </div>
-                <Link
-                  href={`/runs/${simResult.id}`}
-                  className="inline-flex items-center space-x-1 text-xs font-semibold text-indigo-700 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300"
-                >
-                  <span>Open Child Run</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
+            <div className="rounded-xl border border-indigo-800/50 bg-indigo-950/20 p-4 space-y-3 animate-in fade-in">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-white">Simulation Result</span>
+                <Link href={`/runs/${simResult.id}`}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                  Open child run <ChevronRight className="w-3 h-3" />
                 </Link>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-indigo-100 dark:border-indigo-900/60">
-                  <span className="text-slate-500 dark:text-slate-400 text-[11px]">Baseline Score:</span>
-                  <div className="font-mono font-bold text-slate-800 dark:text-slate-200 text-sm mt-0.5">
-                    {run.overall_score ? `${(run.overall_score * 100).toFixed(1)}%` : "—"}
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "Baseline", val: run.overall_score ? pct(run.overall_score) : "—", color: "#94A3B8" },
+                  { label: "Simulated", val: simResult.overall_score ? pct(simResult.overall_score) : "—", color: "#A5B4FC" },
+                  { label: "Verdict", val: simResult.decision_verdict ?? "—", color: verdictColor(simResult.decision_verdict ?? "") },
+                ].map(s => (
+                  <div key={s.label} className="rounded-lg bg-[#111827] border border-[#1A2338] p-3 text-center">
+                    <div className="text-[10px] text-slate-500 mb-1">{s.label}</div>
+                    <div className="text-base font-bold font-mono" style={{ color: s.color }}>{s.val}</div>
                   </div>
-                </div>
-
-                <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-indigo-100 dark:border-indigo-900/60">
-                  <span className="text-slate-500 dark:text-slate-400 text-[11px]">Simulation Score:</span>
-                  <div className="font-mono font-bold text-indigo-700 dark:text-indigo-400 text-sm mt-0.5">
-                    {simResult.overall_score ? `${(simResult.overall_score * 100).toFixed(1)}%` : "—"}
-                  </div>
-                </div>
-
-                <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-indigo-100 dark:border-indigo-900/60">
-                  <span className="text-slate-500 dark:text-slate-400 text-[11px]">Verdict Posture:</span>
-                  <div className="mt-1">
-                    <VerdictBadge verdict={simResult.decision_verdict || "ADAPT"} size="sm" />
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Tab 5: Executive Brief Report */}
+      {/* ══════════════════════════════════════════════════════════════════════
+          TAB 6: REPORT
+      ══════════════════════════════════════════════════════════════════════ */}
       {activeTab === "report" && (
-        <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs space-y-6 animate-in fade-in duration-200">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="rounded-xl border border-[#1A2338] bg-[#0E1424] p-5 animate-in fade-in duration-200 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#1A2338]">
             <div>
-              <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+              <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                <FileText className="w-4 h-4 text-slate-400" />
                 Executive Market Entry Brief
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Publication-grade brief compiling empirical signals, deterministic scores, and System One gates
-              </p>
+              <p className="text-xs text-slate-500 mt-0.5">Compiled from empirical signals and deterministic scores</p>
             </div>
-
-            <div className="flex items-center space-x-3 self-start sm:self-auto">
-              <select
-                value={reportFormat}
-                onChange={(e) => setReportFormat(e.target.value as "markdown" | "html")}
-                className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:border-indigo-500 focus:outline-none"
-              >
-                <option value="markdown">Markdown (.md)</option>
-                <option value="html">HTML (.html)</option>
+            <div className="flex items-center gap-2">
+              <select value={reportFormat} onChange={e => setReportFormat(e.target.value as "markdown" | "html")}
+                className="rounded-lg border border-[#1A2338] bg-[#111827] px-2.5 py-1.5 text-xs text-slate-300 focus:border-indigo-600 focus:outline-none">
+                <option value="markdown">Markdown</option>
+                <option value="html">HTML</option>
               </select>
-
-              <button
-                onClick={handleGenerateReport}
-                disabled={generatingReport}
-                className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>{generatingReport ? "Compiling..." : "Generate Brief"}</span>
+              <button onClick={handleGenerateReport} disabled={generatingReport}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-xs font-bold text-white transition-colors">
+                <FileText className="w-3 h-3" />
+                {generatingReport ? "Compiling…" : "Generate"}
               </button>
             </div>
           </div>
-
           {activeReport ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/60 p-3 rounded-lg border border-slate-200/60 dark:border-slate-800 text-xs">
-                <div className="flex items-center space-x-2">
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{activeReport.title}</span>
-                  <span className="text-[10px] font-mono uppercase bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-700 dark:text-slate-300">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between bg-[#111827] rounded-lg border border-[#1A2338] px-3 py-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-slate-200">{activeReport.title}</span>
+                  <span className="font-mono uppercase text-[10px] bg-[#1A2338] px-1.5 py-0.5 rounded text-slate-400">
                     {activeReport.format}
                   </span>
                 </div>
-
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={handleCopyReport}
-                    className="inline-flex items-center space-x-1 px-2.5 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-[11px] font-medium"
-                  >
-                    {copied ? <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3 h-3 text-slate-500 dark:text-slate-400" />}
-                    <span>{copied ? "Copied" : "Copy"}</span>
+                <div className="flex items-center gap-2">
+                  <button onClick={handleCopyReport}
+                    className="flex items-center gap-1 px-2 py-1 rounded border border-[#252f45] hover:bg-[#1A2338] text-slate-400 hover:text-white transition-colors">
+                    {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    <span className="text-[10px]">{copied ? "Copied" : "Copy"}</span>
                   </button>
-
-                  <a
-                    href={`/api/v1/reports/${activeReport.id}/raw`}
-                    download
-                    className="inline-flex items-center space-x-1 px-2.5 py-1 rounded bg-slate-900 dark:bg-indigo-600 text-white hover:bg-slate-800 dark:hover:bg-indigo-700 text-[11px] font-medium"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Download</span>
+                  <a href={`/api/v1/reports/${activeReport.id}/raw`} download
+                    className="flex items-center gap-1 px-2 py-1 rounded bg-[#1A2338] hover:bg-[#252f45] text-slate-300 text-[10px] transition-colors">
+                    <Download className="w-3 h-3" /> Download
                   </a>
                 </div>
               </div>
-
-              {/* Report Content Viewer */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/60 p-6 overflow-x-auto">
-                <pre className="text-xs leading-relaxed font-mono whitespace-pre-wrap text-slate-800 dark:text-slate-200 selection:bg-indigo-100 dark:selection:bg-indigo-900">
+              <div className="rounded-xl border border-[#1A2338] bg-[#070C18] p-5 overflow-x-auto">
+                <pre className="text-[11px] leading-relaxed font-mono whitespace-pre-wrap text-slate-300">
                   {activeReport.content}
                 </pre>
               </div>
-
-              {/* Revisions list */}
               {reports.length > 1 && (
-                <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
-                    Saved Revisions ({reports.length})
-                  </span>
-                  <div className="space-y-1.5">
-                    {reports.map((rep) => (
-                      <button
-                        key={rep.id}
-                        onClick={() => setActiveReport(rep)}
-                        className={cn(
-                          "w-full text-left p-2.5 rounded-lg text-xs flex justify-between items-center transition-colors",
-                          activeReport.id === rep.id
-                            ? "bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-300"
-                            : "bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                        )}
-                      >
-                        <span className="font-medium line-clamp-1">{rep.title}</span>
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono shrink-0 ml-2">
-                          {formatDate(rep.created_at)}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                <div className="space-y-1.5 pt-2 border-t border-[#1A2338]">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">Revisions</span>
+                  {reports.map(rep => (
+                    <button key={rep.id} onClick={() => setActiveReport(rep)}
+                      className={cn(
+                        "w-full text-left px-3 py-2 rounded-lg text-xs flex justify-between items-center transition-colors border",
+                        activeReport.id === rep.id
+                          ? "bg-indigo-950/40 border-indigo-800/60 text-indigo-300"
+                          : "bg-[#111827] border-[#1A2338] text-slate-400 hover:text-slate-200"
+                      )}>
+                      <span className="truncate">{rep.title}</span>
+                      <span className="text-[10px] font-mono text-slate-600 ml-2 flex-shrink-0">{formatDate(rep.created_at)}</span>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
           ) : (
-            <div className="py-12 text-center text-xs text-slate-400">
-              No executive brief generated yet. Click &quot;Generate Brief&quot; above to compile the full report.
+            <div className="py-16 text-center text-xs text-slate-600">
+              No brief generated yet. Click Generate above.
             </div>
           )}
         </div>
@@ -1098,4 +1272,3 @@ export default function RunIntelligencePage() {
     </div>
   );
 }
-

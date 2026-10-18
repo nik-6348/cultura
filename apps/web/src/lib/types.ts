@@ -58,6 +58,8 @@ export interface RunStep {
   latency_ms?: number;
   duration_ms?: number;
   output_ref?: string;
+  error_json?: Record<string, unknown> | null;
+  metadata_json?: Record<string, unknown> | null;
 }
 
 export interface DecisionRecord {
