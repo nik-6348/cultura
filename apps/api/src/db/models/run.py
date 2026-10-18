@@ -68,6 +68,12 @@ class AnalysisRun(Base, TimestampMixin):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
+    # Promoted scalar fields — derived from result_summary_json for fast reads
+    overall_score: Mapped[float | None] = mapped_column(nullable=True)
+    decision_verdict: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    strategy_summary: Mapped[str | None] = mapped_column(nullable=True)
+    scores_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+
     # Relationships
     project: Mapped["Project"] = relationship("Project", back_populates="runs")
     steps: Mapped[list["RunStep"]] = relationship(
