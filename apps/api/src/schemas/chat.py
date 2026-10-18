@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=1000)
     run_id: uuid.UUID | None = None
+    conversation_id: uuid.UUID | None = None  # if None, a new conversation is created
 
 
 class CitationItem(BaseModel):

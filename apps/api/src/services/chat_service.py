@@ -394,7 +394,11 @@ class ChatService:
     ) -> ChatResponse:
         context = await cls._gather_context(db, project_id, request, workspace_id)
 
-        conversation = await ConversationService.get_or_create_conversation(db, project_id, user_id)
+        if request.conversation_id:
+            conversation = await ConversationService.get_conversation(db, request.conversation_id)
+        if not request.conversation_id or not conversation:
+            title = context.sanitized_msg[:80] if context.sanitized_msg else "New conversation"
+            conversation = await ConversationService.create_conversation(db, project_id, user_id, title)
         history_msgs = await ConversationService.get_history(db, conversation.id, limit=20)
         context.history = [{"role": m.role, "content": m.content} for m in history_msgs]
 
@@ -453,7 +457,12 @@ class ChatService:
         message. The returned context carries no live session reference, so it's
         safe to use from the generator after this session has been torn down."""
         context = await cls._gather_context(db, project_id, request, workspace_id)
-        conversation = await ConversationService.get_or_create_conversation(db, project_id, user_id)
+        conversation = None
+        if request.conversation_id:
+            conversation = await ConversationService.get_conversation(db, request.conversation_id)
+        if not conversation:
+            title = context.sanitized_msg[:80] if context.sanitized_msg else "New conversation"
+            conversation = await ConversationService.create_conversation(db, project_id, user_id, title)
         history_msgs = await ConversationService.get_history(db, conversation.id, limit=20)
         context.history = [{"role": m.role, "content": m.content} for m in history_msgs]
         context.conversation_id = conversation.id

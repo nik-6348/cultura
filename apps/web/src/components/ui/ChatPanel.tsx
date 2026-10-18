@@ -27,7 +27,6 @@ interface StreamMeta {
   citations: Citation[];
   chartData: DimensionChartPoint[] | null;
   suggestedQuestions: string[];
-  relatedEvidence: EvidenceCard[];
 }
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
@@ -56,9 +55,9 @@ export function MarkdownText({ text }: { text: string }) {
   const lines = clean.split("\n");
   const nodes: React.ReactNode[] = [];
   lines.forEach((line, i) => {
-    if (line.startsWith("### ") || line.startsWith("## ") || line.startsWith("# ")) {
+    if (/^#{1,3} /.test(line)) {
       nodes.push(<p key={i} className="font-semibold text-slate-100 mt-1.5">{renderInline(line.replace(/^#+\s/, ""))}</p>);
-    } else if (line.startsWith("* ") || line.startsWith("- ")) {
+    } else if (/^[*-] /.test(line)) {
       nodes.push(
         <div key={i} className="flex items-start gap-1.5">
           <span className="text-indigo-400 mt-0.5 flex-shrink-0">•</span>
@@ -80,11 +79,8 @@ function TypingDots() {
   return (
     <span className="inline-flex items-center gap-0.5 h-4">
       {[0, 1, 2].map((n) => (
-        <span
-          key={n}
-          className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce"
-          style={{ animationDelay: `${n * 0.15}s` }}
-        />
+        <span key={n} className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce"
+          style={{ animationDelay: `${n * 0.15}s` }} />
       ))}
     </span>
   );
@@ -98,8 +94,7 @@ function DimensionChart({ data }: { data: DimensionChartPoint[] }) {
   return (
     <div className="mt-3 p-3 rounded-xl bg-[#0E1424] border border-[#1A2338] space-y-2.5">
       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
-        <BarChart2 className="w-3.5 h-3.5 text-indigo-400" />
-        Cultural fit by dimension
+        <BarChart2 className="w-3.5 h-3.5 text-indigo-400" />Cultural fit by dimension
       </div>
       {data.map((d) => (
         <div key={d.dimension}>
@@ -133,30 +128,23 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
           <Sparkles className="w-3 h-3 text-white" />
         </div>
       )}
-      <div
-        className={`max-w-[80%] rounded-2xl p-3.5 text-sm ${
-          isUser
-            ? "bg-indigo-600 text-white rounded-tr-none"
-            : "bg-[#1A2338] border border-[#252f45] text-slate-200 rounded-tl-none"
-        }`}
-      >
+      <div className={`max-w-[82%] rounded-2xl p-3.5 text-xs ${
+        isUser
+          ? "bg-indigo-600 text-white rounded-tr-none"
+          : "bg-[#1A2338] border border-[#252f45] text-slate-200 rounded-tl-none"
+      }`}>
         {isUser ? (
-          <p className="leading-relaxed text-xs">{msg.text}</p>
+          <p className="leading-relaxed">{msg.text}</p>
         ) : (
-          <div className="space-y-2 text-xs">
+          <div className="space-y-2">
             <MarkdownText text={msg.text} />
             {msg.citations && msg.citations.length > 0 && (
               <div className="pt-2 border-t border-[#252f45]">
                 <div className="text-[10px] font-semibold text-slate-500 mb-1.5">Sources</div>
                 <div className="flex flex-wrap gap-1">
                   {msg.citations.slice(0, 5).map((c) => (
-                    <span
-                      key={c.id}
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#0E1424] border border-[#1A2338] text-[10px] text-slate-400"
-                    >
-                      <span className="w-3 h-3 rounded-full bg-indigo-900 text-indigo-400 text-[9px] font-bold flex items-center justify-center flex-shrink-0">
-                        {c.id}
-                      </span>
+                    <span key={c.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#0E1424] border border-[#1A2338] text-[10px] text-slate-400">
+                      <span className="w-3 h-3 rounded-full bg-indigo-900 text-indigo-400 text-[9px] font-bold flex items-center justify-center flex-shrink-0">{c.id}</span>
                       <span className="truncate max-w-[100px]">{c.label}</span>
                       <ExternalLink className="w-2 h-2 text-slate-600 flex-shrink-0" />
                     </span>
@@ -164,9 +152,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
                 </div>
               </div>
             )}
-            {msg.chartData && msg.chartData.length > 0 && (
-              <DimensionChart data={msg.chartData} />
-            )}
+            {msg.chartData && msg.chartData.length > 0 && <DimensionChart data={msg.chartData} />}
           </div>
         )}
         <div className={`text-[10px] mt-1.5 ${isUser ? "text-indigo-200 text-right" : "text-slate-600"}`}>
@@ -181,28 +167,48 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 
 interface ChatPanelProps {
   projectId: string;
-  /** Height of the message area — use a Tailwind class like "h-96" or "flex-1" */
+  /** Optional: start in a specific conversation. If omitted, sends create a new one. */
+  conversationId?: string;
   scrollAreaClass?: string;
+  /** Called when a new conversation is created (so parent can add it to sidebar) */
+  onConversationCreated?: (id: string, title: string) => void;
 }
 
-export function ChatPanel({ projectId, scrollAreaClass = "flex-1" }: ChatPanelProps) {
+export function ChatPanel({
+  projectId,
+  conversationId: initialConversationId,
+  scrollAreaClass = "flex-1",
+  onConversationCreated,
+}: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const [streamingMeta, setStreamingMeta] = useState<StreamMeta | null>(null);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | undefined>(initialConversationId);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [historyLoaded, setHistoryLoaded] = useState(false);
 
-  // Load history once
+  // Load history when conversationId changes (or on first mount)
   useEffect(() => {
     let cancelled = false;
+    setMessages([]);
+    setSuggestedQuestions([]);
+    setHistoryLoaded(false);
+
+    // If no conversationId provided, start fresh (don't load most-recent)
+    if (!initialConversationId) {
+      setHistoryLoaded(true);
+      return;
+    }
+
     async function load() {
       try {
-        const history = await api.getConversationHistory(projectId);
+        const history = await api.getConversationHistory(projectId, initialConversationId);
         if (cancelled) return;
+        if (history.conversation_id) setActiveConversationId(history.conversation_id);
         const msgs: ChatMessage[] = history.messages
           .filter((m) => m.role === "user" || m.role === "assistant")
           .map((m) => ({
@@ -227,7 +233,7 @@ export function ChatPanel({ projectId, scrollAreaClass = "flex-1" }: ChatPanelPr
     }
     load();
     return () => { cancelled = true; };
-  }, [projectId]);
+  }, [projectId, initialConversationId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -250,19 +256,27 @@ export function ChatPanel({ projectId, scrollAreaClass = "flex-1" }: ChatPanelPr
     setStreamingMeta(null);
 
     let accText = "";
-    let finalMeta: StreamMeta = { citations: [], chartData: null, suggestedQuestions, relatedEvidence: [] };
+    let finalMeta: StreamMeta = { citations: [], chartData: null, suggestedQuestions };
+    let newConvId: string | undefined;
 
     try {
-      for await (const event of api.chatWithAnalystStream(projectId, text)) {
+      for await (const event of api.chatWithAnalystStream(projectId, text, {
+        conversationId: activeConversationId,
+      })) {
         if (event.type === "meta") {
+          newConvId = (event.conversation_id as string) || undefined;
           finalMeta = {
             citations: (event.citations as Citation[]) ?? [],
             chartData: (event.chart_data as DimensionChartPoint[]) ?? null,
             suggestedQuestions: (event.suggested_questions as string[]) ?? suggestedQuestions,
-            relatedEvidence: (event.related_evidence as EvidenceCard[]) ?? [],
           };
           setStreamingMeta(finalMeta);
           if (finalMeta.suggestedQuestions?.length) setSuggestedQuestions(finalMeta.suggestedQuestions);
+          // Register new conversation with parent
+          if (newConvId && newConvId !== activeConversationId) {
+            setActiveConversationId(newConvId);
+            onConversationCreated?.(newConvId, text.slice(0, 80));
+          }
         } else if (event.type === "token") {
           accText += (event.text as string) ?? "";
           setStreamingText(accText);
@@ -289,7 +303,7 @@ export function ChatPanel({ projectId, scrollAreaClass = "flex-1" }: ChatPanelPr
     setStreamingMeta(null);
     setIsStreaming(false);
     inputRef.current?.focus();
-  }, [inputValue, isStreaming, projectId, suggestedQuestions]);
+  }, [inputValue, isStreaming, projectId, activeConversationId, suggestedQuestions, onConversationCreated]);
 
   const isEmpty = historyLoaded && messages.length === 0 && !isStreaming;
 
@@ -314,7 +328,7 @@ export function ChatPanel({ projectId, scrollAreaClass = "flex-1" }: ChatPanelPr
             <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center flex-shrink-0 mt-0.5">
               <Sparkles className="w-3 h-3 text-white" />
             </div>
-            <div className="max-w-[80%] rounded-2xl rounded-tl-none p-3.5 bg-[#1A2338] border border-[#252f45] text-xs text-slate-200">
+            <div className="max-w-[82%] rounded-2xl rounded-tl-none p-3.5 bg-[#1A2338] border border-[#252f45] text-xs text-slate-200">
               {streamingText ? (
                 <>
                   <MarkdownText text={streamingText} />
@@ -335,17 +349,14 @@ export function ChatPanel({ projectId, scrollAreaClass = "flex-1" }: ChatPanelPr
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Suggested questions — shown after first response */}
+      {/* Suggested questions */}
       {suggestedQuestions.length > 0 && !isStreaming && (
         <div className="px-4 pb-2 flex gap-1.5 overflow-x-auto scrollbar-none">
           {suggestedQuestions.slice(0, 3).map((q) => (
-            <button
-              key={q}
-              onClick={() => handleSend(q)}
-              className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#1A2338] bg-[#111827] hover:border-indigo-500/40 text-[10px] text-slate-400 hover:text-slate-200 transition-colors whitespace-nowrap"
-            >
+            <button key={q} onClick={() => handleSend(q)}
+              className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#1A2338] bg-[#111827] hover:border-indigo-500/40 text-[10px] text-slate-400 hover:text-slate-200 transition-colors whitespace-nowrap">
               <ChevronRight className="w-2.5 h-2.5 text-indigo-500 flex-shrink-0" />
-              {q.length > 48 ? q.slice(0, 48) + "…" : q}
+              {q.length > 50 ? q.slice(0, 50) + "…" : q}
             </button>
           ))}
         </div>
@@ -353,24 +364,15 @@ export function ChatPanel({ projectId, scrollAreaClass = "flex-1" }: ChatPanelPr
 
       {/* Input */}
       <div className="p-3 border-t border-[#1A2338]">
-        <form
-          onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-          className="flex items-center gap-2 bg-[#111827] border border-[#1A2338] rounded-xl px-3 py-2 focus-within:border-indigo-500/60 transition-colors"
-        >
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputValue}
+        <form onSubmit={(e) => { e.preventDefault(); handleSend(); }}
+          className="flex items-center gap-2 bg-[#111827] border border-[#1A2338] rounded-xl px-3 py-2 focus-within:border-indigo-500/60 transition-colors">
+          <input ref={inputRef} type="text" value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="Ask about markets, cultural fit, strategies…"
             disabled={isStreaming}
-            className="flex-1 bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none disabled:opacity-50"
-          />
-          <button
-            type="submit"
-            disabled={!inputValue.trim() || isStreaming}
-            className="p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white transition-colors"
-          >
+            className="flex-1 bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none disabled:opacity-50" />
+          <button type="submit" disabled={!inputValue.trim() || isStreaming}
+            className="p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white transition-colors">
             <Send className="w-3 h-3" />
           </button>
         </form>

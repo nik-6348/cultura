@@ -360,8 +360,23 @@ export const api = {
     });
   },
 
-  async getConversationHistory(projectId: string): Promise<{
+  async listConversations(projectId: string): Promise<Array<{
+    id: string;
+    title: string;
+    created_at: string;
+    updated_at: string;
+    preview: string;
+    message_count: number;
+  }>> {
+    return fetchJson(`/api/v1/projects/${projectId}/conversations`);
+  },
+
+  async getConversationHistory(
+    projectId: string,
+    conversationId?: string,
+  ): Promise<{
     conversation_id: string | null;
+    title?: string;
     messages: Array<{
       id: string;
       role: "user" | "assistant" | "system";
@@ -370,13 +385,16 @@ export const api = {
       created_at: string;
     }>;
   }> {
-    return fetchJson(`/api/v1/projects/${projectId}/conversation`);
+    const url = conversationId
+      ? `/api/v1/projects/${projectId}/conversation?conversation_id=${conversationId}`
+      : `/api/v1/projects/${projectId}/conversation`;
+    return fetchJson(url);
   },
 
   chatWithAnalystStream(
     projectId: string,
     message: string,
-    runId?: string
+    opts?: { runId?: string; conversationId?: string }
   ): AsyncGenerator<Record<string, unknown>> {
     async function* gen() {
       const response = await fetch(`/api/v1/projects/${projectId}/chat/stream`, {
@@ -385,7 +403,11 @@ export const api = {
           Authorization: DEV_AUTH_HEADER,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message, run_id: runId }),
+        body: JSON.stringify({
+          message,
+          run_id: opts?.runId,
+          conversation_id: opts?.conversationId,
+        }),
       });
 
       if (!response.ok || !response.body) {

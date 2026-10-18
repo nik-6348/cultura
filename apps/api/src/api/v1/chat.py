@@ -90,13 +90,62 @@ async def chat_with_analyst_stream(
 
 
 @router.get(
+    "/projects/{project_id}/conversations",
+    summary="List all Analyst Chat conversations for this project",
+)
+async def list_conversations(
+    project_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[dict]:
+    project = await ProjectService.get_project(db, project_id)
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Project {project_id} not found")
+    await verify_workspace_access(project.workspace_id, current_user, db)
+
+    from src.services.conversation_service import ConversationService
+    conversations = await ConversationService.list_conversations(db, project_id, current_user.id)
+    result = []
+    for convo in conversations:
+        # Fetch first and last message for preview
+        first_stmt = (
+            select(Message)
+            .where(Message.conversation_id == convo.id, Message.role == "user")
+            .order_by(Message.created_at.asc())
+            .limit(1)
+        )
+        first_res = await db.execute(first_stmt)
+        first_msg = first_res.scalar_one_or_none()
+
+        last_stmt = (
+            select(Message)
+            .where(Message.conversation_id == convo.id)
+            .order_by(Message.created_at.desc())
+            .limit(1)
+        )
+        last_res = await db.execute(last_stmt)
+        last_msg = last_res.scalar_one_or_none()
+
+        result.append({
+            "id": str(convo.id),
+            "title": convo.title,
+            "created_at": convo.created_at.isoformat(),
+            "updated_at": last_msg.created_at.isoformat() if last_msg else convo.created_at.isoformat(),
+            "preview": (first_msg.content[:80] if first_msg else ""),
+            "message_count": 0,  # lightweight, skip count query
+        })
+    return result
+
+
+@router.get(
     "/projects/{project_id}/conversation",
-    summary="Fetch the persisted Analyst Chat history for this project",
+    summary="Fetch messages for a specific Analyst Chat conversation",
 )
 async def get_conversation_history(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    conversation_id: uuid.UUID | None = None,
 ) -> dict:
     project = await ProjectService.get_project(db, project_id)
     if not project:
@@ -106,10 +155,22 @@ async def get_conversation_history(
         )
     await verify_workspace_access(project.workspace_id, current_user, db)
 
-    stmt = select(Conversation).where(
-        Conversation.project_id == project_id,
-        Conversation.user_id == current_user.id,
-    )
+    if conversation_id:
+        stmt = select(Conversation).where(
+            Conversation.id == conversation_id,
+            Conversation.project_id == project_id,
+        )
+    else:
+        # fallback: most-recent conversation for this project/user
+        stmt = (
+            select(Conversation)
+            .where(
+                Conversation.project_id == project_id,
+                Conversation.user_id == current_user.id,
+            )
+            .order_by(Conversation.created_at.desc())
+            .limit(1)
+        )
     res = await db.execute(stmt)
     conversation = res.scalar_one_or_none()
     if not conversation:
@@ -125,6 +186,7 @@ async def get_conversation_history(
 
     return {
         "conversation_id": str(conversation.id),
+        "title": conversation.title,
         "messages": [
             {
                 "id": str(m.id),

@@ -12,6 +12,51 @@ class ConversationService:
     the LLM gets real multi-turn context instead of a single stateless message."""
 
     @classmethod
+    async def create_conversation(
+        cls,
+        db: AsyncSession,
+        project_id: uuid.UUID,
+        user_id: uuid.UUID,
+        title: str = "New conversation",
+    ) -> Conversation:
+        convo = Conversation(project_id=project_id, user_id=user_id, title=title)
+        db.add(convo)
+        await db.flush()
+        return convo
+
+    @classmethod
+    async def get_conversation(
+        cls, db: AsyncSession, conversation_id: uuid.UUID
+    ) -> Conversation | None:
+        stmt = select(Conversation).where(Conversation.id == conversation_id)
+        res = await db.execute(stmt)
+        return res.scalar_one_or_none()
+
+    @classmethod
+    async def list_conversations(
+        cls, db: AsyncSession, project_id: uuid.UUID, user_id: uuid.UUID
+    ) -> list[Conversation]:
+        stmt = (
+            select(Conversation)
+            .where(
+                Conversation.project_id == project_id,
+                Conversation.user_id == user_id,
+            )
+            .order_by(Conversation.created_at.desc())
+        )
+        res = await db.execute(stmt)
+        return list(res.scalars().all())
+
+    @classmethod
+    async def set_title(
+        cls, db: AsyncSession, conversation_id: uuid.UUID, title: str
+    ) -> None:
+        convo = await cls.get_conversation(db, conversation_id)
+        if convo:
+            convo.title = title[:120]
+            await db.flush()
+
+    @classmethod
     async def get_or_create_conversation(
         cls, db: AsyncSession, project_id: uuid.UUID, user_id: uuid.UUID
     ) -> Conversation:
