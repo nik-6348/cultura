@@ -167,7 +167,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
             {msg.chartData && msg.chartData.length > 0 && <DimensionChart data={msg.chartData} />}
           </div>
         )}
-        <div className={`text-[10px] mt-1.5 ${isUser ? "text-indigo-200 text-right" : "text-slate-600"}`}>
+        <div suppressHydrationWarning className={`text-[10px] mt-1.5 ${isUser ? "text-indigo-200 text-right" : "text-slate-600"}`}>
           {msg.timestamp}
         </div>
       </div>
@@ -204,8 +204,15 @@ export function ChatPanel({
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>();
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  // Abort any in-flight request on unmount
+  useEffect(() => () => { abortControllerRef.current?.abort(); }, []);
 
   // Load history (or skip if startFresh)
   useEffect(() => {
@@ -232,7 +239,10 @@ export function ChatPanel({
             id: m.id,
             sender: m.role === "user" ? "user" : "analyst",
             text: m.content,
-            timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            // Format timestamp client-side only to avoid hydration mismatch
+            timestamp: m.created_at
+              ? new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+              : "",
             citations: (m.metadata?.citations as Citation[] | undefined) ?? undefined,
             chartData: (m.metadata?.chart_data as DimensionChartPoint[] | undefined) ?? undefined,
           }));
@@ -260,11 +270,21 @@ export function ChatPanel({
     const text = (textToSend ?? inputValue).trim();
     if (!text || isStreaming) return;
 
+    // Cancel any previous in-flight request
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    // Auto-abort after 90 seconds to prevent infinite hang
+    const timeoutId = setTimeout(() => controller.abort(), 90_000);
+
+    const now = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
     const userMsg: ChatMessage = {
       id: `usr-${Date.now()}`,
       sender: "user",
       text,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      timestamp: now(),
     };
     setMessages((prev) => [...prev, userMsg]);
     if (!textToSend) setInputValue("");
@@ -278,6 +298,7 @@ export function ChatPanel({
     try {
       for await (const event of api.chatWithAnalystStream(projectId, text, {
         conversationId: activeConversationId,
+        signal: controller.signal,
       })) {
         if (event.type === "meta") {
           const newConvId = event.conversation_id as string | undefined;
@@ -296,8 +317,14 @@ export function ChatPanel({
           break;
         }
       }
-    } catch {
-      accText = accText || "I encountered an error querying the cultural intelligence engine.";
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        accText = accText || "Request timed out. Please try again.";
+      } else {
+        accText = accText || "I encountered an error querying the cultural intelligence engine.";
+      }
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     setMessages((prev) => [
@@ -306,7 +333,7 @@ export function ChatPanel({
         id: `bot-${Date.now()}`,
         sender: "analyst",
         text: accText,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        timestamp: now(),
         citations: finalMeta.citations,
         chartData: finalMeta.chartData,
       },
@@ -314,7 +341,7 @@ export function ChatPanel({
     setStreamingText("");
     setStreamingMeta(null);
     setIsStreaming(false);
-    inputRef.current?.focus();
+    setTimeout(() => inputRef.current?.focus(), 50);
   }, [inputValue, isStreaming, projectId, activeConversationId, suggestedQuestions]);
 
   const isEmpty = historyLoaded && messages.length === 0 && !isStreaming;
@@ -391,16 +418,32 @@ export function ChatPanel({
       )}
 
       {/* Input */}
-      <div className="p-3 border-t border-[#1A2338]">
-        <form onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-          className="flex items-center gap-2 bg-[#111827] border border-[#1A2338] rounded-xl px-3 py-2 focus-within:border-indigo-500/60 transition-colors">
-          <input ref={inputRef} type="text" value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ask about markets, cultural fit, strategies…"
-            disabled={isStreaming}
-            className="flex-1 bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none disabled:opacity-50" />
-          <button type="submit" disabled={!inputValue.trim() || isStreaming}
-            className="p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white transition-colors">
+      <div className="p-3 border-t border-[#1A2338] flex-shrink-0">
+        <form onSubmit={(e) => { e.preventDefault(); if (!isStreaming) handleSend(); }}
+          className={`flex items-center gap-2 bg-[#111827] border rounded-xl px-3 py-2 transition-colors ${
+            isStreaming ? "border-indigo-500/40" : "border-[#1A2338] focus-within:border-indigo-500/60"
+          }`}>
+          {isStreaming ? (
+            <div className="flex-1 flex items-center gap-2">
+              <div className="w-3.5 h-3.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+              <span className="text-xs text-slate-500 truncate">Generating response…</span>
+            </div>
+          ) : (
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+              placeholder="Ask about markets, cultural fit, strategies…"
+              className="flex-1 bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
+            />
+          )}
+          <button
+            type="submit"
+            disabled={isStreaming || !inputValue.trim()}
+            className="p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors flex-shrink-0"
+          >
             <Send className="w-3 h-3" />
           </button>
         </form>

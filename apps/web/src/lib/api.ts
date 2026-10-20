@@ -215,6 +215,20 @@ export const api = {
     return normalizeProject(proj);
   },
 
+  async updateProject(projectId: string, payload: {
+    name?: string;
+    objective?: string;
+    brand_profile_json?: Record<string, unknown>;
+    audience_profile_json?: Record<string, unknown>;
+    candidate_markets?: Array<{ name: string; country?: string; country_code?: string; location_code?: string }>;
+  }): Promise<Project> {
+    const proj = await fetchJson<Project>(`/api/v1/projects/${projectId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+    return normalizeProject(proj);
+  },
+
   // Locations
   async searchLocations(query?: string, region?: string): Promise<MarketLocation[]> {
     const params = new URLSearchParams();
@@ -400,7 +414,7 @@ export const api = {
   chatWithAnalystStream(
     projectId: string,
     message: string,
-    opts?: { runId?: string; conversationId?: string }
+    opts?: { runId?: string; conversationId?: string; signal?: AbortSignal }
   ): AsyncGenerator<Record<string, unknown>> {
     async function* gen() {
       const response = await fetch(`/api/v1/projects/${projectId}/chat/stream`, {
@@ -414,6 +428,7 @@ export const api = {
           run_id: opts?.runId,
           conversation_id: opts?.conversationId,
         }),
+        signal: opts?.signal,
       });
 
       if (!response.ok || !response.body) {

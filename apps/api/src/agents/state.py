@@ -21,6 +21,7 @@ class AnalysisState(TypedDict, total=False):
     # Planning & Analysis Outputs
     execution_plan: list[dict[str, Any]]
     brand_proxies: list[dict[str, Any]]
+    brand_category: str
     market_specs: list[dict[str, Any]]
     audience_specs: dict[str, Any]
 

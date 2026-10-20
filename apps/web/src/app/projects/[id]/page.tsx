@@ -7,6 +7,7 @@ import {
   ArrowLeft, PlayCircle, Globe2, Clock, MessageSquare,
   FileText, Database, Layers, ChevronRight,
   TrendingUp, Sparkles, Activity, Target,
+  Edit2, X, Check, Plus, Trash2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { AnalysisRun, Project, ReportRecord, MemoryRecord } from "@/lib/types";
@@ -60,6 +61,31 @@ export default function ProjectHubPage() {
   const [chatStartFresh, setChatStartFresh] = useState(false);
   const [chatPanelKey, setChatPanelKey] = useState(0);
 
+  // Edit modal state
+  const [editModal, setEditModal] = useState<"brand" | "audience" | "markets" | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  // Brand edit fields
+  const [editBrandName, setEditBrandName] = useState("");
+  const [editBrandCategory, setEditBrandCategory] = useState("");
+  const [editBrandDescription, setEditBrandDescription] = useState("");
+  const [editBrandPositioning, setEditBrandPositioning] = useState("");
+  const [editBrandTags, setEditBrandTags] = useState<string[]>([]);
+  const [editBrandTagInput, setEditBrandTagInput] = useState("");
+
+  // Audience edit fields
+  const [editAudienceName, setEditAudienceName] = useState("");
+  const [editAudienceAge, setEditAudienceAge] = useState<[number, number]>([18, 35]);
+  const [editAudienceGender, setEditAudienceGender] = useState("All");
+  const [editAudienceIncome, setEditAudienceIncome] = useState("All");
+  const [editAudienceInterests, setEditAudienceInterests] = useState<string[]>([]);
+  const [editInterestInput, setEditInterestInput] = useState("");
+
+  // Markets edit
+  const [editMarkets, setEditMarkets] = useState<Array<{ name: string; country?: string; country_code?: string; location_code?: string }>>([]);
+  const [editMarketInput, setEditMarketInput] = useState("");
+
   useEffect(() => {
     if (!projectId) return;
     (async () => {
@@ -69,7 +95,12 @@ export default function ProjectHubPage() {
         setProject(proj);
         setRuns(runList);
         if (runList.length > 0) {
-          try { setReports(await api.getRunReports(runList[0].id)); } catch { /* non-critical */ }
+          try {
+            const allReports = await Promise.all(
+              runList.slice(0, 10).map(r => api.getRunReports(r.id).catch(() => [] as import("@/lib/types").ReportRecord[]))
+            );
+            setReports(allReports.flat().sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+          } catch { /* non-critical */ }
         }
         try { setMemories(await api.getMemories(proj.workspace_id, projectId)); } catch { /* non-critical */ }
       } catch (err) {
@@ -89,6 +120,104 @@ export default function ProjectHubPage() {
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to start run");
       setRunningNew(false);
+    }
+  };
+
+  const openEditModal = (modal: "brand" | "audience" | "markets") => {
+    if (!project) return;
+    const brand = asRecord(project.brand_profile_json);
+    const audience = asRecord(project.audience_profile_json);
+    if (modal === "brand") {
+      setEditBrandName(asString(brand.brand_name) ?? asString(brand.name) ?? project.name);
+      setEditBrandCategory(asString(brand.category) ?? "");
+      setEditBrandDescription(asString(brand.description) ?? "");
+      setEditBrandPositioning(asString(brand.positioning) ?? "");
+      setEditBrandTags(asStringArray(brand.tags));
+    } else if (modal === "audience") {
+      setEditAudienceName(asString(audience.persona) ?? asString(audience.name) ?? "");
+      const ar = Array.isArray(audience.age_range) ? audience.age_range : [18, 35];
+      setEditAudienceAge([Number(ar[0]) || 18, Number(ar[1]) || 35]);
+      setEditAudienceGender(asString(audience.gender) ?? "All");
+      setEditAudienceIncome(asString(audience.income_level) ?? "All");
+      setEditAudienceInterests(asStringArray(audience.interests));
+    } else if (modal === "markets") {
+      setEditMarkets(
+        (project.candidate_markets ?? []).map(m => ({
+          name: m.name,
+          country: m.country,
+          country_code: m.country_code,
+          location_code: m.location_code,
+        }))
+      );
+    }
+    setEditError(null);
+    setEditModal(modal);
+  };
+
+  const handleSaveBrand = async () => {
+    if (!project) return;
+    setSaving(true);
+    setEditError(null);
+    try {
+      const updated = await api.updateProject(project.id, {
+        brand_profile_json: {
+          brand_name: editBrandName,
+          name: editBrandName,
+          category: editBrandCategory,
+          description: editBrandDescription,
+          positioning: editBrandPositioning,
+          tags: editBrandTags,
+        },
+      });
+      setProject(updated);
+      setEditModal(null);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveAudience = async () => {
+    if (!project) return;
+    setSaving(true);
+    setEditError(null);
+    try {
+      const existing = asRecord(project.audience_profile_json);
+      const updated = await api.updateProject(project.id, {
+        audience_profile_json: {
+          ...existing,
+          persona: editAudienceName,
+          name: editAudienceName,
+          age_range: editAudienceAge,
+          gender: editAudienceGender,
+          income_level: editAudienceIncome,
+          interests: editAudienceInterests,
+        },
+      });
+      setProject(updated);
+      setEditModal(null);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveMarkets = async () => {
+    if (!project) return;
+    setSaving(true);
+    setEditError(null);
+    try {
+      const updated = await api.updateProject(project.id, {
+        candidate_markets: editMarkets,
+      });
+      setProject(updated);
+      setEditModal(null);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -281,9 +410,15 @@ export default function ProjectHubPage() {
             ) : (
               /* Candidate markets (no run yet) */
               <div className="rounded-xl border border-[#1A2338] bg-[#0E1424] p-5 space-y-4">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Globe2 className="w-4 h-4 text-indigo-400" /> Candidate Markets
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Globe2 className="w-4 h-4 text-indigo-400" /> Candidate Markets
+                  </h3>
+                  <button onClick={() => openEditModal("markets")}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold text-indigo-400 hover:text-white hover:bg-indigo-600/20 transition-colors border border-transparent hover:border-indigo-600/40">
+                    <Edit2 className="w-2.5 h-2.5" /> Edit
+                  </button>
+                </div>
                 {project.candidate_markets && project.candidate_markets.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {project.candidate_markets.map(m => (
@@ -362,11 +497,17 @@ export default function ProjectHubPage() {
               <div className="rounded-xl border border-[#1A2338] bg-[#0E1424] p-4 space-y-3">
                 <div className="flex items-center justify-between border-b border-[#1A2338] pb-2.5">
                   <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Brand Profile</h3>
-                  {asString(brand.positioning) && (
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-950/60 text-indigo-300 border border-indigo-900">
-                      {asString(brand.positioning)}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {asString(brand.positioning) && (
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-950/60 text-indigo-300 border border-indigo-900">
+                        {asString(brand.positioning)}
+                      </span>
+                    )}
+                    <button onClick={() => openEditModal("brand")}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold text-indigo-400 hover:text-white hover:bg-indigo-600/20 transition-colors border border-transparent hover:border-indigo-600/40">
+                      <Edit2 className="w-2.5 h-2.5" /> Edit
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-1.5 text-xs">
                   <div><span className="text-slate-500">Name: </span><strong className="text-slate-200">{asString(brand.name) ?? project.name}</strong></div>
@@ -388,7 +529,13 @@ export default function ProjectHubPage() {
               <div className="rounded-xl border border-[#1A2338] bg-[#0E1424] p-4 space-y-3">
                 <div className="flex items-center justify-between border-b border-[#1A2338] pb-2.5">
                   <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Audience Persona</h3>
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-900">Target Cohort</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-900">Target Cohort</span>
+                    <button onClick={() => openEditModal("audience")}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold text-indigo-400 hover:text-white hover:bg-indigo-600/20 transition-colors border border-transparent hover:border-indigo-600/40">
+                      <Edit2 className="w-2.5 h-2.5" /> Edit
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-1.5 text-xs">
                   <div><span className="text-slate-500">Segment: </span><strong className="text-slate-200">{asString(audience.name) ?? asString(audience.persona) ?? "Not specified"}</strong></div>
@@ -588,6 +735,213 @@ export default function ProjectHubPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          EDIT MODALS
+      ══════════════════════════════════════════════════════════════════ */}
+      {editModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full max-w-lg rounded-2xl border border-[#1A2338] bg-[#0E1424] shadow-2xl overflow-hidden">
+
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#1A2338]">
+              <h2 className="text-sm font-bold text-white">
+                {editModal === "brand" ? "Edit Brand Profile" : editModal === "audience" ? "Edit Audience Profile" : "Edit Candidate Markets"}
+              </h2>
+              <button onClick={() => setEditModal(null)} className="text-slate-500 hover:text-white transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
+              {editError && (
+                <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900 rounded-lg px-3 py-2">{editError}</div>
+              )}
+
+              {/* ── Brand Edit ── */}
+              {editModal === "brand" && (
+                <div className="space-y-3.5">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Brand Name</label>
+                      <input value={editBrandName} onChange={e => setEditBrandName(e.target.value)}
+                        className="w-full rounded-lg border border-[#1A2338] bg-[#111827] px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:border-indigo-600 focus:outline-none"
+                        placeholder="e.g. Patagonia" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Category</label>
+                      <input value={editBrandCategory} onChange={e => setEditBrandCategory(e.target.value)}
+                        className="w-full rounded-lg border border-[#1A2338] bg-[#111827] px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:border-indigo-600 focus:outline-none"
+                        placeholder="e.g. Fashion & Apparel" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Positioning</label>
+                    <input value={editBrandPositioning} onChange={e => setEditBrandPositioning(e.target.value)}
+                      className="w-full rounded-lg border border-[#1A2338] bg-[#111827] px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:border-indigo-600 focus:outline-none"
+                      placeholder="e.g. Premium, Mid-market, Budget-friendly" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Description</label>
+                    <textarea rows={3} value={editBrandDescription} onChange={e => setEditBrandDescription(e.target.value)}
+                      className="w-full rounded-lg border border-[#1A2338] bg-[#111827] px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:border-indigo-600 focus:outline-none resize-none"
+                      placeholder="Brand narrative and key value propositions..." />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Tags</label>
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {editBrandTags.map((tag, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#1A2338] text-[10px] text-slate-300">
+                          #{tag}
+                          <button onClick={() => setEditBrandTags(editBrandTags.filter((_, j) => j !== i))} className="hover:text-rose-400">
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input value={editBrandTagInput} onChange={e => setEditBrandTagInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter" && editBrandTagInput.trim()) { e.preventDefault(); setEditBrandTags([...editBrandTags, editBrandTagInput.trim()]); setEditBrandTagInput(""); }}}
+                        className="flex-1 rounded-lg border border-[#1A2338] bg-[#111827] px-3 py-1.5 text-xs text-white placeholder:text-slate-600 focus:border-indigo-600 focus:outline-none"
+                        placeholder="Add tag and press Enter..." />
+                      <button onClick={() => { if (editBrandTagInput.trim()) { setEditBrandTags([...editBrandTags, editBrandTagInput.trim()]); setEditBrandTagInput(""); }}}
+                        className="px-3 rounded-lg bg-[#1A2338] text-xs text-slate-300 hover:bg-indigo-600/30 transition-colors">
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Audience Edit ── */}
+              {editModal === "audience" && (
+                <div className="space-y-3.5">
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Audience Segment Name</label>
+                    <input value={editAudienceName} onChange={e => setEditAudienceName(e.target.value)}
+                      className="w-full rounded-lg border border-[#1A2338] bg-[#111827] px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:border-indigo-600 focus:outline-none"
+                      placeholder="e.g. Gen Z Streetwear Enthusiasts" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Age Range</label>
+                        <span className="text-[10px] font-mono text-indigo-400">{editAudienceAge[0]}–{editAudienceAge[1]}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <input type="number" min={13} max={editAudienceAge[1]} value={editAudienceAge[0]}
+                          onChange={e => setEditAudienceAge([Number(e.target.value), editAudienceAge[1]])}
+                          className="w-16 rounded-lg border border-[#1A2338] bg-[#111827] px-2 py-1.5 text-xs text-white text-center focus:border-indigo-600 focus:outline-none" />
+                        <span className="text-slate-600 text-xs">to</span>
+                        <input type="number" min={editAudienceAge[0]} max={80} value={editAudienceAge[1]}
+                          onChange={e => setEditAudienceAge([editAudienceAge[0], Number(e.target.value)])}
+                          className="w-16 rounded-lg border border-[#1A2338] bg-[#111827] px-2 py-1.5 text-xs text-white text-center focus:border-indigo-600 focus:outline-none" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Gender</label>
+                      <div className="grid grid-cols-2 gap-1">
+                        {["All", "Male", "Female", "Non-binary"].map(g => (
+                          <button key={g} onClick={() => setEditAudienceGender(g)}
+                            className={cn("py-1.5 text-[10px] font-semibold rounded-lg border transition-colors",
+                              editAudienceGender === g ? "border-indigo-600 bg-indigo-950/60 text-indigo-300" : "border-[#1A2338] bg-[#111827] text-slate-400 hover:border-slate-600")}>
+                            {g}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Income Level</label>
+                    <div className="flex gap-2">
+                      {["All", "Low", "Medium", "High"].map(inc => (
+                        <button key={inc} onClick={() => setEditAudienceIncome(inc)}
+                          className={cn("flex-1 py-1.5 text-[10px] font-semibold rounded-lg border transition-colors",
+                            editAudienceIncome === inc ? "border-indigo-600 bg-indigo-950/60 text-indigo-300" : "border-[#1A2338] bg-[#111827] text-slate-400 hover:border-slate-600")}>
+                          {inc}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Interests & Affinities</label>
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {editAudienceInterests.map((int, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-950/50 text-[10px] text-indigo-300 border border-indigo-900">
+                          {int}
+                          <button onClick={() => setEditAudienceInterests(editAudienceInterests.filter((_, j) => j !== i))} className="hover:text-rose-400">
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input value={editInterestInput} onChange={e => setEditInterestInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter" && editInterestInput.trim()) { e.preventDefault(); setEditAudienceInterests([...editAudienceInterests, editInterestInput.trim()]); setEditInterestInput(""); }}}
+                        className="flex-1 rounded-lg border border-[#1A2338] bg-[#111827] px-3 py-1.5 text-xs text-white placeholder:text-slate-600 focus:border-indigo-600 focus:outline-none"
+                        placeholder="Add interest and press Enter (e.g. Streetwear)..." />
+                      <button onClick={() => { if (editInterestInput.trim()) { setEditAudienceInterests([...editAudienceInterests, editInterestInput.trim()]); setEditInterestInput(""); }}}
+                        className="px-3 rounded-lg bg-[#1A2338] text-xs text-slate-300 hover:bg-indigo-600/30 transition-colors">
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Markets Edit ── */}
+              {editModal === "markets" && (
+                <div className="space-y-3">
+                  <p className="text-[11px] text-slate-500">Add or remove candidate markets. Changes apply to future runs.</p>
+                  <div className="space-y-2">
+                    {editMarkets.map((m, i) => (
+                      <div key={i} className="flex items-center gap-2 p-2.5 rounded-lg border border-[#1A2338] bg-[#111827]">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold text-white">{m.name}</div>
+                          {m.country && <div className="text-[10px] text-slate-500">{m.country} {m.location_code ? `· ${m.location_code}` : ""}</div>}
+                        </div>
+                        <button onClick={() => setEditMarkets(editMarkets.filter((_, j) => j !== i))}
+                          className="text-slate-600 hover:text-rose-400 transition-colors flex-shrink-0">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <input value={editMarketInput} onChange={e => setEditMarketInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter" && editMarketInput.trim()) { e.preventDefault(); setEditMarkets([...editMarkets, { name: editMarketInput.trim() }]); setEditMarketInput(""); }}}
+                      className="flex-1 rounded-lg border border-[#1A2338] bg-[#111827] px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:border-indigo-600 focus:outline-none"
+                      placeholder="Add market (city or country name)..." />
+                    <button onClick={() => { if (editMarketInput.trim()) { setEditMarkets([...editMarkets, { name: editMarketInput.trim() }]); setEditMarketInput(""); }}}
+                      className="px-3 rounded-lg bg-[#1A2338] text-xs text-slate-300 hover:bg-indigo-600/30 transition-colors">
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-[#1A2338] bg-[#0A0F1C]">
+              <button onClick={() => setEditModal(null)}
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-colors">
+                Cancel
+              </button>
+              <button
+                disabled={saving}
+                onClick={editModal === "brand" ? handleSaveBrand : editModal === "audience" ? handleSaveAudience : handleSaveMarkets}
+                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-xs font-semibold text-white flex items-center gap-1.5 transition-colors">
+                {saving ? (
+                  <><div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> Saving…</>
+                ) : (
+                  <><Check className="w-3 h-3" /> Save Changes</>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
