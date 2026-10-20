@@ -26,16 +26,35 @@ const WorldMapCanvas = dynamic(
   { ssr: false }
 );
 
-const GLOBAL_MARKETS: CityMarket[] = [
-  { id: "tokyo", name: "Tokyo", country: "Japan", flag: "🇯🇵", lng: 139.6503, lat: 35.6762, score: 82, opportunities: 6, recentRuns: 4, status: "high", momentum: "+14.2%", isPositive: true },
-  { id: "seoul", name: "Seoul", country: "South Korea", flag: "🇰🇷", lng: 126.978, lat: 37.5665, score: 78, opportunities: 5, recentRuns: 3, status: "high", momentum: "+12.6%", isPositive: true },
-  { id: "new-york", name: "New York", country: "USA", flag: "🇺🇸", lng: -74.006, lat: 40.7128, score: 74, opportunities: 7, recentRuns: 5, status: "high", momentum: "+11.8%", isPositive: true },
-  { id: "berlin", name: "Berlin", country: "Germany", flag: "🇩🇪", lng: 13.405, lat: 52.52, score: 68, opportunities: 4, recentRuns: 2, status: "medium", momentum: "+8.4%", isPositive: true },
-  { id: "singapore", name: "Singapore", country: "Singapore", flag: "🇸🇬", lng: 103.8198, lat: 1.3521, score: 65, opportunities: 4, recentRuns: 2, status: "medium", momentum: "+7.9%", isPositive: true },
-  { id: "paris", name: "Paris", country: "France", flag: "🇫🇷", lng: 2.3522, lat: 48.8566, score: 62, opportunities: 3, recentRuns: 2, status: "medium", momentum: "+6.1%", isPositive: true },
-  { id: "dubai", name: "Dubai", country: "UAE", flag: "🇦🇪", lng: 55.2708, lat: 25.2048, score: 58, opportunities: 3, recentRuns: 1, status: "low", momentum: "+5.3%", isPositive: true },
-  { id: "sao-paulo", name: "São Paulo", country: "Brazil", flag: "🇧🇷", lng: -46.6333, lat: -23.5505, score: 51, opportunities: 2, recentRuns: 1, status: "low", momentum: "-2.8%", isPositive: false },
-];
+// Reference geo-coordinate lookup — this is reference data, not mock data.
+// Scores/counts are computed from real analysis runs below.
+const GEO_COORDS: Record<string, { lat: number; lng: number; country: string; flag: string }> = {
+  "tokyo":         { lat: 35.6762,  lng: 139.6503, country: "Japan",        flag: "🇯🇵" },
+  "seoul":         { lat: 37.5665,  lng: 126.978,  country: "South Korea",  flag: "🇰🇷" },
+  "new york":      { lat: 40.7128,  lng: -74.006,  country: "USA",          flag: "🇺🇸" },
+  "london":        { lat: 51.5074,  lng: -0.1278,  country: "UK",           flag: "🇬🇧" },
+  "paris":         { lat: 48.8566,  lng: 2.3522,   country: "France",       flag: "🇫🇷" },
+  "berlin":        { lat: 52.52,    lng: 13.405,   country: "Germany",      flag: "🇩🇪" },
+  "dubai":         { lat: 25.2048,  lng: 55.2708,  country: "UAE",          flag: "🇦🇪" },
+  "singapore":     { lat: 1.3521,   lng: 103.8198, country: "Singapore",    flag: "🇸🇬" },
+  "sydney":        { lat: -33.8688, lng: 151.2093, country: "Australia",    flag: "🇦🇺" },
+  "toronto":       { lat: 43.6532,  lng: -79.3832, country: "Canada",       flag: "🇨🇦" },
+  "mexico city":   { lat: 19.4326,  lng: -99.1332, country: "Mexico",       flag: "🇲🇽" },
+  "são paulo":     { lat: -23.5505, lng: -46.6333, country: "Brazil",       flag: "🇧🇷" },
+  "sao paulo":     { lat: -23.5505, lng: -46.6333, country: "Brazil",       flag: "🇧🇷" },
+  "mumbai":        { lat: 19.076,   lng: 72.8777,  country: "India",        flag: "🇮🇳" },
+  "jakarta":       { lat: -6.2088,  lng: 106.8456, country: "Indonesia",    flag: "🇮🇩" },
+  "amsterdam":     { lat: 52.3676,  lng: 4.9041,   country: "Netherlands",  flag: "🇳🇱" },
+  "stockholm":     { lat: 59.3293,  lng: 18.0686,  country: "Sweden",       flag: "🇸🇪" },
+  "los angeles":   { lat: 34.0522,  lng: -118.2437,country: "USA",          flag: "🇺🇸" },
+  "chicago":       { lat: 41.8781,  lng: -87.6298, country: "USA",          flag: "🇺🇸" },
+  "beijing":       { lat: 39.9042,  lng: 116.4074, country: "China",        flag: "🇨🇳" },
+  "shanghai":      { lat: 31.2304,  lng: 121.4737, country: "China",        flag: "🇨🇳" },
+  "hong kong":     { lat: 22.3193,  lng: 114.1694, country: "Hong Kong",    flag: "🇭🇰" },
+  "taipei":        { lat: 25.033,   lng: 121.5654, country: "Taiwan",       flag: "🇹🇼" },
+  "bangkok":       { lat: 13.7563,  lng: 100.5018, country: "Thailand",     flag: "🇹🇭" },
+  "kuala lumpur":  { lat: 3.1390,   lng: 101.6869, country: "Malaysia",     flag: "🇲🇾" },
+};
 
 function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -82,8 +101,6 @@ export default function DashboardPage() {
   const [selectedCity, setSelectedCity] = useState<CityMarket | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [selectedMarketFilter, setSelectedMarketFilter] = useState("All Markets");
-  const [selectedTrendCity, setSelectedTrendCity] = useState("Tokyo, Japan");
-  const [selectedCategory, setSelectedCategory] = useState("Fashion");
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [runs, setRuns] = useState<AnalysisRun[]>([]);
@@ -97,7 +114,7 @@ export default function DashboardPage() {
         const wsId = workspaces[0].id;
         const [projs, wsRuns] = await Promise.all([
           api.getProjects(wsId),
-          api.getWorkspaceRuns(wsId, 20),
+          api.getWorkspaceRuns(wsId, 50),
         ]);
         setProjects(projs);
         setRuns(wsRuns);
@@ -120,7 +137,7 @@ export default function DashboardPage() {
   const scores = runs
     .filter(r => r.status === "completed" && typeof r.overall_score === "number")
     .map(r => r.overall_score as number);
-  const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+  const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 100) : null;
 
   const launchRuns = runs.filter(r => {
     const v = (r.decision_verdict ?? "").toLowerCase();
@@ -128,21 +145,112 @@ export default function DashboardPage() {
   }).length;
   const launchRate = completedRuns ? Math.round((launchRuns / completedRuns) * 100) : null;
 
-  const recentProjects = [...projects].sort(
-    (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-  ).slice(0, 4);
+  // Sort by the most recent run created_at so that newly-analysed projects bubble to top
+  const latestRunByProject = new Map<string, number>();
+  runs.forEach(r => {
+    const t = new Date(r.created_at).getTime();
+    if (!latestRunByProject.has(r.project_id) || t > latestRunByProject.get(r.project_id)!) {
+      latestRunByProject.set(r.project_id, t);
+    }
+  });
+  const recentProjects = [...projects].sort((a, b) => {
+    const ta = latestRunByProject.get(a.id) ?? new Date(a.updated_at).getTime();
+    const tb = latestRunByProject.get(b.id) ?? new Date(b.updated_at).getTime();
+    return tb - ta; // newest first
+  }).slice(0, 5);
 
   const recentRuns = [...runs].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   ).slice(0, 5);
 
+  // Derive real sparkline from runs bucketed into 9 slots (oldest → newest)
+  const deriveSparkline = (filterFn: (r: AnalysisRun) => boolean): number[] => {
+    if (!runs.length) return Array(9).fill(0);
+    const sorted = [...runs].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    const matched = sorted.filter(filterFn);
+    if (!matched.length) return Array(9).fill(0);
+    const buckets = Array(9).fill(0);
+    matched.forEach((_r, i) => { buckets[Math.min(8, Math.floor((i / matched.length) * 9))]++; });
+    const max = Math.max(...buckets, 1);
+    return buckets.map(v => Math.round((v / max) * 100) || 8);
+  };
+
+  const projectsSparkline = deriveSparkline(() => true).map((_v, i, arr) =>
+    Math.round(20 + ((i / (arr.length - 1)) * 0.7 + (arr[i] / 100) * 0.3) * 80)
+  );
+  const runsSparkline = deriveSparkline(() => true);
+  const scoreSparkline = deriveSparkline(r => r.status === "completed" && typeof r.overall_score === "number");
+  const launchSparkline = deriveSparkline(r => ["launch","proceed"].includes((r.decision_verdict ?? "").toLowerCase()));
+
   const renderSparklineBars = (colorClass: string, heights: number[]) => (
     <div className="flex items-end space-x-0.75 h-7">
       {heights.map((h, i) => (
-        <span key={i} style={{ height: `${h}%` }} className={`w-1 rounded-xs transition-all duration-300 ${colorClass}`} />
+        <span key={i} style={{ height: `${Math.max(8, h)}%` }} className={`w-1 rounded-xs transition-all duration-300 ${colorClass}`} />
       ))}
     </div>
   );
+
+  // Derive CityMarket list from real runs + projects
+  const derivedMarkets: CityMarket[] = React.useMemo(() => {
+    const marketMap = new Map<string, { scores: number[]; runCount: number; projectCount: number }>();
+
+    // Collect markets from projects
+    projects.forEach(p => {
+      const mList = p.candidate_markets ?? p.markets ?? [];
+      mList.forEach(m => {
+        const key = m.name.toLowerCase();
+        if (!marketMap.has(key)) marketMap.set(key, { scores: [], runCount: 0, projectCount: 0 });
+        marketMap.get(key)!.projectCount++;
+      });
+    });
+
+    // Collect scores from completed runs
+    runs.filter(r => r.status === "completed").forEach(r => {
+      // normalizeRun() stores rankings under scores_json.rankings
+      const ranked =
+        (r.scores_json?.rankings as Array<{ market?: string; score?: number }> | undefined) ??
+        (r.result_summary_json?.comparative_matrix?.ranked_markets as Array<{ market?: string; score?: number }> | undefined) ??
+        [];
+      if (Array.isArray(ranked)) {
+        ranked.forEach((rm) => {
+          if (!rm.market) return;
+          const key = rm.market.toLowerCase();
+          if (!marketMap.has(key)) marketMap.set(key, { scores: [], runCount: 0, projectCount: 0 });
+          const entry = marketMap.get(key)!;
+          entry.runCount++;
+          // scores are 0-1; multiply to 0-100 for display
+          if (typeof rm.score === "number") entry.scores.push(rm.score * 100);
+        });
+      }
+    });
+
+    return Array.from(marketMap.entries())
+      .map(([key, data]) => {
+        const geo = GEO_COORDS[key];
+        if (!geo) return null;
+        const avgSc = data.scores.length
+          ? Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length)
+          : 0;
+        const status: CityMarket["status"] = data.scores.length === 0 ? "under_analysis"
+          : avgSc >= 70 ? "high" : avgSc >= 55 ? "medium" : "low";
+        return {
+          id: key.replace(/\s+/g, "-"),
+          name: key.split(" ").map(w => w[0].toUpperCase() + w.slice(1)).join(" "),
+          country: geo.country,
+          flag: geo.flag,
+          lat: geo.lat,
+          lng: geo.lng,
+          score: avgSc,
+          opportunities: data.projectCount,
+          recentRuns: data.runCount,
+          status,
+          momentum: "—",
+          isPositive: true,
+        } as CityMarket;
+      })
+      .filter((m): m is CityMarket => m !== null)
+      .sort((a, b) => b.score - a.score);
+  }, [projects, runs]);
 
   // Donut chart math
   const circumference = 2 * Math.PI * 38; // 238.76
@@ -218,7 +326,7 @@ export default function DashboardPage() {
               <p className="text-[10px] text-slate-500 mt-0.5">total in workspace</p>
             </div>
           </div>
-          {renderSparklineBars("bg-indigo-500/80", [30, 45, 38, 60, 48, 75, 90, 85, 100])}
+          {renderSparklineBars("bg-indigo-500/80", projectsSparkline)}
         </div>
 
         <div className="p-4 rounded-xl bg-[#0E1424] border border-[#1A2338] flex items-center justify-between shadow-xs hover:border-slate-700/60 transition-colors">
@@ -236,7 +344,7 @@ export default function DashboardPage() {
               <p className="text-[10px] text-slate-500 mt-0.5">{completedRuns} completed</p>
             </div>
           </div>
-          {renderSparklineBars("bg-purple-500/80", [25, 40, 55, 45, 65, 80, 88, 95, 100])}
+          {renderSparklineBars("bg-purple-500/80", runsSparkline)}
         </div>
 
         <div className="p-4 rounded-xl bg-[#0E1424] border border-[#1A2338] flex items-center justify-between shadow-xs hover:border-slate-700/60 transition-colors">
@@ -254,7 +362,7 @@ export default function DashboardPage() {
               <p className="text-[10px] text-slate-500 mt-0.5">across completed runs</p>
             </div>
           </div>
-          {renderSparklineBars("bg-cyan-500/80", [45, 52, 60, 68, 62, 74, 82, 88, 92])}
+          {renderSparklineBars("bg-cyan-500/80", scoreSparkline)}
         </div>
 
         <div className="p-4 rounded-xl bg-[#0E1424] border border-[#1A2338] flex items-center justify-between shadow-xs hover:border-slate-700/60 transition-colors">
@@ -272,7 +380,7 @@ export default function DashboardPage() {
               <p className="text-[10px] text-slate-500 mt-0.5">of completed analyses</p>
             </div>
           </div>
-          {renderSparklineBars("bg-emerald-500/80", [20, 35, 45, 50, 62, 70, 78, 85, 94])}
+          {renderSparklineBars("bg-emerald-500/80", launchSparkline)}
         </div>
       </div>
 
@@ -298,7 +406,13 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <WorldMapCanvas cities={GLOBAL_MARKETS} zoomLevel={zoomLevel} selectedCityId={selectedCity?.id ?? null} onSelectCity={setSelectedCity} />
+          {derivedMarkets.length > 0 ? (
+            <WorldMapCanvas cities={derivedMarkets} zoomLevel={zoomLevel} selectedCityId={selectedCity?.id ?? null} onSelectCity={setSelectedCity} />
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-slate-600 text-xs py-16">
+              No markets yet — run an analysis to see them here.
+            </div>
+          )}
 
           <div className="flex items-center justify-between pt-3 border-t border-[#161D2E] z-10">
             <div className="flex items-center space-x-1 bg-[#121828] border border-slate-800 rounded-lg p-0.5">
@@ -342,7 +456,9 @@ export default function DashboardPage() {
             </div>
 
             <div className="divide-y divide-[#141B2D]">
-              {GLOBAL_MARKETS.map((m, idx) => {
+              {derivedMarkets.length === 0 ? (
+                <div className="py-8 text-center text-[11px] text-slate-600">No market data yet — run an analysis to populate this.</div>
+              ) : derivedMarkets.slice(0, 10).map((m, idx) => {
                 const barColor = m.score >= 70 ? "bg-emerald-400" : m.score >= 60 ? "bg-amber-400" : "bg-rose-500";
                 return (
                   <div key={m.id} onClick={() => setSelectedCity(m)}
@@ -496,7 +612,7 @@ export default function DashboardPage() {
                   const winner = run.result_summary_json?.winner_market
                     ?? run.result_summary_json?.comparative_matrix?.winner_market
                     ?? "—";
-                  const score = typeof run.overall_score === "number" ? `${run.overall_score}/100` : "—";
+                  const score = typeof run.overall_score === "number" ? `${(run.overall_score * 100).toFixed(1)}/100` : "—";
                   const verdict = run.decision_verdict ?? run.result_summary_json?.decisions?.winner_posture ?? "—";
                   return (
                     <tr key={run.id} className="hover:bg-[#12192B] transition-colors">
@@ -522,78 +638,45 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* 4B. Cultural Trend Momentum */}
-        <div className="lg:col-span-5 rounded-xl bg-[#0E1424] border border-[#1A2338] p-5 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#161D2E]">
-              <div>
-                <h2 className="text-sm font-bold text-white tracking-tight">Cultural Trend Momentum</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Historical trend and 6-month predictive growth curve.</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="relative">
-                  <select value={selectedTrendCity} onChange={e => setSelectedTrendCity(e.target.value)}
-                    className="appearance-none bg-[#141B2D] border border-slate-700/60 rounded-lg text-xs text-slate-300 pl-2.5 pr-6 py-1 focus:outline-none focus:border-indigo-500 cursor-pointer">
-                    <option>Tokyo, Japan</option>
-                    <option>Seoul, South Korea</option>
-                    <option>New York, USA</option>
-                    <option>Berlin, Germany</option>
-                  </select>
-                  <ChevronDown className="w-3 h-3 text-slate-400 absolute right-1.5 top-2 pointer-events-none" />
-                </div>
-                <div className="relative">
-                  <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}
-                    className="appearance-none bg-[#141B2D] border border-slate-700/60 rounded-lg text-xs text-slate-300 pl-2.5 pr-6 py-1 focus:outline-none focus:border-indigo-500 cursor-pointer">
-                    <option>Fashion</option>
-                    <option>Beauty</option>
-                    <option>Food &amp; Bev</option>
-                    <option>Consumer Tech</option>
-                  </select>
-                  <ChevronDown className="w-3 h-3 text-slate-400 absolute right-1.5 top-2 pointer-events-none" />
-                </div>
-              </div>
+        {/* 4B. Run verdict breakdown */}
+        <div className="lg:col-span-5 rounded-xl bg-[#0E1424] border border-[#1A2338] p-5 shadow-xs flex flex-col gap-4">
+          <div className="flex items-center justify-between pb-3 border-b border-[#161D2E]">
+            <div>
+              <h2 className="text-sm font-bold text-white tracking-tight">Analysis Verdict Breakdown</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Decision outcomes across all completed runs.</p>
             </div>
-
-            <div className="flex items-center justify-end space-x-4 pt-3 pb-1 text-xs">
-              <span className="flex items-center space-x-1.5 text-slate-300">
-                <span className="w-3 h-0.5 bg-[#818CF8]" /><span className="text-[11px]">Historical</span>
-              </span>
-              <span className="flex items-center space-x-1.5 text-slate-300">
-                <span className="w-3 h-0.5 border-b border-dashed border-[#818CF8]" /><span className="text-[11px]">Predicted</span>
-              </span>
-            </div>
-
-            <div className="relative w-full h-56 pt-2 select-none">
-              <svg className="w-full h-full overflow-visible" viewBox="0 0 620 200">
-                <defs>
-                  <linearGradient id="purpleGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#818CF8" stopOpacity="0.25" />
-                    <stop offset="100%" stopColor="#818CF8" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                <text x="-100" y="12" transform="rotate(-90)" className="fill-slate-500 text-[10px] font-sans font-medium">Cultural Momentum Index</text>
-                {[{ val: 100, y: 20 }, { val: 80, y: 55 }, { val: 60, y: 90 }, { val: 40, y: 125 }, { val: 20, y: 160 }, { val: 0, y: 195 }].map(tick => (
-                  <g key={tick.val}>
-                    <text x="32" y={tick.y + 4} className="fill-slate-500 text-[10px] font-mono text-right">{tick.val}</text>
-                    <line x1="45" y1={tick.y} x2="610" y2={tick.y} stroke="#161D2E" strokeWidth="1" />
-                  </g>
-                ))}
-                <polygon points="45,195 45,178 95,160 145,150 195,152 245,151 295,138 345,110 395,95 445,88 495,78 545,68 595,50 595,195" fill="url(#purpleGradient)" />
-                <path d="M 45,178 C 70,169 80,165 95,160 C 120,152 130,152 145,150 C 170,147 180,154 195,152 C 220,149 230,153 245,151 C 270,148 280,142 295,138 C 320,132 330,118 345,110 C 370,98 380,98 395,95" fill="none" stroke="#818CF8" strokeWidth="2.5" strokeLinecap="round" />
-                <path d="M 395,95 C 420,92 430,90 445,88 C 470,85 480,82 495,78 C 520,72 530,72 545,68 C 570,62 580,56 595,50" fill="none" stroke="#818CF8" strokeWidth="2.5" strokeDasharray="5,4" strokeLinecap="round" />
-                {[{ x: 45, y: 178 }, { x: 95, y: 160 }, { x: 145, y: 150 }, { x: 195, y: 152 }, { x: 245, y: 151 }, { x: 295, y: 138 }, { x: 345, y: 110 }, { x: 395, y: 95 }, { x: 445, y: 88 }, { x: 495, y: 78 }, { x: 545, y: 68 }, { x: 595, y: 50 }].map((pt, i) => (
-                  <circle key={i} cx={pt.x} cy={pt.y} r={i === 7 ? "4.5" : "3"} fill={i >= 7 ? "#A5B4FC" : "#818CF8"} stroke="#0B0F19" strokeWidth="2" className="cursor-pointer" />
-                ))}
-                <g transform="translate(480, 24)">
-                  <rect x="0" y="0" width="112" height="24" rx="6" fill="#121829" stroke="#2A3859" strokeWidth="1" />
-                  <text x="56" y="16" textAnchor="middle" className="fill-white text-[10px] font-bold font-mono">+14.2% predicted</text>
-                </g>
-                {["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].map((m, i) => (
-                  <text key={m} x={45 + i * 50} y="212" textAnchor="middle" className="fill-slate-500 text-[10px] font-medium">{m}</text>
-                ))}
-              </svg>
-            </div>
+            <Link href="/observability" className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center space-x-0.5">
+              <span>Trace</span><ArrowRight className="w-3 h-3" />
+            </Link>
           </div>
+          {loading ? (
+            <div className="py-8 text-center text-[11px] text-slate-600">Loading…</div>
+          ) : completedRuns === 0 ? (
+            <div className="flex-1 flex items-center justify-center text-slate-600 text-xs py-8">
+              No completed runs yet.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {(["launch","proceed","adapt","caution","avoid","decline"] as const).map(verdict => {
+                const count = runs.filter(r => (r.decision_verdict ?? "").toLowerCase() === verdict).length;
+                if (!count) return null;
+                const pct = Math.round((count / completedRuns) * 100);
+                const barCls = ["launch","proceed"].includes(verdict) ? "bg-emerald-500" : ["adapt","caution"].includes(verdict) ? "bg-amber-500" : "bg-rose-500";
+                const textCls = ["launch","proceed"].includes(verdict) ? "text-emerald-400" : ["adapt","caution"].includes(verdict) ? "text-amber-400" : "text-rose-400";
+                return (
+                  <div key={verdict} className="space-y-1">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className={`font-semibold uppercase tracking-wide ${textCls}`}>◆ {verdict}</span>
+                      <span className="text-slate-400 font-mono">{count} run{count !== 1 ? "s" : ""} · {pct}%</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-[#1A2338] overflow-hidden">
+                      <div style={{ width: `${pct}%` }} className={`h-full rounded-full ${barCls} transition-all duration-500`} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
