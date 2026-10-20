@@ -546,41 +546,78 @@ function ScoreMarginChart({ rankings }: { rankings: RankedMarketItem[] }) {
 // ─── Taste entities ───────────────────────────────────────────────────────────
 
 function TasteEntities({ evidence, market }: { evidence: EvidenceRecord[]; market: string }) {
-  const affinities = useMemo(() => {
-    const entities: Array<{ name: string; category: string; score: number }> = [];
+  const entities = useMemo(() => {
+    const list: Array<{ name: string; category: string; score: number; kind: string }> = [];
+
+    // Primary: real affinity scores from evidence records
     evidence
-      .filter(e => e.market_name === market && e.kind === "brand_affinity" && e.source_metadata_json)
+      .filter(e => e.market_name === market && (e.entity_name || e.entity_ref))
       .forEach(e => {
-        const meta = e.source_metadata_json as Record<string, unknown>;
-        const aff = meta?.affinities as Array<{ name: string; category?: string; affinity_score?: number }> | undefined;
-        if (aff) aff.slice(0, 6).forEach(a => entities.push({ name: a.name, category: a.category ?? "culture", score: a.affinity_score ?? 0.8 }));
+        const name = e.entity_name ?? e.entity_ref ?? "";
+        if (!name) return;
+        list.push({
+          name,
+          category: e.kind,
+          score: e.value_numeric ?? e.score ?? 0,
+          kind: e.kind,
+        });
       });
-    if (entities.length === 0) {
-      evidence.filter(e => e.market_name === market && (e.entity_name || e.entity_ref)).slice(0, 8)
-        .forEach(e => entities.push({ name: e.entity_name ?? e.entity_ref ?? e.kind, category: e.kind, score: e.value_numeric ?? 0.7 }));
+
+    // Fallback: nested affinities in source_metadata_json
+    if (list.length === 0) {
+      evidence
+        .filter(e => e.market_name === market && e.kind === "brand_affinity" && e.source_metadata_json)
+        .forEach(e => {
+          const meta = e.source_metadata_json as Record<string, unknown>;
+          const aff = meta?.affinities as Array<{ name: string; category?: string; affinity_score?: number }> | undefined;
+          if (aff) aff.forEach(a => list.push({ name: a.name, category: a.category ?? "fashion", score: a.affinity_score ?? 0, kind: "brand_affinity" }));
+        });
     }
-    return entities.slice(0, 8);
+
+    // Sort by score desc, deduplicate by name
+    const seen = new Set<string>();
+    return list
+      .filter(e => { const k = e.name.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 12);
   }, [evidence, market]);
 
-  if (affinities.length === 0) return <p className="text-xs text-slate-600">No taste entity data for this market.</p>;
+  if (entities.length === 0) return <p className="text-xs text-slate-600">No taste signal data for this market.</p>;
 
-  const catColor = (cat: string) => {
-    const c = cat?.toLowerCase();
-    if (c?.includes("fashion") || c?.includes("brand_affinity")) return { bg: "rgba(99,102,241,0.12)", color: "#A5B4FC", border: "rgba(99,102,241,0.2)" };
-    if (c?.includes("music") || c?.includes("momentum"))          return { bg: "rgba(16,185,129,0.1)",  color: "#6EE7B7", border: "rgba(16,185,129,0.2)" };
-    if (c?.includes("venue") || c?.includes("locality"))          return { bg: "rgba(34,211,238,0.1)",  color: "#67E8F9", border: "rgba(34,211,238,0.2)" };
-    return { bg: "rgba(245,158,11,0.1)", color: "#FCD34D", border: "rgba(245,158,11,0.2)" };
+  const kindMeta: Record<string, { label: string; color: string; bar: string }> = {
+    brand_affinity:   { label: "Brand",    color: "#A5B4FC", bar: "#6366F1" },
+    audience_overlap: { label: "Audience", color: "#C4B5FD", bar: "#8B5CF6" },
+    locality_density: { label: "Venue",    color: "#67E8F9", bar: "#22D3EE" },
+    venue_anchor:     { label: "Venue",    color: "#67E8F9", bar: "#22D3EE" },
+    cultural_momentum:{ label: "Trend",    color: "#FCD34D", bar: "#F59E0B" },
   };
 
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {affinities.map((a, i) => {
-        const { bg, color, border } = catColor(a.category);
+    <div className="space-y-2">
+      {entities.map((e, i) => {
+        const meta = kindMeta[e.kind] ?? { label: e.kind, color: "#94A3B8", bar: "#64748B" };
+        const pct = Math.round(Math.min(100, Math.max(0, e.score <= 1 ? e.score * 100 : e.score)));
         return (
-          <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium"
-            style={{ background: bg, color, border: `1px solid ${border}` }}>
-            {a.name}
-          </span>
+          <div key={i} className="space-y-0.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded flex-shrink-0"
+                  style={{ background: `${meta.bar}18`, color: meta.color, border: `1px solid ${meta.bar}30` }}>
+                  {meta.label}
+                </span>
+                <span className="text-[11px] text-slate-200 truncate font-medium">{e.name}</span>
+              </div>
+              <span className="text-[11px] font-mono font-semibold flex-shrink-0" style={{ color: meta.color }}>
+                {pct}%
+              </span>
+            </div>
+            <div className="h-1 rounded-full bg-[#1A2338] overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${pct}%`, background: meta.bar }}
+              />
+            </div>
+          </div>
         );
       })}
     </div>
@@ -1309,7 +1346,7 @@ export default function RunIntelligencePage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
                 <div className="rounded-xl border border-[#1A2338] bg-[#0E1424] p-5 space-y-3">
                   <h3 className="text-sm font-bold text-white">5-Dimension Breakdown</h3>
                   {Object.keys(marketDimScores).length > 0 ? (
@@ -1320,11 +1357,14 @@ export default function RunIntelligencePage() {
                 </div>
 
                 <div className="rounded-xl border border-[#1A2338] bg-[#0E1424] p-5 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-white">Cultural Taste Signals</h3>
+                  <div className="flex items-start justify-between gap-4">
                     <div>
-                      <EvidenceDonut evidence={evidence} market={selectedMarket} />
+                      <h3 className="text-sm font-bold text-white">Cultural Taste Signals</h3>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Qloo-correlated entities for {selectedMarket.split(",")[0]}
+                      </p>
                     </div>
+                    <EvidenceDonut evidence={evidence} market={selectedMarket} />
                   </div>
                   <TasteEntities evidence={evidence} market={selectedMarket} />
                 </div>

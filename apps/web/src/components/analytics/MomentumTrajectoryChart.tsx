@@ -18,23 +18,19 @@ interface MomentumTrajectoryChartProps {
   className?: string;
 }
 
-const DEFAULT_DATA: TrajectoryDataPoint[] = [
-  { month: "May", score: 48, annotation: "Early Subculture Seed" },
-  { month: "Jun", score: 55 },
-  { month: "Jul", score: 63, annotation: "Key Influencer Crossover" },
-  { month: "Aug", score: 74 },
-  { month: "Sep", score: 82 },
-  { month: "Oct (Now)", score: 89, annotation: "Peak Resonance Gate" },
-  { month: "Nov", score: 92, isProjected: true },
-  { month: "Dec", score: 94, isProjected: true },
-];
-
 export function MomentumTrajectoryChart({
-  data = DEFAULT_DATA,
+  data,
   marketName = "Target Market",
   category = "Taste Resonance",
   className,
 }: MomentumTrajectoryChartProps) {
+  if (!data || data.length === 0) {
+    return (
+      <div className={cn("rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs flex items-center justify-center min-h-[160px]", className)}>
+        <p className="text-xs text-slate-500">No trajectory data available yet.</p>
+      </div>
+    );
+  }
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   const width = 560;
