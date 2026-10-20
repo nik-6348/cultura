@@ -95,6 +95,7 @@ export interface EvidenceRecord {
   content?: string;
   confidence: number;
   source_metadata_json?: Record<string, unknown>;
+  latency_ms?: number;
   created_at: string;
 }
 

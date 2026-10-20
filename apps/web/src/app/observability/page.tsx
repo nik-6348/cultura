@@ -84,6 +84,7 @@ export default function ObservabilityPage() {
   // Qloo API call telemetry from real evidence records
   const qlooCalls = evidence.map((ev, idx) => {
     const latencyMs =
+      ev.latency_ms ??
       (ev.source_metadata_json?.latency_ms as number | undefined) ??
       (ev.source_metadata_json?.response_time_ms as number | undefined);
     const latencyStr = latencyMs != null
@@ -385,7 +386,7 @@ export default function ObservabilityPage() {
       const lat = st.latency_ms ?? st.duration_ms ?? 280;
       const level: LogEntry["level"] = st.status === "failed" ? "ERROR" : "INFO";
       entries.push({
-        ts: fmtTime(st.started_at ?? runStart, i * 400),
+        ts: fmtTime(st.started_at ?? runStart, st.started_at ? 0 : i * 400),
         level,
         service: st.agent_name,
         traceId,
@@ -400,13 +401,13 @@ export default function ObservabilityPage() {
     // One entry per evidence fetch
     evidence.forEach((ev, i) => {
       entries.push({
-        ts: fmtTime(ev.created_at, -i * 50),
+        ts: fmtTime(ev.created_at, i),
         level: "INFO",
         service: "QlooGateway",
         traceId,
         spanId: ev.id.replace(/-/g, "").slice(0, 8),
-        msg: `GET /v1/tastes/${ev.kind.toLowerCase()} → 200 OK ${ev.market_name ? `market=${ev.market_name}` : ""} entity=${ev.entity_ref ?? ev.entity_name ?? "[REDACTED]"} confidence=${ev.confidence?.toFixed(2) ?? "—"}`,
-        attrs: { source: ev.source, kind: ev.kind, ...(ev.source_metadata_json?.latency_ms != null ? { latency_ms: ev.source_metadata_json.latency_ms as number } : {}) },
+        msg: `GET /v1/tastes/${ev.kind.toLowerCase()} → 200 OK ${ev.market_name ? `market=${ev.market_name}` : ""} entity=${ev.entity_ref ?? ev.entity_name ?? "[REDACTED]"} confidence=${ev.confidence?.toFixed(2) ?? "—"}${ev.latency_ms != null ? ` latency=${ev.latency_ms}ms` : ""}`,
+        attrs: { source: ev.source, kind: ev.kind, ...(ev.latency_ms != null ? { latency_ms: ev.latency_ms } : ev.source_metadata_json?.latency_ms != null ? { latency_ms: ev.source_metadata_json.latency_ms as number } : {}) },
       });
     });
 

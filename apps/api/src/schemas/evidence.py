@@ -70,6 +70,7 @@ class EvidenceRead(EvidenceBase):
     project_id: uuid.UUID
     created_at: datetime
     entity_name: str | None = None
+    latency_ms: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
