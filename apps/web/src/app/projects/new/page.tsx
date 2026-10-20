@@ -344,47 +344,28 @@ export default function NewProjectWizardPage() {
   const [error, setError] = useState<string | null>(null);
 
   // --- Step 1: Brand & Product State ---
-  const [projectName, setProjectName] = useState("Tokyo Streetwear Expansion");
-  const [brandName, setBrandName] = useState("Acme Streetwear");
+  const [projectName, setProjectName] = useState("");
+  const [brandName, setBrandName] = useState("");
   const [category, setCategory] = useState("Fashion & Apparel");
-  const [description, setDescription] = useState(
-    "Premium streetwear collection for urban youth, including apparel, sneakers and accessories."
-  );
-  const [tags, setTags] = useState<string[]>(["Streetwear", "Youth Culture", "Urban Fashion"]);
+  const [description, setDescription] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [newTagInput, setNewTagInput] = useState("");
 
   // --- Step 2: Target Audience State ---
-  const [audienceName, setAudienceName] = useState("Gen Z Streetwear Enthusiasts");
-  const [ageRange, setAgeRange] = useState<[number, number]>([15, 35]);
+  const [audienceName, setAudienceName] = useState("");
+  const [ageRange, setAgeRange] = useState<[number, number]>([18, 35]);
   const [gender, setGender] = useState<"All" | "Male" | "Female" | "Non-binary">("All");
-  const [incomeLevel, setIncomeLevel] = useState<"All" | "Low" | "Medium" | "High">("Medium");
-  const [targetLocations, setTargetLocations] = useState<string[]>(["Japan", "South Korea", "Singapore"]);
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([
-    "Streetwear",
-    "Sneakers",
-    "Music",
-    "Urban Culture",
-  ]);
+  const [incomeLevel, setIncomeLevel] = useState<"All" | "Low" | "Medium" | "High">("All");
+  const [targetLocations, setTargetLocations] = useState<string[]>([]);
+  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [customInterestInput, setCustomInterestInput] = useState("");
   const [showAddInterestModal, setShowAddInterestModal] = useState(false);
-  const [selectedLifestyles, setSelectedLifestyles] = useState<string[]>([
-    "Urban lifestyle",
-    "Trend early adopters",
-    "Social media active",
-    "Premium & quality focused",
-    "Limited edition collectors",
-    "Local and independent brands",
-  ]);
+  const [selectedLifestyles, setSelectedLifestyles] = useState<string[]>([]);
 
   // --- Step 3: Candidate Markets State ---
   const [marketSearchQuery, setMarketSearchQuery] = useState("");
   const [selectedRegionTab, setSelectedRegionTab] = useState<string>("All markets");
-  const [selectedMarkets, setSelectedMarkets] = useState<MarketPreset[]>([
-    PRESET_MARKETS[0], // Tokyo
-    PRESET_MARKETS[1], // Seoul
-    PRESET_MARKETS[4], // Singapore
-    PRESET_MARKETS[5], // Bangkok
-  ]);
+  const [selectedMarkets, setSelectedMarkets] = useState<MarketPreset[]>([]);
   const [apiMarkets, setApiMarkets] = useState<MarketPreset[]>([]);
   const [isSearchingApi, setIsSearchingApi] = useState(false);
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
@@ -403,14 +384,9 @@ export default function NewProjectWizardPage() {
   const [keySuccessMetrics, setKeySuccessMetrics] = useState<string[]>([
     "Market fit score",
     "Audience overlap",
-    "Revenue potential",
-    "Brand affinity",
     "Cultural relevance",
-    "Media and channel fit",
   ]);
-  const [additionalContext, setAdditionalContext] = useState(
-    "We are planning to launch a premium streetwear collection targeting Gen Z. We want to understand which markets have the highest cultural alignment and what local trends we should consider."
-  );
+  const [additionalContext, setAdditionalContext] = useState("");
 
   // Click outside listener for dropdowns
   useEffect(() => {
@@ -538,6 +514,9 @@ export default function NewProjectWizardPage() {
   // Final Action: Create & Execute Analysis Run
   const handleLaunchAnalysis = async () => {
     if (!workspace) return;
+    if (!brandName.trim()) { setError("Brand name is required."); return; }
+    if (!projectName.trim()) { setError("Project name is required."); return; }
+    if (selectedMarkets.length === 0) { setError("Select at least one candidate market."); return; }
     try {
       setLoading(true);
       setError(null);
