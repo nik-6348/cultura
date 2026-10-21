@@ -229,6 +229,12 @@ export const api = {
     return normalizeProject(proj);
   },
 
+  async deleteProject(projectId: string): Promise<void> {
+    return fetchJson<void>(`/api/v1/projects/${projectId}`, {
+      method: "DELETE",
+    });
+  },
+
   // Locations
   async searchLocations(query?: string, region?: string): Promise<MarketLocation[]> {
     const params = new URLSearchParams();

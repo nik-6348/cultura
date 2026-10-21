@@ -42,7 +42,7 @@ export default function AnalystChatPage() {
   }, []);
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 py-4 max-w-screen-xl mx-auto">
+    <div className="px-4 sm:px-6 lg:px-8 pt-4 max-w-screen-xl mx-auto">
     <div className="flex flex-col h-[calc(100vh-7rem)] bg-[#0E1424] rounded-2xl border border-[#1A2338] overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-5 h-14 border-b border-[#1A2338] flex-shrink-0">

@@ -14,6 +14,8 @@ import {
   LayoutList,
   LayoutGrid,
   Inbox,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { AnalysisRun, Project } from "@/lib/types";
@@ -74,6 +76,8 @@ export default function ProjectsPage() {
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(6);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -201,6 +205,18 @@ export default function ProjectsPage() {
   const totalPages = Math.max(1, Math.ceil(sorted.length / rowsPerPage));
   const currentPage = Math.min(page, totalPages);
   const paginated = sorted.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
+  async function handleDelete(projectId: string) {
+    setDeletingId(projectId);
+    try {
+      await api.deleteProject(projectId);
+      setProjects((prev) => prev.filter((p) => p.id !== projectId));
+    } finally {
+      setDeletingId(null);
+      setConfirmDeleteId(null);
+      setOpenMenuId(null);
+    }
+  }
 
   // Reset to page 1 whenever filters change the result set
   useEffect(() => {
@@ -615,6 +631,13 @@ export default function ProjectsPage() {
                               >
                                 Run New Analysis
                               </Link>
+                              <div className="my-1 border-t border-[#232F49]" />
+                              <button
+                                onClick={() => { setConfirmDeleteId(e.project.id); setOpenMenuId(null); }}
+                                className="w-full text-left px-3 py-2 text-xs text-rose-400 hover:bg-rose-500/10 flex items-center gap-2"
+                              >
+                                <Trash2 className="w-3 h-3" /> Delete Project
+                              </button>
                             </div>
                           </>
                         )}
@@ -744,6 +767,43 @@ export default function ProjectsPage() {
               </Link>
             );
           })}
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#121829] border border-[#232F49] rounded-2xl p-6 w-80 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-rose-500/10 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-4.5 h-4.5 text-rose-400" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white">Delete project?</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">All runs and data will be permanently deleted.</p>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                className="flex-1 py-2 rounded-lg border border-[#232F49] text-xs text-slate-300 hover:bg-[#1A2338] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { void handleDelete(confirmDeleteId); }}
+                disabled={deletingId === confirmDeleteId}
+                className="flex-1 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-xs text-white font-semibold transition-colors flex items-center justify-center gap-1.5"
+              >
+                {deletingId === confirmDeleteId ? (
+                  <span className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Trash2 className="w-3 h-3" />
+                )}
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
