@@ -368,6 +368,28 @@ export const api = {
     });
   },
 
+  // Project Intake (conversational creation)
+  async intakeMessage(payload: {
+    message: string;
+    messages: Array<{ role: "user" | "assistant"; content: string }>;
+  }): Promise<{
+    reply: string;
+    spec: {
+      brand_name: string | null;
+      project_name: string | null;
+      brand_category: string | null;
+      markets: Array<{ name: string; country_code?: string | null }>;
+      audience_description: string | null;
+      objective: string | null;
+    } | null;
+    ready: boolean;
+  }> {
+    return fetchJson("/api/v1/intake", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
   // Analyst Chat
   async chatWithAnalyst(
     projectId: string,

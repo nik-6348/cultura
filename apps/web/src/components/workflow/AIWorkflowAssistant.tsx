@@ -26,9 +26,19 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
-import type { MarketPreset as MarketItem } from "@/app/projects/new/page";
 
-export type { MarketItem };
+export interface MarketItem {
+  id: string;
+  name: string;
+  country: string;
+  country_code: string;
+  location_code: string;
+  region: string;
+  potential: string;
+  description: string;
+  flag: string;
+  color: string;
+}
 
 interface AIWorkflowAssistantProps {
   // Brand props

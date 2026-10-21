@@ -557,6 +557,17 @@ class AnalysisRunService:
             modified_audience["target_description"] = sanitized_changes["target_audience"]
         if "override_markets" in sanitized_changes:
             modified_markets = sanitized_changes["override_markets"]
+        if "add_markets" in sanitized_changes:
+            existing_names = {m.get("name", "").lower() for m in modified_markets if isinstance(m, dict)}
+            for m in sanitized_changes["add_markets"]:
+                if isinstance(m, dict) and m.get("name", "").lower() not in existing_names:
+                    modified_markets.append(m)
+        if "remove_markets" in sanitized_changes:
+            remove_names = {r.lower() for r in sanitized_changes["remove_markets"] if isinstance(r, str)}
+            modified_markets = [
+                m for m in modified_markets
+                if isinstance(m, dict) and m.get("name", "").lower() not in remove_names
+            ]
         if "brand_profile" in sanitized_changes:
             modified_brand.update(sanitized_changes["brand_profile"])
         if "audience_profile" in sanitized_changes:

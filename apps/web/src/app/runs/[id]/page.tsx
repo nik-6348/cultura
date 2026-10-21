@@ -16,6 +16,7 @@ import {
   RankedMarketItem, ReportRecord, RunStep, StrategyRecommendation,
 } from "@/lib/types";
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
+import { SimulationChatPanel } from "@/components/simulation/SimulationChatPanel";
 import { cn, formatDate } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1483,145 +1484,15 @@ export default function RunIntelligencePage() {
       )}
 
       {/* ════════════════════════ TAB 5: SIMULATION ═════════════════════════ */}
-      {activeTab === "simulation" && (
-        <div className="space-y-5 animate-in fade-in duration-200">
-          <div className="rounded-xl border border-[#1A2338] bg-[#0E1424] p-5 space-y-5">
-            <div>
-              <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-violet-400" />
-                Counterfactual Scenario Lab
-              </h2>
-              <p className="text-xs text-slate-500 mt-1">Describe a what-if scenario — the system will parse your intent into a testable parameter plan.</p>
-            </div>
-
-            {/* Step 1: Describe */}
-            {!simResult && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                    Describe your scenario
-                  </label>
-                  <textarea
-                    value={simScenario}
-                    onChange={e => { setSimScenario(e.target.value); setSimPlan([]); setSimConfirmed(false); }}
-                    rows={3}
-                    placeholder="e.g. What if we repositioned for younger audiences with eco-conscious messaging and local partnerships?"
-                    className="w-full rounded-xl border border-[#1A2338] bg-[#111827] px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:border-indigo-600 focus:outline-none resize-none"
-                  />
-                </div>
-
-                {/* Scenario templates */}
-                <div className="space-y-1.5">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">Quick scenarios</div>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      "Target younger Gen-Z consumers with digital-first approach",
-                      "Reposition as ultra-premium luxury brand",
-                      "Eco-conscious sustainable brand pivot",
-                      "Local partnership and co-branding strategy",
-                      "Budget-friendly mass market approach",
-                    ].map(t => (
-                      <button key={t} onClick={() => { setSimScenario(t); setSimPlan([]); setSimConfirmed(false); }}
-                        className="px-2.5 py-1 rounded-lg border border-[#252f45] bg-[#111827] hover:border-indigo-700 hover:bg-indigo-950/20 text-[10px] text-slate-400 hover:text-indigo-300 transition-all text-left">
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <button onClick={handleParseScenario} disabled={parsingSim || !simScenario.trim()}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-violet-700 hover:bg-violet-600 disabled:opacity-40 text-xs font-bold text-white transition-colors">
-                  {parsingSim
-                    ? <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Parsing…</>
-                    : <><MessageSquare className="w-3.5 h-3.5" /> Parse Scenario</>
-                  }
-                </button>
-              </div>
-            )}
-
-            {/* Step 2: Plan */}
-            {simPlan.length > 0 && !simResult && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                <div className="border-t border-[#1A2338] pt-4">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-3">Simulation Plan — Parameters to change</div>
-                  <div className="space-y-2">
-                    {simPlan.map((item, i) => (
-                      <div key={i} className="flex items-start gap-3 p-3 rounded-xl border border-[#252f45] bg-[#111827]">
-                        <div className="w-5 h-5 rounded-full bg-violet-900/60 border border-violet-700 flex items-center justify-center flex-shrink-0 mt-px">
-                          <span className="text-[9px] font-bold text-violet-300">{i + 1}</span>
-                        </div>
-                        <div className="flex-1 min-w-0 space-y-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-semibold text-slate-200">{item.label}</span>
-                            <span className="text-[10px] font-mono text-slate-600 bg-[#0E1424] px-1.5 py-0.5 rounded border border-[#1A2338]">{item.key}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-[11px]">
-                            {item.original && <span className="text-slate-600 line-through">{item.original}</span>}
-                            <span className="text-violet-300 font-mono">{item.value.length > 60 ? item.value.slice(0, 60) + "…" : item.value}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 pt-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={simConfirmed} onChange={e => setSimConfirmed(e.target.checked)}
-                      className="w-4 h-4 rounded border-[#1A2338] bg-[#111827] accent-violet-500" />
-                    <span className="text-xs text-slate-400">I&apos;ve reviewed the plan and want to proceed</span>
-                  </label>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <button onClick={() => { setSimPlan([]); setSimConfirmed(false); }}
-                    className="px-4 py-2.5 rounded-xl border border-[#252f45] text-xs text-slate-400 hover:text-slate-200 hover:border-[#3a4a60] transition-colors">
-                    Revise
-                  </button>
-                  <button onClick={handleExecuteSimulation} disabled={!simConfirmed || runningSim}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-xs font-bold text-white transition-colors">
-                    {runningSim
-                      ? <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Running simulation…</>
-                      : <><Play className="w-3.5 h-3.5" /> Run Simulation</>
-                    }
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Result */}
-            {simResult && (
-              <div className="rounded-xl border border-indigo-800/50 bg-indigo-950/20 p-4 space-y-4 animate-in fade-in">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-white flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Simulation Complete
-                  </span>
-                  <Link href={`/runs/${simResult.id}`}
-                    className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
-                    Open full run <ChevronRight className="w-3 h-3" />
-                  </Link>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: "Baseline Score", val: run.overall_score ? pct(run.overall_score) : "—", color: "#94A3B8" },
-                    { label: "Simulated Score", val: simResult.overall_score ? pct(simResult.overall_score) : "—", color: "#A5B4FC" },
-                    { label: "New Verdict", val: simResult.decision_verdict ?? "—", color: verdictColor(simResult.decision_verdict ?? "") },
-                  ].map(s => (
-                    <div key={s.label} className="rounded-lg bg-[#111827] border border-[#1A2338] p-3 text-center">
-                      <div className="text-[10px] text-slate-500 mb-1">{s.label}</div>
-                      <div className="text-base font-bold font-mono" style={{ color: s.color }}>{s.val}</div>
-                    </div>
-                  ))}
-                </div>
-                {simResult.strategy_summary && (
-                  <p className="text-xs text-slate-400 italic">"{simResult.strategy_summary}"</p>
-                )}
-                <button onClick={() => { setSimResult(null); setSimPlan([]); setSimConfirmed(false); setSimScenario(""); }}
-                  className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
-                  Run another scenario ↩
-                </button>
-              </div>
-            )}
+      {activeTab === "simulation" && run && (
+        <div className="animate-in fade-in duration-200 rounded-xl border border-[#1A2338] overflow-hidden" style={{ height: "520px" }}>
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#1A2338] bg-[#0D1220]">
+            <Sliders className="w-3.5 h-3.5 text-violet-400" />
+            <span className="text-[11px] font-semibold text-slate-300">Scenario Lab</span>
+            <span className="text-[10px] text-slate-600">— describe any change, AI will build and run it</span>
+          </div>
+          <div className="h-[calc(100%-42px)]">
+            <SimulationChatPanel run={run} onSimulationComplete={(sim) => { void sim; }} />
           </div>
         </div>
       )}
