@@ -261,7 +261,7 @@ export default function DashboardPage() {
   const today = new Date().toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-in fade-in duration-300">
+    <div className="w-full max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-in fade-in duration-300">
       {/* 1. Header */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
         <div className="lg:col-span-7 space-y-1.5">
