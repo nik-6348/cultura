@@ -38,7 +38,7 @@ export default function SettingsPage() {
   }, []);
 
   return (
-    <div className="max-w-4xl space-y-8">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-8">
       {/* Header */}
       <div className="pb-4 border-b border-slate-200 dark:border-slate-800">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center space-x-2.5">
