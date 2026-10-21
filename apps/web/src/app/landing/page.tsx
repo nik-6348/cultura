@@ -1,264 +1,294 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import {
-  ArrowRight,
-  Play,
-  CheckCircle2,
-  ShieldCheck,
-  Zap,
-  BarChart3,
-} from "lucide-react";
+import { ArrowRight, MapPin, TrendingUp, Zap, CheckCircle2, Globe, ChevronRight } from "lucide-react";
 import { CulturaLogo } from "@/components/ui/CulturaLogo";
 
+const CHAT_STEPS = [
+  { role: "ai",   text: "What brand are you expanding, and where are you thinking of taking it?" },
+  { role: "user", text: "We're BIRA 91 — craft beer from India. Thinking Southeast Asia." },
+  { role: "ai",   text: "Love it. Any cities already on your shortlist, or you want me to surface the best ones?" },
+  { role: "user", text: "Give me your top 3." },
+  { role: "ai",   text: "On it. Pulling taste signals across 40+ cultural dimensions for Bangkok, Ho Chi Minh City, and Singapore…" },
+];
+
+const MARKETS = [
+  {
+    city: "Bangkok",
+    country: "Thailand",
+    score: 91,
+    verdict: "LAUNCH",
+    verdictColor: "text-emerald-400",
+    verdictBg: "bg-emerald-500/10 border-emerald-500/30",
+    signals: ["Craft beer growing 38% YoY", "Strong affinity with BIRA-adjacent music scenes", "Premium casual dining culture"],
+    dim: [94, 89, 91, 88, 82],
+  },
+  {
+    city: "Ho Chi Minh City",
+    country: "Vietnam",
+    score: 78,
+    verdict: "ADAPT",
+    verdictColor: "text-amber-400",
+    verdictBg: "bg-amber-500/10 border-amber-500/30",
+    signals: ["Beer culture dominant but price-sensitive", "Younger urban cohort open to premium", "Local brand loyalty strong"],
+    dim: [81, 76, 80, 73, 71],
+  },
+  {
+    city: "Singapore",
+    country: "Singapore",
+    score: 85,
+    verdict: "LAUNCH",
+    verdictColor: "text-emerald-400",
+    verdictBg: "bg-emerald-500/10 border-emerald-500/30",
+    signals: ["India diaspora creates cultural bridge", "Premium F&B market is saturated but receptive", "High social media amplification"],
+    dim: [88, 85, 84, 86, 80],
+  },
+];
+
+const DIMS = ["Category Affinity", "Audience Overlap", "Tone Resonance", "Trend Momentum", "Market Readiness"];
+
 export default function LandingPage() {
-  const [selectedDemoTab, setSelectedDemoTab] = useState<"bangalore" | "tokyo">(
-    "bangalore"
-  );
+  const [activeMarket, setActiveMarket] = useState(0);
+  const [visibleChat, setVisibleChat] = useState(0);
+  const [typed, setTyped] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+
+  useEffect(() => {
+    if (visibleChat >= CHAT_STEPS.length) return;
+    const step = CHAT_STEPS[visibleChat];
+    if (step.role === "ai") {
+      setIsTyping(true);
+      const delay = setTimeout(() => {
+        setIsTyping(false);
+        setTyped("");
+        let i = 0;
+        const interval = setInterval(() => {
+          setTyped(step.text.slice(0, i + 1));
+          i++;
+          if (i >= step.text.length) {
+            clearInterval(interval);
+            setTimeout(() => setVisibleChat((v) => v + 1), 800);
+          }
+        }, 22);
+      }, 600);
+      return () => clearTimeout(delay);
+    } else {
+      const delay = setTimeout(() => {
+        setVisibleChat((v) => v + 1);
+      }, 400);
+      return () => clearTimeout(delay);
+    }
+  }, [visibleChat]);
+
+  const market = MARKETS[activeMarket];
 
   return (
-    <div className="min-h-screen bg-[#FDFDFE] text-slate-900 selection:bg-indigo-100 selection:text-indigo-900 font-sans antialiased overflow-x-hidden">
-      {/* 1. Global Navigation Bar */}
-      <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-slate-200/80">
-        <div className="max-w-7xl mx-auto px-6 h-18 flex items-center justify-between">
-          {/* Logo */}
+    <div className="min-h-screen bg-[#070B14] text-white selection:bg-indigo-500/30 antialiased overflow-x-hidden font-sans">
+
+      {/* ── Nav ────────────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-50 w-full bg-[#070B14]/80 backdrop-blur-md border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center">
-            <CulturaLogo size={32} showText={true} />
+            <CulturaLogo size={28} showText={true} />
           </Link>
 
-          {/* Nav Links */}
-          <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-600">
-            <a href="#product" className="hover:text-slate-900 transition-colors">
-              Product
-            </a>
-            <a href="#how-it-works" className="hover:text-slate-900 transition-colors">
-              How it works
-            </a>
-            <a href="#engine" className="hover:text-slate-900 transition-colors">
-              Intelligence Engine
-            </a>
-            <a href="#comparison" className="hover:text-slate-900 transition-colors">
-              Why Cultura
-            </a>
+          <nav className="hidden md:flex items-center gap-8 text-sm text-slate-400">
+            <a href="#how" className="hover:text-white transition-colors">How it works</a>
+            <a href="#results" className="hover:text-white transition-colors">See results</a>
+            <a href="#why" className="hover:text-white transition-colors">Why Cultura</a>
           </nav>
 
-          {/* Right Action Buttons */}
-          <div className="flex items-center space-x-3.5">
-            <Link
-              href="/login"
-              className="text-sm font-medium text-slate-600 hover:text-slate-900 px-3 py-1.5 transition-colors"
-            >
+          <div className="flex items-center gap-3">
+            <Link href="/login" className="text-sm text-slate-400 hover:text-white px-3 py-1.5 transition-colors">
               Sign in
             </Link>
             <Link
               href="/dashboard"
-              className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-xs shadow-indigo-200 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
-              <span>Get started free</span>
-              <ArrowRight className="w-4 h-4" />
+              Try free <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
         </div>
       </header>
 
-      {/* 2. Hero Section (Matching Mockup 22_Landing_Page_Hero_Draft.png) */}
-      <section className="relative pt-12 pb-20 md:pt-20 md:pb-32 overflow-hidden">
-        {/* Soft atmospheric gradient background */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[600px] bg-gradient-to-b from-indigo-100/40 via-purple-50/20 to-transparent blur-3xl -z-10 pointer-events-none" />
+      {/* ── Hero ───────────────────────────────────────────────────────── */}
+      <section className="relative pt-16 pb-24 md:pt-24 overflow-hidden">
+        {/* Glow blobs */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-indigo-600/10 blur-[120px] pointer-events-none -z-10" />
+        <div className="absolute top-40 left-1/4 w-[400px] h-[400px] bg-violet-600/8 blur-[100px] pointer-events-none -z-10" />
 
         <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
-            {/* Left Column: Headline & Value Prop */}
-            <div className="lg:col-span-6 space-y-6">
-              {/* Qloo Attribution Badge */}
-              <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-medium shadow-xs">
-                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
-                <span className="font-semibold text-indigo-200">Powered by Qloo</span>
-                <span className="text-slate-400">• The world&apos;s cultural taste graph</span>
+          <div className="text-center mb-10 space-y-4 max-w-3xl mx-auto">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+              Powered by Qloo taste graph · Real cultural signals
+            </div>
+
+            <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight leading-[1.05]">
+              Which city actually{" "}
+              <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
+                wants your brand?
+              </span>
+            </h1>
+
+            <p className="text-lg text-slate-400 leading-relaxed max-w-2xl mx-auto">
+              Tell our AI analyst about your brand. Get a ranked market list with real cultural fit scores,
+              taste signal evidence, and a clear Launch / Adapt / Avoid verdict — in minutes.
+            </p>
+
+            <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+              <Link
+                href="/projects/new"
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-base transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-indigo-600/20"
+              >
+                Start your first analysis <ArrowRight className="w-4 h-4" />
+              </Link>
+              <a href="#results" className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors">
+                See a real result <ChevronRight className="w-4 h-4" />
+              </a>
+            </div>
+          </div>
+
+          {/* Hero Cards: Chat + Score side by side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-5xl mx-auto">
+
+            {/* Chat intake card */}
+            <div className="rounded-2xl bg-[#0D1220] border border-[#1A2338] overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#1A2338] flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-rose-500/70" />
+                <div className="w-2 h-2 rounded-full bg-amber-500/70" />
+                <div className="w-2 h-2 rounded-full bg-emerald-500/70" />
+                <span className="text-[10px] font-mono text-slate-500 ml-2">AI Analyst · New Project</span>
               </div>
+              <div className="p-4 space-y-3 min-h-[280px]">
+                {CHAT_STEPS.slice(0, visibleChat).map((step, i) => (
+                  <div key={i} className={`flex ${step.role === "user" ? "justify-end" : "justify-start"}`}>
+                    {step.role === "ai" && (
+                      <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-700 flex items-center justify-center flex-shrink-0 mr-2 mt-0.5">
+                        <Zap className="w-3 h-3 text-white" />
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[80%] rounded-xl px-3 py-2 text-[12px] leading-relaxed ${
+                        step.role === "user"
+                          ? "bg-indigo-600 text-white rounded-br-sm"
+                          : "bg-[#151C2C] border border-[#1E2A42] text-slate-200 rounded-bl-sm"
+                      }`}
+                    >
+                      {step.text}
+                    </div>
+                  </div>
+                ))}
 
-              {/* Main Headline */}
-              <div className="relative">
-                <div className="text-xs uppercase tracking-widest font-bold text-indigo-600 mb-2 font-mono">
-                  From local culture to global growth
-                </div>
-                <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight text-slate-950 leading-[1.08]">
-                  Know where your brand{" "}
-                  <span className="relative italic font-serif text-indigo-600 underline decoration-indigo-300 decoration-wavy decoration-2">
-                    truly
-                  </span>{" "}
-                  belongs.
-                </h1>
-              </div>
+                {/* Typing bubble */}
+                {isTyping && (
+                  <div className="flex justify-start items-end gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-700 flex items-center justify-center flex-shrink-0">
+                      <Zap className="w-3 h-3 text-white animate-pulse" />
+                    </div>
+                    <div className="rounded-xl rounded-bl-sm px-3 py-2 bg-[#151C2C] border border-[#1E2A42]">
+                      <span className="inline-flex gap-1">
+                        {[0, 1, 2].map((n) => (
+                          <span key={n} className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce"
+                            style={{ animationDelay: `${n * 0.18}s`, animationDuration: "0.9s" }} />
+                        ))}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
-              {/* Subhead */}
-              <p className="text-lg text-slate-600 leading-relaxed max-w-xl">
-                Use real cultural taste signals to decide where to <strong>launch</strong>,{" "}
-                <strong>adapt</strong> or <strong>avoid</strong> — with an agentic AI workflow
-                powered by Qloo global taste signals, 5D cultural compatibility modeling, and verified strategic readiness gates.
-              </p>
-
-              {/* CTAs */}
-              <div className="flex flex-wrap items-center gap-4 pt-2">
-                <Link
-                  href="/dashboard"
-                  className="inline-flex items-center space-x-2 px-6 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-base shadow-sm shadow-indigo-300 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                >
-                  <span>Get started free</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-
-                <a
-                  href="#how-it-works"
-                  className="inline-flex items-center space-x-2 px-5 py-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-semibold text-base border border-slate-200/80 shadow-2xs transition-all"
-                >
-                  <Play className="w-4 h-4 text-indigo-600 fill-indigo-600" />
-                  <span>Watch interactive demo</span>
-                </a>
-              </div>
-
-              {/* Trust Badges */}
-              <div className="pt-4 flex flex-wrap items-center gap-6 text-xs font-medium text-slate-500">
-                <div className="flex items-center space-x-1.5">
-                  <BarChart3 className="w-4 h-4 text-indigo-600" />
-                  <span>5D Cultural Compatibility Model</span>
-                </div>
-                <div className="flex items-center space-x-1.5">
-                  <Zap className="w-4 h-4 text-amber-500" />
-                  <span>Real Qloo Empirical Graph</span>
-                </div>
-                <div className="flex items-center space-x-1.5">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  <span>Zero Hallucination Guard</span>
-                </div>
+                {/* Live partial text */}
+                {!isTyping && visibleChat < CHAT_STEPS.length && CHAT_STEPS[visibleChat].role === "ai" && typed && (
+                  <div className="flex justify-start items-end gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-700 flex items-center justify-center flex-shrink-0">
+                      <Zap className="w-3 h-3 text-white" />
+                    </div>
+                    <div className="max-w-[80%] rounded-xl rounded-bl-sm px-3 py-2 bg-[#151C2C] border border-[#1E2A42] text-slate-200 text-[12px] leading-relaxed">
+                      {typed}<span className="animate-pulse">▍</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Right Column: Live Interactive Product Hero Card */}
-            <div className="lg:col-span-6 relative">
-              <div className="relative rounded-2xl bg-white border border-slate-200/90 shadow-xl shadow-slate-200/60 p-5 md:p-6 transition-all">
-                {/* Header Mockup Bar */}
-                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 rounded-full bg-rose-400" />
-                    <div className="w-3 h-3 rounded-full bg-amber-400" />
-                    <div className="w-3 h-3 rounded-full bg-emerald-400" />
-                    <span className="text-xs font-mono text-slate-400 ml-2">
-                      projects/tokyo-streetwear/results
+            {/* Score result card */}
+            <div id="results" className="rounded-2xl bg-[#0D1220] border border-[#1A2338] overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#1A2338] flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Globe className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="text-[11px] font-semibold text-slate-300">Market Rankings · BIRA 91</span>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold">
+                  Complete
+                </span>
+              </div>
+
+              {/* Market tabs */}
+              <div className="flex border-b border-[#1A2338]">
+                {MARKETS.map((m, i) => (
+                  <button
+                    key={m.city}
+                    onClick={() => setActiveMarket(i)}
+                    className={`flex-1 py-2.5 text-[11px] font-semibold transition-colors relative ${
+                      activeMarket === i
+                        ? "text-white"
+                        : "text-slate-500 hover:text-slate-300"
+                    }`}
+                  >
+                    {activeMarket === i && (
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-t" />
+                    )}
+                    #{i + 1} {m.city}
+                  </button>
+                ))}
+              </div>
+
+              <div className="p-4 space-y-3">
+                {/* Score + verdict */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                      <span className="text-sm font-bold text-white">{market.city}</span>
+                      <span className="text-xs text-slate-500">{market.country}</span>
+                    </div>
+                    <span className={`inline-block mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full border ${market.verdictBg} ${market.verdictColor}`}>
+                      {market.verdict}
                     </span>
                   </div>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                    Live Analysis
-                  </span>
-                </div>
-
-                {/* Card Title */}
-                <div className="pt-4 pb-3 flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-lg">
-                      Tokyo Streetwear Expansion
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      Evaluating 4 candidate markets for premium Japanese streetwear brand
-                    </p>
-                  </div>
-                  <div className="flex space-x-1">
-                    <button
-                      onClick={() => setSelectedDemoTab("bangalore")}
-                      className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${
-                        selectedDemoTab === "bangalore"
-                          ? "bg-indigo-600 text-white"
-                          : "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      Bangalore
-                    </button>
-                    <button
-                      onClick={() => setSelectedDemoTab("tokyo")}
-                      className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${
-                        selectedDemoTab === "tokyo"
-                          ? "bg-indigo-600 text-white"
-                          : "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      Tokyo
-                    </button>
+                  <div className="text-right">
+                    <div className="text-3xl font-extrabold text-white">{market.score}</div>
+                    <div className="text-[10px] text-slate-500">/ 100</div>
                   </div>
                 </div>
 
-                {/* Top Recommendation Highlight */}
-                <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50/70 via-indigo-50/40 to-transparent border border-emerald-100/80 mb-4 flex items-center justify-between">
-                  <div>
-                    <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                      Top Recommendation
-                    </div>
-                    <div className="text-xl font-bold text-slate-900 flex items-center space-x-2 mt-0.5">
-                      <span>{selectedDemoTab === "bangalore" ? "Bangalore, India" : "Tokyo, Japan"}</span>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-600 text-white">
-                        LAUNCH
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-600 mt-1">
-                      {selectedDemoTab === "bangalore"
-                        ? "Strong cultural alignment with streetwear, tech music and youth culture."
-                        : "High category resonance, mature independent boutique ecosystem, and receptive Gen Z."}
-                    </p>
-                  </div>
-                  <div className="text-right flex-shrink-0 ml-4">
-                    <div className="text-3xl font-extrabold text-slate-950">
-                      {selectedDemoTab === "bangalore" ? "87" : "92"}
-                      <span className="text-xs font-normal text-slate-400">/100</span>
-                    </div>
-                    <div className="text-[10px] font-semibold text-emerald-700">
-                      High confidence
-                    </div>
-                  </div>
-                </div>
-
-                {/* 5-Dimensional Breakdown */}
-                <div className="space-y-2 mb-4">
-                  <div className="text-xs font-semibold text-slate-700">
-                    Cultural Dimensions ({selectedDemoTab === "bangalore" ? "Bangalore" : "Tokyo"})
-                  </div>
-                  {[
-                    { label: "Category Taste Affinity", val: selectedDemoTab === "bangalore" ? 92 : 95, color: "bg-indigo-600" },
-                    { label: "Audience Overlap", val: selectedDemoTab === "bangalore" ? 88 : 91, color: "bg-violet-600" },
-                    { label: "Sentiment & Tone Resonance", val: selectedDemoTab === "bangalore" ? 85 : 89, color: "bg-purple-600" },
-                    { label: "Cultural Trend Momentum", val: selectedDemoTab === "bangalore" ? 80 : 94, color: "bg-blue-600" },
-                    { label: "Contextual & Regulatory Fit", val: selectedDemoTab === "bangalore" ? 78 : 88, color: "bg-emerald-600" },
-                  ].map((dim) => (
-                    <div key={dim.label} className="flex items-center justify-between text-xs">
-                      <span className="text-slate-600 w-44 truncate">{dim.label}</span>
-                      <div className="flex-1 mx-3 h-2 rounded-full bg-slate-100 overflow-hidden">
+                {/* Dimension bars */}
+                <div className="space-y-1.5">
+                  {DIMS.map((d, i) => (
+                    <div key={d} className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-500 w-32 truncate">{d}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-[#1A2338] overflow-hidden">
                         <div
-                          className={`h-full rounded-full ${dim.color} transition-all duration-500`}
-                          style={{ width: `${dim.val}%` }}
+                          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500"
+                          style={{ width: `${market.dim[i]}%` }}
                         />
                       </div>
-                      <span className="font-semibold text-slate-900 w-8 text-right">
-                        {dim.val}%
-                      </span>
+                      <span className="text-[10px] font-semibold text-slate-400 w-6 text-right">{market.dim[i]}</span>
                     </div>
                   ))}
                 </div>
 
-                {/* Key Empirical Signals Chips */}
-                <div className="pt-2 border-t border-slate-100">
-                  <div className="text-[11px] font-semibold text-slate-500 mb-2">
-                    Verified Qloo Taste Signals:
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    <span className="inline-flex items-center px-2 py-1 rounded-md text-[11px] bg-slate-100 text-slate-700 font-medium">
-                      ✦ High interest in sneakers & streetwear
-                    </span>
-                    <span className="inline-flex items-center px-2 py-1 rounded-md text-[11px] bg-slate-100 text-slate-700 font-medium">
-                      ✦ Strong music & creator events
-                    </span>
-                    <span className="inline-flex items-center px-2 py-1 rounded-md text-[11px] bg-slate-100 text-slate-700 font-medium">
-                      ✦ High affinity for artisanal coffee
-                    </span>
-                  </div>
+                {/* Signals */}
+                <div className="space-y-1 pt-1 border-t border-[#1A2338]">
+                  {market.signals.map((s) => (
+                    <div key={s} className="flex items-start gap-2 text-[11px] text-slate-400">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-500 flex-shrink-0 mt-0.5" />
+                      {s}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -266,198 +296,145 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 3. Value Pillars (01 to 04 Matching Mockup 22 Bottom) */}
-      <section className="py-12 border-y border-slate-200/80 bg-white">
+      {/* ── How it works ───────────────────────────────────────────────── */}
+      <section id="how" className="py-20 border-t border-white/5">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-8 font-mono">
-            Cultural Intelligence for Real Business Decisions
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="space-y-2">
-              <span className="text-2xl font-bold font-serif text-indigo-600">01</span>
-              <h4 className="font-bold text-slate-900 text-base">Explore New Markets</h4>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Find where your brand organically fits culturally across hundreds of global territories.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <span className="text-2xl font-bold font-serif text-indigo-600">02</span>
-              <h4 className="font-bold text-slate-900 text-base">Reduce Entry Risk</h4>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Avoid costly misfires in markets with low cultural resonance or brand tone rejection.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <span className="text-2xl font-bold font-serif text-indigo-600">03</span>
-              <h4 className="font-bold text-slate-900 text-base">Make Faster Decisions</h4>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Evidence-backed recommendations and strategic market entry verdicts in minutes, not consultant months.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <span className="text-2xl font-bold font-serif text-indigo-600">04</span>
-              <h4 className="font-bold text-slate-900 text-base">Turn Insight into Action</h4>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Receive concrete strategic playbooks: channels, influencer alignment, and localized messaging.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. Problem & Solution Section (Matching Mockup 23) */}
-      <section id="comparison" className="py-20 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
-            <span className="text-xs uppercase font-bold tracking-widest text-indigo-600 font-mono">
-              The Cross-Border Dilemma
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
-              Why 73% of International Expansions Falter
-            </h2>
-            <p className="text-base text-slate-600">
-              Demographics tell you how many people live in a market. Cultural intelligence tells you if they will care about your brand.
-            </p>
+          <div className="text-center mb-12 space-y-2">
+            <p className="text-xs uppercase tracking-widest font-bold text-indigo-400 font-mono">How it works</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">Three steps to a decision</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* The Old Way */}
-            <div className="p-8 rounded-2xl bg-white border border-rose-100 shadow-xs space-y-5">
-              <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-100">
-                Traditional Market Entry
-              </div>
-              <h3 className="text-xl font-bold text-slate-900">
-                Subjective Guesswork & Demographic Proxies
-              </h3>
-              <ul className="space-y-3 text-sm text-slate-600">
-                <li className="flex items-start space-x-2.5">
-                  <span className="text-rose-500 font-bold">✕</span>
-                  <span><strong>Superficial Census Data</strong>: Relying purely on GDP and age stats with zero cultural taste context.</span>
-                </li>
-                <li className="flex items-start space-x-2.5">
-                  <span className="text-rose-500 font-bold">✕</span>
-                  <span><strong>Slow, Expensive Agency Reports</strong>: 6-month timelines costing $100K+ with outdated static surveys.</span>
-                </li>
-                <li className="flex items-start space-x-2.5">
-                  <span className="text-rose-500 font-bold">✕</span>
-                  <span><strong>Cultural Tone-Deafness</strong>: Missing localized taboos, declining trends, or misaligned influencer pairings.</span>
-                </li>
-              </ul>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+            {/* connecting line */}
+            <div className="hidden md:block absolute top-10 left-1/3 right-1/3 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
 
-            {/* The Cultura Way */}
-            <div className="p-8 rounded-2xl bg-gradient-to-br from-indigo-900 to-slate-950 text-white shadow-lg space-y-5">
-              <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
-                The Cultura Standard
-              </div>
-              <h3 className="text-xl font-bold text-white">
-                Empirical Consumer Signals & Multi-Agent Intelligence
-              </h3>
-              <ul className="space-y-3 text-sm text-indigo-100/90">
-                <li className="flex items-start space-x-2.5">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                  <span><strong>Real Taste Graph Entities</strong>: Millions of citable connections across music, fashion, food, and culture.</span>
-                </li>
-                <li className="flex items-start space-x-2.5">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                  <span><strong>Deterministic Compatibility Math</strong>: Zero hallucination. Identical mathematical compatibility scores every run.</span>
-                </li>
-                <li className="flex items-start space-x-2.5">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                  <span><strong>Strategic Readiness Decision Gates</strong>: Strict Launch / Adapt / Avoid verdicts backed by empirical consumer taste data.</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. Autonomous Multi-Agent Pipeline Overview */}
-      <section id="engine" className="py-20 bg-white border-t border-slate-200/80">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
-            <span className="text-xs uppercase font-bold tracking-widest text-indigo-600 font-mono">
-              Autonomous Intelligence
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
-              10 Specialized Strategic Analysis Agents
-            </h2>
-            <p className="text-base text-slate-600">
-              Each analysis executes through an autonomous multi-stage evaluation pipeline with institutional memory.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {[
-              { num: "01", name: "Supervisor", desc: "Decomposes goals & plans execution" },
-              { num: "02", name: "Brand Analyst", desc: "Extracts identity & positioning constraints" },
-              { num: "03", name: "Market Analyst", desc: "Evaluates target territory infrastructure" },
-              { num: "04", name: "Audience Analyst", desc: "Maps demographic & psychographic cohorts" },
-              { num: "05", name: "Taste Researcher", desc: "Queries empirical consumer taste signals" },
-              { num: "06", name: "Signal Normalizer", desc: "Standardizes scores into [0, 1] range" },
-              { num: "07", name: "Compatibility Scorer", desc: "Computes 5D cultural compatibility index" },
-              { num: "08", name: "Readiness Gate", desc: "Verifies Launch / Adapt / Avoid criteria" },
-              { num: "09", name: "Strategy Synthesizer", desc: "Builds actionable go-to-market playbook" },
-              { num: "10", name: "Governance Guard", desc: "Verifies grounding & blocks assumptions" },
-            ].map((agent) => (
-              <div
-                key={agent.num}
-                className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 hover:border-indigo-300 hover:bg-indigo-50/30 transition-all"
-              >
-                <div className="text-xs font-mono font-bold text-indigo-600">
-                  {agent.num}
+              {
+                n: "01",
+                icon: <Zap className="w-5 h-5" />,
+                title: "Talk to the analyst",
+                body: "Describe your brand in plain language. No forms. The AI asks what it needs — one question at a time.",
+                color: "from-indigo-500 to-violet-600",
+              },
+              {
+                n: "02",
+                icon: <TrendingUp className="w-5 h-5" />,
+                title: "Real signals, not stats",
+                body: "We query Qloo's taste graph — 750M+ real consumer behaviors across music, food, fashion, and culture — for each candidate market.",
+                color: "from-violet-500 to-purple-600",
+              },
+              {
+                n: "03",
+                icon: <MapPin className="w-5 h-5" />,
+                title: "Get a clear verdict",
+                body: "Launch. Adapt. Avoid. Each market gets a score, ranked list of cultural signals, and a strategic playbook — not a 40-page report.",
+                color: "from-emerald-500 to-teal-600",
+              },
+            ].map((step) => (
+              <div key={step.n} className="relative rounded-2xl bg-[#0D1220] border border-[#1A2338] p-6 space-y-3 hover:border-indigo-500/30 transition-colors">
+                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${step.color} flex items-center justify-center`}>
+                  {step.icon}
                 </div>
-                <div className="font-semibold text-slate-900 text-sm mt-1">
-                  {agent.name}
-                </div>
-                <div className="text-xs text-slate-500 mt-1 leading-snug">
-                  {agent.desc}
-                </div>
+                <div className="text-[10px] font-mono font-bold text-slate-500">{step.n}</div>
+                <h3 className="text-base font-bold text-white">{step.title}</h3>
+                <p className="text-sm text-slate-400 leading-relaxed">{step.body}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* 6. Footer CTA */}
-      <footer className="py-16 bg-slate-950 text-white border-t border-slate-900">
-        <div className="max-w-7xl mx-auto px-6 text-center space-y-8">
-          <div className="max-w-2xl mx-auto space-y-4">
-            <h3 className="text-3xl font-extrabold tracking-tight">
-              Ready to find where your brand belongs?
-            </h3>
-            <p className="text-slate-400 text-base">
-              Start your first deterministic cultural compatibility analysis today.
-            </p>
-            <div className="pt-2">
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center space-x-2 px-8 py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-base shadow-lg shadow-indigo-600/30 transition-all"
-              >
-                <span>Launch Cultura Dashboard</span>
-                <ArrowRight className="w-5 h-5" />
-              </Link>
+      {/* ── Why Cultura ────────────────────────────────────────────────── */}
+      <section id="why" className="py-20 border-t border-white/5 bg-[#0A0F1C]">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+            <div className="space-y-5">
+              <p className="text-xs uppercase tracking-widest font-bold text-indigo-400 font-mono">Why Cultura</p>
+              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+                Demographics tell you who&apos;s there.{" "}
+                <span className="text-slate-400">We tell you if they&apos;ll care.</span>
+              </h2>
+              <p className="text-slate-400 leading-relaxed">
+                A city with 10 million people tells you nothing about whether they&apos;ll connect with your brand.
+                Cultural taste signals do. We surface what people in a market actually love — and score how well
+                your brand fits into that.
+              </p>
+
+              <div className="space-y-3 pt-2">
+                {[
+                  "Real taste data — not synthetic demographics or LLM guesses",
+                  "Scores are deterministic — same inputs, same result, every time",
+                  "Instant — run an analysis in minutes, not consultant months",
+                  "Simulation — tweak markets, audience, positioning and re-run",
+                ].map((item) => (
+                  <div key={item} className="flex items-start gap-3 text-sm text-slate-300">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                    {item}
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2">
+                <Link
+                  href="/projects/new"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-all hover:scale-[1.02]"
+                >
+                  Run your first analysis free <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Quick stats */}
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { val: "750M+", label: "Consumer taste signals in the Qloo graph", color: "indigo" },
+                { val: "5D", label: "Cultural compatibility dimensions scored per market", color: "violet" },
+                { val: "<3 min", label: "From brand description to full market ranking", color: "emerald" },
+                { val: "40+", label: "Global markets analysed and growing", color: "amber" },
+              ].map((s) => (
+                <div key={s.label} className={`rounded-2xl bg-[#0D1220] border border-[#1A2338] p-5 space-y-1 hover:border-${s.color}-500/30 transition-colors`}>
+                  <div className={`text-3xl font-extrabold text-${s.color}-400`}>{s.val}</div>
+                  <div className="text-xs text-slate-500 leading-snug">{s.label}</div>
+                </div>
+              ))}
             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="pt-12 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500">
-            <div>
-              © 2026 Cultura AI Inc. All rights reserved. Powered by Qloo Taste Signals.
-            </div>
-            <div className="flex space-x-6 mt-4 sm:mt-0">
-              <Link href="/login" className="hover:text-slate-300">
-                Sign In
-              </Link>
-              <Link href="/dashboard" className="hover:text-slate-300">
-                Dashboard
-              </Link>
-              <a href="#how-it-works" className="hover:text-slate-300">
-                Documentation
-              </a>
-            </div>
+      {/* ── Footer CTA ─────────────────────────────────────────────────── */}
+      <section className="py-24 border-t border-white/5 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-indigo-600/5 to-transparent pointer-events-none" />
+        <div className="max-w-3xl mx-auto px-6 text-center space-y-6 relative">
+          <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight">
+            Your next market is out there.{" "}
+            <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
+              Find it in minutes.
+            </span>
+          </h2>
+          <p className="text-slate-400 text-lg">
+            No signup friction. Describe your brand, pick your markets, get a verdict.
+          </p>
+          <Link
+            href="/projects/new"
+            className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-base shadow-xl shadow-indigo-600/20 transition-all hover:scale-[1.02]"
+          >
+            Start free — no credit card <ArrowRight className="w-5 h-5" />
+          </Link>
+        </div>
+      </section>
+
+      {/* ── Footer ─────────────────────────────────────────────────────── */}
+      <footer className="py-8 border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-600">
+          <div className="flex items-center gap-2">
+            <CulturaLogo size={20} showText={false} />
+            <span>© 2026 Cultura AI. Powered by Qloo.</span>
+          </div>
+          <div className="flex gap-6">
+            <Link href="/login" className="hover:text-slate-400 transition-colors">Sign in</Link>
+            <Link href="/dashboard" className="hover:text-slate-400 transition-colors">Dashboard</Link>
+            <Link href="/projects/new" className="hover:text-slate-400 transition-colors">Try it</Link>
           </div>
         </div>
       </footer>
