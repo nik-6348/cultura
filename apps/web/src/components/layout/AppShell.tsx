@@ -14,6 +14,7 @@ import {
   Search,
   Bell,
   ChevronDown,
+  LogOut,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Workspace } from "@/lib/types";
@@ -186,18 +187,8 @@ export function AppShell({ children }: AppShellProps) {
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-[#0B0F19]" />
           </button>
 
-          {/* User Profile */}
-          <div className="flex items-center space-x-2.5 pl-1 cursor-pointer group">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-600 text-white font-semibold text-xs flex items-center justify-center ring-2 ring-slate-800 shadow-xs overflow-hidden flex-shrink-0">
-              <span className="font-semibold text-xs text-white">NR</span>
-            </div>
-            <div className="hidden sm:flex items-center space-x-1.5">
-              <span className="text-xs font-medium text-slate-200 group-hover:text-white transition-colors">
-                Nikhil Rajput
-              </span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-transform group-hover:translate-y-0.5" />
-            </div>
-          </div>
+          {/* User Profile + Logout */}
+          <UserMenu />
         </div>
       </header>
 
@@ -205,6 +196,60 @@ export function AppShell({ children }: AppShellProps) {
       <main className="flex-1 overflow-y-auto">
         {children}
       </main>
+    </div>
+  );
+}
+
+function UserMenu() {
+  const { user, logout } = useAuth();
+  const router = useRouter();
+  const [open, setOpen] = React.useState(false);
+
+  const initials = user?.displayName
+    ? user.displayName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+    : (user?.email?.[0] ?? "U").toUpperCase();
+
+  const handleLogout = async () => {
+    setOpen(false);
+    await logout();
+    router.replace("/login");
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center space-x-2.5 pl-1 cursor-pointer group"
+      >
+        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-600 text-white font-semibold text-xs flex items-center justify-center ring-2 ring-slate-800 shadow-xs flex-shrink-0">
+          {initials}
+        </div>
+        <div className="hidden sm:flex items-center space-x-1.5">
+          <span className="text-xs font-medium text-slate-200 group-hover:text-white transition-colors max-w-[100px] truncate">
+            {user?.displayName ?? user?.email ?? "Account"}
+          </span>
+          <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-transform group-hover:translate-y-0.5" />
+        </div>
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-10 z-50 w-52 rounded-xl bg-[#121829] border border-[#232F49] shadow-2xl py-1.5 text-left">
+            <div className="px-3 py-2 border-b border-[#232F49]">
+              <p className="text-xs font-semibold text-white truncate">{user?.displayName ?? "User"}</p>
+              <p className="text-[10px] text-slate-500 truncate">{user?.email ?? ""}</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-rose-400 hover:bg-rose-500/10 transition-colors mt-0.5"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Sign out
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
