@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
+    "d3-geo": "^3.1.1",
     "firebase": "^13.0.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
+    "@types/d3-geo": "^3.1.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
