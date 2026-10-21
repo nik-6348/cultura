@@ -283,16 +283,15 @@ export default function ProjectsPage() {
   const renderDelta = (delta: { pct: number; isPositive: boolean } | null) =>
     delta ? (
       <span
-        className={`text-[11px] font-semibold flex items-center ${
-          delta.isPositive ? "text-emerald-400" : "text-rose-400"
-        }`}
+        className={`text-[11px] font-semibold flex items-center ${delta.isPositive ? "text-emerald-400" : "text-rose-400"
+          }`}
       >
         {delta.isPositive ? "↑" : "↓"} {delta.pct}%
       </span>
     ) : null;
 
   return (
-    <div className="w-full max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-in fade-in duration-300">
+    <div className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-in fade-in duration-300">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
@@ -427,9 +426,8 @@ export default function ProjectsPage() {
           <button
             type="button"
             onClick={() => setViewMode("list")}
-            className={`p-1.5 rounded transition-colors ${
-              viewMode === "list" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
-            }`}
+            className={`p-1.5 rounded transition-colors ${viewMode === "list" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
+              }`}
             title="List view"
           >
             <LayoutList className="w-4 h-4" />
@@ -437,9 +435,8 @@ export default function ProjectsPage() {
           <button
             type="button"
             onClick={() => setViewMode("grid")}
-            className={`p-1.5 rounded transition-colors ${
-              viewMode === "grid" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
-            }`}
+            className={`p-1.5 rounded transition-colors ${viewMode === "grid" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
+              }`}
             title="Grid view"
           >
             <LayoutGrid className="w-4 h-4" />
@@ -501,10 +498,10 @@ export default function ProjectsPage() {
                     e.culturalFit == null
                       ? "bg-slate-700"
                       : e.culturalFit >= 70
-                      ? "bg-emerald-400"
-                      : e.culturalFit >= 55
-                      ? "bg-amber-400"
-                      : "bg-rose-500";
+                        ? "bg-emerald-400"
+                        : e.culturalFit >= 55
+                          ? "bg-amber-400"
+                          : "bg-rose-500";
                   const marketList = e.project.candidate_markets || [];
 
                   return (
@@ -651,9 +648,9 @@ export default function ProjectsPage() {
                 {sorted.length === 0
                   ? "0 of 0"
                   : `${(currentPage - 1) * rowsPerPage + 1}–${Math.min(
-                      currentPage * rowsPerPage,
-                      sorted.length
-                    )} of ${sorted.length} projects`}
+                    currentPage * rowsPerPage,
+                    sorted.length
+                  )} of ${sorted.length} projects`}
               </span>
             </div>
 
@@ -678,11 +675,10 @@ export default function ProjectsPage() {
                     <button
                       type="button"
                       onClick={() => setPage(n)}
-                      className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-semibold transition-colors ${
-                        n === currentPage
+                      className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-semibold transition-colors ${n === currentPage
                           ? "bg-indigo-600 text-white"
                           : "text-slate-400 hover:text-white hover:bg-[#1A2338]"
-                      }`}
+                        }`}
                     >
                       {n}
                     </button>
