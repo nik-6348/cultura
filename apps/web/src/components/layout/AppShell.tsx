@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import {
   LayoutGrid,
   Folder,
@@ -26,10 +27,22 @@ export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const { token, loading: authLoading } = useAuth();
+  const router = useRouter();
 
-  // Auth routes do not use the internal top navigation
+  // Public routes — no nav, no auth required
   const isAuthRoute =
-    pathname.startsWith("/login") || pathname.startsWith("/signup");
+    pathname === "/" ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/signup") ||
+    pathname.startsWith("/landing");
+
+  // Redirect unauthenticated users to login (after auth state resolves)
+  useEffect(() => {
+    if (!isAuthRoute && !authLoading && !token) {
+      router.replace("/login");
+    }
+  }, [isAuthRoute, authLoading, token, router]);
 
   useEffect(() => {
     if (isAuthRoute) return;

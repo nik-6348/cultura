@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { AuthProvider } from "@/lib/auth-context";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,9 +35,11 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col font-sans bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-indigo-100 selection:text-indigo-900">
         <ThemeProvider>
-          <Suspense fallback={<div className="min-h-screen bg-slate-50 dark:bg-slate-950" />}>
-            <AppShell>{children}</AppShell>
-          </Suspense>
+          <AuthProvider>
+            <Suspense fallback={<div className="min-h-screen bg-[#070B14]" />}>
+              <AppShell>{children}</AppShell>
+            </Suspense>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

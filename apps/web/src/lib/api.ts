@@ -12,12 +12,19 @@ import {
   Workspace,
 } from "./types";
 
-const DEV_AUTH_HEADER = "Bearer dev_token:uid_demo_strategist:strategist@cultura.ai:Demo Strategist";
+const FALLBACK_TOKEN = "Bearer dev_token:uid_demo_strategist:strategist@cultura.ai:Demo Strategist";
+
+function getAuthHeader(): string {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("cultura_token") ?? FALLBACK_TOKEN;
+  }
+  return FALLBACK_TOKEN;
+}
 
 async function fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers || {});
   if (!headers.has("Authorization")) {
-    headers.set("Authorization", DEV_AUTH_HEADER);
+    headers.set("Authorization", getAuthHeader());
   }
   if (!headers.has("Content-Type") && options.body) {
     headers.set("Content-Type", "application/json");
@@ -448,7 +455,7 @@ export const api = {
       const response = await fetch(`/api/v1/projects/${projectId}/chat/stream`, {
         method: "POST",
         headers: {
-          Authorization: DEV_AUTH_HEADER,
+          Authorization: getAuthHeader(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
