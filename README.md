@@ -71,5 +71,21 @@ pnpm --filter web dev
 
 ---
 
+## 📚 Technical Documentation Suite
+
+- **[Executive White Paper & Real-World Problem Analysis](docs/architecture/05_real_world_problem_and_solution_deep_dive.md)** — Analysis of the $50B retail expansion failure problem and cross-domain taste graph solutions.
+- **[REST API Reference Manual](docs/api/README.md)** — Complete endpoint reference, schemas, and cURL examples.
+- **[Architecture Decision Records (ADRs)](docs/adr/)**:
+  - [ADR 0001: Backend Tech Stack (FastAPI)](docs/adr/0001-backend-tech-stack-fastapi.md)
+  - [ADR 0002: PostgreSQL & pgvector](docs/adr/0002-postgres-and-pgvector.md)
+  - [ADR 0003: LangGraph Multi-Agent DAG](docs/adr/0003-langgraph-agent-framework.md)
+  - [ADR 0004: TypeSafe JEV System One Gating](docs/adr/0004-typesafe-jev-system-one-gating.md)
+  - [ADR 0005: Deterministic Fixed-Point Scoring](docs/adr/0005-deterministic-fixed-point-scoring.md)
+  - [ADR 0006: 4-Layer Institutional Memory with pgvector](docs/adr/0006-pgvector-4-layer-institutional-memory.md)
+  - [ADR 0007: Cryptographic Qloo Audit Ledger](docs/adr/0007-cryptographic-qloo-audit-ledger.md)
+- **[Production Operations & Deployment Guide](docs/guides/04_production_deployment_and_operations.md)** — Containerized topology, migrations, and health probes.
+
+---
+
 ## 📄 License
 Licensed under the [Apache License, Version 2.0](LICENSE).
