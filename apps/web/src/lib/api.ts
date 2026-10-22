@@ -12,13 +12,11 @@ import {
   Workspace,
 } from "./types";
 
-const FALLBACK_TOKEN = "Bearer dev_token:uid_demo_strategist:strategist@cultura.ai:Demo Strategist";
-
 function getAuthHeader(): string {
   if (typeof window !== "undefined") {
-    return localStorage.getItem("cultura_token") ?? FALLBACK_TOKEN;
+    return localStorage.getItem("cultura_token") ?? "";
   }
-  return FALLBACK_TOKEN;
+  return "";
 }
 
 async function fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> {
