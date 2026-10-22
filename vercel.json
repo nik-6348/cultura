@@ -14,15 +14,21 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": { "service": "api" }
+      "destination": {
+        "service": "api"
+      }
     },
     {
       "source": "/",
-      "destination": { "service": "web" }
+      "destination": {
+        "service": "web"
+      }
     },
     {
       "source": "/(.*)",
-      "destination": { "service": "web" }
+      "destination": {
+        "service": "web"
+      }
     }
   ]
 }
