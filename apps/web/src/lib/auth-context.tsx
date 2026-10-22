@@ -31,18 +31,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check localStorage first (synchronous) so we don't flash the login screen
+    // Restore from localStorage immediately — no Firebase wait needed for demo/stored tokens
     const stored = typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
     if (stored) {
       setToken(stored);
       if (stored === DEMO_TOKEN) {
         setUser({ uid: "uid_demo_strategist", email: "strategist@cultura.ai", displayName: "Demo Strategist" });
       }
+      setLoading(false); // don't block on Firebase if we already have a token
     }
 
+    // Safety: if Firebase never fires (missing env vars etc), unblock after 3s
+    const timeout = setTimeout(() => setLoading(false), 3000);
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      clearTimeout(timeout);
       if (firebaseUser) {
-        // Build a dev-compatible token from the Firebase user (backend is in dev mode)
         const devToken = `Bearer dev_token:${firebaseUser.uid}:${firebaseUser.email ?? ""}:${firebaseUser.displayName ?? "User"}`;
         setUser({
           uid: firebaseUser.uid,
@@ -51,18 +55,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         setToken(devToken);
         localStorage.setItem(TOKEN_KEY, devToken);
+        setLoading(false);
       } else {
-        // Only clear if there's no stored demo token
-        const storedNow = localStorage.getItem(TOKEN_KEY);
+        // No Firebase user — keep demo token if present, otherwise clear
+        const storedNow = typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
         if (!storedNow || storedNow !== DEMO_TOKEN) {
           setUser(null);
-          setToken(storedNow);
+          setToken(null);
         }
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return unsubscribe;
+    return () => { clearTimeout(timeout); unsubscribe(); };
   }, []);
 
   const signInWithGoogle = async () => {
